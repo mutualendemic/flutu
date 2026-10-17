@@ -23,6 +23,14 @@ Flutu is a small Flask application with Google-only OAuth sign-in, a protected d
 
 Google OAuth is the only sign-in method; there is no local email/password login. For local development, `FLASK_SESSION_COOKIE_SECURE=false` allows cookies over HTTP. Set it to `true` when serving over HTTPS. Never use the development fallback session key in a deployed environment.
 
+## SnapDeploy package
+
+The repository includes a Dockerfile-based source package intended for container import services such as SnapDeploy. Build it locally with `python scripts/create_snapdeploy_zip.py`; the generated `dist/flutu-snapdeploy.zip` contains the Dockerfile, `.dockerignore`, `requirements.txt`, `run.py`, and the `app/` package at the ZIP root. It deliberately excludes `.env`, Git metadata, the local virtual environment, and tests. Configure Google OAuth credentials and a strong `FLASK_SECRET_KEY` in the deployment platform's environment settings; never put secrets in the ZIP.
+
+When a GitHub Release is published, `.github/workflows/release-snapdeploy.yml` builds and attaches `flutu-snapdeploy-<tag>.zip` to that release. Download the attached ZIP and import it through SnapDeploy's container page. The image runs Gunicorn bound to `0.0.0.0` inside the container and honors the platform's `PORT`; the local development server remains bound to `127.0.0.1`.
+
+The ZIP is a Docker build context, not a prebuilt image export. Confirm that SnapDeploy's importer accepts Dockerfile source ZIPs; the referenced example repository could not be fetched from this environment, so exact service-side ZIP constraints remain to be verified against SnapDeploy's current documentation. The expected context root is the five deployment inputs above, with `app/` as a directory; do not wrap them in an extra project folder inside the ZIP.
+
 ## Architecture
 
 ```text

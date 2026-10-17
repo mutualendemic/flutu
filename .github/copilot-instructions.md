@@ -26,6 +26,8 @@
 - Use the Flask application factory in `app/__init__.py` to configure and create the app. Do not instantiate a global app in feature modules or import the app object directly; this avoids circular imports and keeps tests configurable.
 - Keep the entry point in `run.py` and configuration in `app/config.py`. Add `app/extensions.py` only when the project uses shared Flask extension instances that need centralized initialization.
 - Bind the local development server to `127.0.0.1` only. Do not expose it on `0.0.0.0` or another network interface unless explicitly requested.
+- For container deployment, the production WSGI server must listen on `0.0.0.0` inside the container and honor the platform-provided `PORT`; do not change the local development server's loopback-only binding.
+- Keep SnapDeploy's source ZIP a clean Docker build context rooted at the repository files (`Dockerfile`, `.dockerignore`, `requirements.txt`, `run.py`, and `app/`). Exclude `.env`, credentials, `.git`, `.venv`, generated artifacts, and tests. Update the ZIP builder and release workflow when deployment inputs change.
 - Group routes by responsibility in Python packages and register each feature's Blueprint in the application factory. Authentication and OAuth belong in `app/auth/`; general pages and HTTP endpoints belong in `app/main/`.
 - Put reusable business logic and external integrations in `app/services/`, separated by concern. Route functions should validate HTTP input, call a service, and return a response; do not put provider integration or business logic in `server.py` or templates.
 - All HTML must be Jinja templates under `app/templates/`. Extend `base.html`, use `url_for()` for internal URLs and static assets, and do not add standalone root-level HTML pages.
