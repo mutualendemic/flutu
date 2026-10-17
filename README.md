@@ -16,8 +16,8 @@ Flutu is a small Flask application with Google-only OAuth sign-in, a protected d
   ./.venv/bin/python -m pip install -r requirements.txt
   ```
 
-2. Copy `.env.example` to `.env` and fill in the Google OAuth client ID, client secret, a unique `FLASK_SECRET_KEY`, and the OAuth redirect URI.
-3. Add the exact redirect URI to the authorized redirect URIs in Google Cloud Console. The example uses `http://127.0.0.1:8000/auth/google/callback`.
+2. Copy `.env.example` to `.env` and fill in the Google OAuth client ID, client secret, a unique `FLASK_SECRET_KEY`, and `FLUTU_GOOGLE_REDIRECT_URI`.
+3. Add the exact redirect URI to the authorized redirect URIs in Google Cloud Console. For local development it is `http://127.0.0.1:8000/auth/google/callback`.
 4. Start the app with `bash start_server.sh`.
 5. Open http://127.0.0.1:8000. The development server binds exclusively to `127.0.0.1` and is not exposed to the local network.
 
@@ -28,6 +28,20 @@ Google OAuth is the only sign-in method; there is no local email/password login.
 The repository includes a Dockerfile-based source package intended for container import services such as SnapDeploy. Build it locally with `python scripts/create_snapdeploy_zip.py`; the generated `dist/flutu-snapdeploy.zip` contains the Dockerfile, `.dockerignore`, `requirements.txt`, `run.py`, and the `app/` package at the ZIP root. It deliberately excludes `.env`, Git metadata, the local virtual environment, and tests. Configure Google OAuth credentials and a strong `FLASK_SECRET_KEY` in the deployment platform's environment settings; never put secrets in the ZIP.
 
 When a GitHub Release is published, `.github/workflows/release-snapdeploy.yml` builds and attaches `flutu-snapdeploy-<tag>.zip` to that release. Download the attached ZIP and import it through SnapDeploy's container page. The image runs Gunicorn bound to `0.0.0.0` inside the container and honors the platform's `PORT`; the local development server remains bound to `127.0.0.1`.
+
+### Google OAuth variables on SnapDeploy
+
+In the SnapDeploy container's environment-variable settings, define:
+
+| Variable | Value |
+| --- | --- |
+| `FLUTU_GOOGLE_CLIENT_ID` | Your Google OAuth client ID |
+| `FLUTU_GOOGLE_CLIENT_SECRET` | Your Google OAuth client secret |
+| `FLUTU_GOOGLE_REDIRECT_URI` | `https://<your-public-domain>/auth/google/callback` |
+| `FLASK_SECRET_KEY` | A unique, long random secret |
+| `FLASK_SESSION_COOKIE_SECURE` | `true` |
+
+Replace `<your-public-domain>` with the HTTPS hostname assigned to your SnapDeploy container. Add that exact `FLUTU_GOOGLE_REDIRECT_URI` value to the OAuth client's authorized redirect URIs in Google Cloud Console. The callback route accepts both `/auth/google/callback` and `/auth/callback`; use the former consistently in the environment variable and Google Console. The application reads `FLUTU_GOOGLE_REDIRECT_URI` at startup and uses the same value for both the Google authorization request and token exchange. Do not store production values in the source ZIP or commit them.
 
 The ZIP is a Docker build context, not a prebuilt image export. Confirm that SnapDeploy's importer accepts Dockerfile source ZIPs; the referenced example repository could not be fetched from this environment, so exact service-side ZIP constraints remain to be verified against SnapDeploy's current documentation. The expected context root is the five deployment inputs above, with `app/` as a directory; do not wrap them in an extra project folder inside the ZIP.
 

@@ -8,7 +8,7 @@ class Config:
     GOOGLE_CLIENT_SECRET = os.environ.get("FLUTU_GOOGLE_CLIENT_SECRET", "")
     GOOGLE_REDIRECT_URI = os.environ.get(
         "FLUTU_GOOGLE_REDIRECT_URI",
-        "http://127.0.0.1:8000/auth/callback",
+        "http://127.0.0.1:8000/auth/google/callback",
     )
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"

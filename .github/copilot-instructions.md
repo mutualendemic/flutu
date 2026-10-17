@@ -33,4 +33,5 @@
 - All HTML must be Jinja templates under `app/templates/`. Extend `base.html`, use `url_for()` for internal URLs and static assets, and do not add standalone root-level HTML pages.
 - Put browser assets in `app/static/`. Keep secrets in environment variables or `.env`; never commit credentials.
 - Google OAuth is the only supported sign-in method. Do not add local email/password login or hard-coded users. Preserve OAuth state validation and validate the user's identity with Google's trusted userinfo endpoint. Protect private HTML routes on the server and return JSON `401` responses from protected APIs when there is no valid session.
+- Read the Google OAuth callback URL from the `FLUTU_GOOGLE_REDIRECT_URI` environment variable. Keep local defaults for development, document the exact production callback URL, and use the same value in both the authorization request and code exchange. Never hard-code a deployment hostname or commit OAuth credentials.
 - New routes/pages must follow the existing parent/child navigation hierarchy above, be registered in a Blueprint, have tests, and update relevant documentation.
