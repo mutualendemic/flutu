@@ -23,6 +23,25 @@ Flutu is a small Flask application with Google-only OAuth sign-in, a protected d
 
 Google OAuth is the only sign-in method; there is no local email/password login. For local development, `FLASK_SESSION_COOKIE_SECURE=false` allows cookies over HTTP. Set it to `true` when serving over HTTPS. Never use the development fallback session key in a deployed environment.
 
+## Vercel deployment
+
+The repository includes a Vercel-compatible Flask export at `api/index.py`. Vercel looks for a callable WSGI app object at the `api` entrypoint, and this project exports the existing Flask application factory there without changing the local development behavior.
+
+1. Add the project to Vercel and keep the repository root as the project root.
+2. In the Vercel project environment settings, define the same Google OAuth variables used in local development:
+
+   - `FLUTU_GOOGLE_CLIENT_ID`
+   - `FLUTU_GOOGLE_CLIENT_SECRET`
+   - `FLUTU_GOOGLE_REDIRECT_URI`
+   - `FLASK_SECRET_KEY`
+   - `FLASK_SESSION_COOKIE_SECURE=true`
+
+3. Set `FLUTU_GOOGLE_REDIRECT_URI` to the exact HTTPS callback URL Vercel assigns to the app, such as `https://<your-project>.vercel.app/auth/google/callback`.
+4. Add that exact callback URL to the Google OAuth client authorized redirect URIs.
+5. Deploy; Vercel uses `vercel.json` to route all requests to `api/index.py`.
+
+The local development server stays bound to `127.0.0.1`, while the Vercel export keeps the same app factory and routes as the local app.
+
 ## SnapDeploy package
 
 The repository includes a Dockerfile-based source package intended for container import services such as SnapDeploy. Build it locally with `python scripts/create_snapdeploy_zip.py`; the generated `dist/flutu-snapdeploy.zip` contains the Dockerfile, `.dockerignore`, `requirements.txt`, `run.py`, and the `app/` package at the ZIP root. It deliberately excludes `.env`, Git metadata, the local virtual environment, and tests. Configure Google OAuth credentials and a strong `FLASK_SECRET_KEY` in the deployment platform's environment settings; never put secrets in the ZIP.

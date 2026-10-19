@@ -32,6 +32,14 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.headers["Location"], "/auth/login")
 
+    def test_vercel_export_module_exposes_app(self):
+        from api.index import app
+
+        self.assertIsNotNone(app)
+        response = app.test_client().get("/", follow_redirects=False)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers["Location"], "/auth/login")
+
     def test_login_is_google_only_and_local_login_is_removed(self):
         response = self.client.get("/auth/login")
         self.assertEqual(response.status_code, 503)
