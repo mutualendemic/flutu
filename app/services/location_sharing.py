@@ -6,26 +6,6 @@ from pymongo import ASCENDING, GEOSPHERE, ReturnDocument
 
 from app.services.mongodb import get_collection
 
-MAP_ICONS = {
-    "pin": "📍",
-    "person": "🧍",
-    "car": "🚗",
-    "bicycle": "🚲",
-    "home": "🏠",
-    "star": "⭐",
-    "dog": "🐕",
-    "bus": "🚌",
-    "motorcycle": "🏍️",
-    "boat": "⛵",
-    "airplane": "✈️",
-    "walking": "🚶",
-    "running": "🏃",
-    "wheelchair": "🦽",
-    "tent": "⛺",
-    "flag": "🚩",
-}
-
-
 def _now():
     return datetime.now(timezone.utc)
 
@@ -35,7 +15,14 @@ def register_user(user):
     users.create_index([("email", ASCENDING)], unique=True)
     users.update_one(
         {"_id": user["sub"]},
-        {"$set": {"email": user["email"].strip().lower(), "name": user["name"], "updated_at": _now()}},
+        {
+            "$set": {
+                "email": user["email"].strip().lower(),
+                "name": user["name"],
+                "picture": user.get("picture"),
+                "updated_at": _now(),
+            }
+        },
         upsert=True,
     )
 
@@ -62,25 +49,17 @@ def get_sharing_status(user_id):
     users = get_collection("users")
     user = users.find_one(
         {"_id": user_id},
-        {"location_sharing_enabled": 1, "map_icon": 1},
+        {"location_sharing_enabled": 1, "picture": 1},
     ) or {}
     enabled = bool(active_count and user.get("location_sharing_enabled", False))
     if not active_count and user.get("location_sharing_enabled", False):
         users.update_one({"_id": user_id}, {"$set": {"location_sharing_enabled": False}})
         get_collection("locations").delete_one({"owner_id": user_id})
-    map_icon = user.get("map_icon", "pin")
-    if not isinstance(map_icon, str) or map_icon not in MAP_ICONS:
-        map_icon = "pin"
-    return {"enabled": enabled, "active_recipients": active_count, "map_icon": map_icon}
-
-
-def set_map_icon(user_id, map_icon):
-    if not isinstance(map_icon, str) or map_icon not in MAP_ICONS:
-        return False
-    get_collection("users").update_one(
-        {"_id": user_id}, {"$set": {"map_icon": map_icon}}, upsert=True
-    )
-    return True
+    return {
+        "enabled": enabled,
+        "active_recipients": active_count,
+        "picture": user.get("picture"),
+    }
 
 
 def set_sharing_enabled(user_id, enabled):
@@ -213,12 +192,12 @@ def get_overview(user_id):
         }
 
     visible_locations = []
-    map_icons = {}
+    user_pictures = {}
     if recipient_ids:
-        map_icons = {
-            item["_id"]: item.get("map_icon", "pin")
+        user_pictures = {
+            item["_id"]: item.get("picture")
             for item in get_collection("users").find(
-                {"_id": {"$in": recipient_ids}}, {"map_icon": 1}
+                {"_id": {"$in": recipient_ids}}, {"picture": 1}
             )
         }
     for share in received:
@@ -230,7 +209,7 @@ def get_overview(user_id):
             {
                 "user_id": share["recipient_id"],
                 "name": share["recipient_name"],
-                "map_icon": map_icons.get(share["recipient_id"], "pin"),
+                "picture": user_pictures.get(share["recipient_id"]),
                 "latitude": coordinates[1],
                 "longitude": coordinates[0],
                 "accuracy": location["accuracy"],
@@ -252,7 +231,7 @@ def get_overview(user_id):
             own_location = {
                 "user_id": user_id,
                 "name": "Your device",
-                "map_icon": sharing_status["map_icon"],
+                "picture": sharing_status["picture"],
                 "latitude": coordinates[1],
                 "longitude": coordinates[0],
                 "accuracy": own_location_document["accuracy"],
