@@ -4,7 +4,7 @@
 
 - `/dashboard` é privado, nível 1 e raiz da área autenticada. Sem sessão válida a requisição volta à entrada.
 - Exibe nome/e-mail do usuário da sessão e ação para encerrar sessão.
-- Navega para as páginas nível 2: **Choose a path** (`/decision`), **My contacts** (`/contacts`) e **Location map** (`/map`). Não mostra links de páginas privadas antes da autenticação.
+- Navega para as páginas nível 2: **Choose a path** (`/decision`), **My contacts** (`/contacts`), **Location map** (`/map`) e **My profile** (`/profile`). Não mostra links de páginas privadas antes da autenticação.
 
 ## Indicador de compartilhamento
 

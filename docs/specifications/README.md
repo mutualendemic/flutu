@@ -14,6 +14,7 @@ Este diretório registra decisões implementadas no código atual. Não é uma p
 | Dashboard | `/dashboard` | [dashboard.md](pages/dashboard.md) |
 | Contatos | `/contacts` | [contacts.md](pages/contacts.md) |
 | Mapa e compartilhamento | `/map` | [location-map.md](pages/location-map.md) |
+| Perfil e preferências | `/profile` | [profile.md](pages/profile.md) |
 | Escolha de direção | `/decision` | [decision.md](pages/decision.md) |
 | Informações sobre a decisão | `/decision/info` | [quantum-info.md](pages/quantum-info.md) |
 

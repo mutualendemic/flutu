@@ -73,7 +73,7 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(self.client.post("/login").status_code, 404)
 
     def test_private_html_redirects_without_session(self):
-        for path in ("/dashboard", "/contacts", "/decision", "/decision/info", "/map"):
+        for path in ("/dashboard", "/contacts", "/decision", "/decision/info", "/map", "/profile"):
             with self.subTest(path=path):
                 response = self.client.get(path, follow_redirects=False)
                 self.assertEqual(response.status_code, 302)
@@ -92,6 +92,8 @@ class RouteTests(unittest.TestCase):
                 self.assertEqual(overview.get_json(), {"error": "Authentication required."})
         sharing = self.client.post("/api/location/sharing", json={"enabled": True})
         self.assertEqual(sharing.status_code, 401)
+        map_icon = self.client.post("/api/location/map-icon", json={"map_icon": "car"})
+        self.assertEqual(map_icon.status_code, 401)
 
     def test_authenticated_dashboard_and_child_navigation(self):
         self.sign_in()
@@ -100,6 +102,7 @@ class RouteTests(unittest.TestCase):
         self.assertIn(b"Choose a path", dashboard.data)
         self.assertIn(b"My contacts", dashboard.data)
         self.assertIn(b"Location map", dashboard.data)
+        self.assertIn(b"My profile", dashboard.data)
         self.assertIn(b"location-sharing-indicator", dashboard.data)
         self.assertNotIn(b"Check a number set", dashboard.data)
 
@@ -125,6 +128,9 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(location_map.status_code, 200)
         self.assertIn(b"OpenStreetMap", location_map.data)
         self.assertIn(b"Back to dashboard", location_map.data)
+        self.assertIn(b"calculateDistanceKm", location_map.data)
+        self.assertIn(b"Distance unavailable", location_map.data)
+        self.assertIn(b"their location is not currently available to you", location_map.data)
         self.assertIn(b"Enable location updates", location_map.data)
         self.assertIn(b"share-controls button:disabled", location_map.data)
         self.assertIn(b"id=\"toggle-sharing\" class=\"button small-button\" type=\"button\" disabled", location_map.data)
@@ -132,7 +138,8 @@ class RouteTests(unittest.TestCase):
         self.assertIn(b"every 30 seconds", location_map.data)
         self.assertIn(b"No one has authorized a request to receive your location yet", location_map.data)
         self.assertIn(b"own-location-status", location_map.data)
-        self.assertIn(b"Your blue marker is private on this device", location_map.data)
+        self.assertIn(b"mapMarkerIcon", location_map.data)
+        self.assertIn(b"Your marker is private on this device", location_map.data)
         self.assertIn(b"startPrivateLocationTracking", location_map.data)
         self.assertIn(b"setInterval(updatePrivateLocation, 30000)", location_map.data)
         self.assertIn(b"Private on this device", location_map.data)
@@ -142,6 +149,14 @@ class RouteTests(unittest.TestCase):
         self.assertIn(b"Location requires HTTPS", location_map.data)
         self.assertIn(b"Location permission was denied", location_map.data)
         self.assertIn(b"could not determine its location", location_map.data)
+
+        profile = self.client.get("/profile")
+        self.assertEqual(profile.status_code, 200)
+        self.assertIn(b"Location map icon", profile.data)
+        self.assertIn(b"map-icon-select", profile.data)
+        for choice in ("🐕 Dog", "🚌 Bus", "🏍️ Motorcycle", "⛵ Boat", "✈️ Airplane", "🚶 Walking", "🏃 Running", "🦽 Wheelchair", "⛺ Tent", "🚩 Flag"):
+            self.assertIn(choice.encode(), profile.data)
+        self.assertIn(b"Back to dashboard", profile.data)
 
         removed_page = self.client.get("/permutation-checker")
         self.assertEqual(removed_page.status_code, 404)
@@ -268,6 +283,19 @@ class RouteTests(unittest.TestCase):
             response = self.client.post("/api/location/sharing", json={"enabled": True})
         self.assertEqual(response.status_code, 403)
         set_mock.assert_called_once_with("google-user", True)
+
+    def test_map_icon_preference_is_validated_and_scoped_to_user(self):
+        self.sign_in()
+        with patch("app.main.routes.set_map_icon", return_value=True) as set_icon_mock:
+            response = self.client.post("/api/location/map-icon", json={"map_icon": "bicycle"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json(), {"map_icon": "bicycle"})
+        set_icon_mock.assert_called_once_with("google-user", "bicycle")
+
+        with patch("app.main.routes.set_map_icon", return_value=False) as set_icon_mock:
+            invalid = self.client.post("/api/location/map-icon", json={"map_icon": "<script>"})
+        self.assertEqual(invalid.status_code, 400)
+        set_icon_mock.assert_called_once_with("google-user", "<script>")
 
     def test_google_oauth_state_and_callback(self):
         class GoogleConfig:

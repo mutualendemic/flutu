@@ -15,6 +15,7 @@
   .contact-form { display: grid; gap: 10px; }
   select { width: 100%; padding: 12px; border: 1px solid #cfd7e6; border-radius: 10px; color: #14213d; font: inherit; background: white; }
   .small-button { width: auto; margin: 0; padding: 10px 12px; font-size: .9rem; }
+  .user-map-icon { display: grid; width: 38px; height: 38px; place-items: center; border: 2px solid white; border-radius: 50%; background: #3655d4; box-shadow: 0 2px 8px #14213d66; font-size: 21px; line-height: 1; }
   .share-controls button:disabled { opacity: .45; cursor: not-allowed; filter: grayscale(1); }
   .button-danger { background: #b42318; }
   .button-danger:hover { background: #912018; }
@@ -70,6 +71,7 @@
         </section>
         <section class="panel">
           <div class="section-heading"><h2>People you share with</h2></div>
+          <p class="subtle">Distance is shown only when their current location is also shared with you.</p>
           <ul id="sharing-list" class="items"><li class="empty">Loading…</li></ul>
           <div class="share-controls" style="margin-top:12px">
             <button id="toggle-sharing" class="button small-button" type="button" disabled>Enable location updates</button>
@@ -112,11 +114,21 @@
     const shareMessage = document.getElementById('share-message');
     const ownStatus = document.getElementById('own-location-status');
     const retryOwnLocationButton = document.getElementById('retry-own-location');
+    const mapIconEmoji = {
+      pin: '📍', person: '🧍', car: '🚗', bicycle: '🚲', home: '🏠', star: '⭐',
+      dog: '🐕', bus: '🚌', motorcycle: '🏍️', boat: '⛵', airplane: '✈️',
+      walking: '🚶', running: '🏃', wheelchair: '🦽', tent: '⛺', flag: '🚩'
+    };
     let hasCentered = false;
     let sharingCount = 0;
     let sharingEnabled = false;
     let ownMarker = null;
     let privateLocationTimer = null;
+    let currentMapIcon = 'pin';
+    let ownCoordinates = null;
+    let ownCoordinatesUpdatedAt = 0;
+    let sharingContacts = [];
+    let sharedLocationsByUser = new Map();
 
     async function callApi(url, options = {}) {
       const response = await fetch(url, {
@@ -219,45 +231,90 @@
 
     function renderOwnLocation(location, privateOnly = true) {
       const point = [location.latitude, location.longitude];
+      ownCoordinates = { latitude: location.latitude, longitude: location.longitude };
+      ownCoordinatesUpdatedAt = new Date(location.updated_at).getTime();
       const detail = `Updated ${new Date(location.updated_at).toLocaleString()} · accuracy ±${Math.round(location.accuracy)} m`;
       if (!ownMarker) {
-        ownMarker = L.circleMarker(point, {
-          radius: 9,
-          color: '#ffffff',
-          weight: 3,
-          fillColor: '#3655d4',
-          fillOpacity: 1
-        }).addTo(map);
+        ownMarker = L.marker(point, { icon: mapMarkerIcon(location.map_icon || currentMapIcon) }).addTo(map);
         map.setView(point, 15);
         hasCentered = true;
       } else {
         ownMarker.setLatLng(point);
+        ownMarker.setIcon(mapMarkerIcon(location.map_icon || currentMapIcon));
       }
       const privacyNotice = privateOnly ? 'Private on this device' : 'Shared with authorized contacts';
       ownMarker.bindPopup(`<strong>Your device</strong><br>${escapeHtml(detail)}<br>${privacyNotice}`);
       ownStatus.textContent = privateOnly
-        ? `${detail}. Your blue marker is private on this device; it is not shared unless you enable location updates.`
-        : `${detail}. Your blue marker is shared with authorized contacts.`;
+        ? `${detail}. Your marker is private on this device; it is not shared unless you enable location updates.`
+        : `${detail}. Your marker is shared with authorized contacts.`;
+      renderSharingPeople();
+    }
+
+    function calculateDistanceKm(first, second) {
+      const radians = degrees => degrees * Math.PI / 180;
+      const latitudeDelta = radians(second.latitude - first.latitude);
+      const longitudeDelta = radians(second.longitude - first.longitude);
+      const firstLatitude = radians(first.latitude);
+      const secondLatitude = radians(second.latitude);
+      const haversine = Math.sin(latitudeDelta / 2) ** 2
+        + Math.cos(firstLatitude) * Math.cos(secondLatitude) * Math.sin(longitudeDelta / 2) ** 2;
+      return 6371 * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+    }
+
+    function formatDistance(contact) {
+      const theirLocation = sharedLocationsByUser.get(contact.requester_id);
+      const ownLocationIsFresh = ownCoordinates && Date.now() - ownCoordinatesUpdatedAt < 120000;
+      if (!ownLocationIsFresh || !theirLocation) {
+        return 'Distance unavailable — their location is not currently available to you.';
+      }
+      const distanceKm = calculateDistanceKm(ownCoordinates, theirLocation);
+      return distanceKm < 1
+        ? `Distance: ${Math.round(distanceKm * 1000)} m away`
+        : `Distance: ${distanceKm.toFixed(1)} km away`;
+    }
+
+    function renderSharingPeople() {
+      renderList(sharingList, sharingContacts, 'You are not sharing your location with anyone.', item => makeItem(
+        item.requester_name,
+        `${item.requester_email} · ${formatDistance(item)}`,
+        [{ label: 'Stop sharing', action: () => revoke(item.id), danger: true }]
+      ));
+    }
+
+    function mapMarkerIcon(key) {
+      const emoji = mapIconEmoji[key] || mapIconEmoji.pin;
+      return L.divIcon({
+        className: 'user-map-icon-container',
+        html: `<span class="user-map-icon" aria-hidden="true">${emoji}</span>`,
+        iconSize: [38, 38],
+        iconAnchor: [19, 19],
+        popupAnchor: [0, -19]
+      });
     }
 
     function renderLocations(locations) {
       const visible = new Set();
+      sharedLocationsByUser = new Map(locations.map(location => [location.user_id, location]));
       locations.forEach(location => {
         visible.add(location.user_id);
         const point = [location.latitude, location.longitude];
         const detail = `Updated ${new Date(location.updated_at).toLocaleString()} · accuracy ±${Math.round(location.accuracy)} m`;
         let marker = markers.get(location.user_id);
         if (!marker) {
-          marker = L.marker(point);
+          marker = L.marker(point, { icon: mapMarkerIcon(location.map_icon) });
           marker.addTo(map);
           markers.set(location.user_id, marker);
           if (!hasCentered) { map.setView(point, 13); hasCentered = true; }
-        } else marker.setLatLng(point);
+        } else {
+          marker.setLatLng(point);
+          marker.setIcon(mapMarkerIcon(location.map_icon));
+        }
         marker.bindPopup(`<strong>${escapeHtml(location.name)}</strong><br>${escapeHtml(detail)}`);
       });
       for (const [id, marker] of markers) {
         if (!visible.has(id)) { map.removeLayer(marker); markers.delete(id); }
       }
+      renderSharingPeople();
     }
 
     function escapeHtml(value) {
@@ -325,18 +382,19 @@
             { label: 'Cancel', action: () => respond(item.id, 'cancel'), danger: true }
           ]
         ));
-        renderList(sharingList, data.sharing_with, 'You are not sharing your location with anyone.', item => makeItem(
-          item.requester_name, item.requester_email, [
-            { label: 'Stop sharing', action: () => revoke(item.id), danger: true }
-          ]
-        ));
+        sharingContacts = data.sharing_with;
+        renderSharingPeople();
         sharingCount = data.sharing_with.length;
         sharingEnabled = Boolean(data.sharing_status?.enabled);
+        currentMapIcon = mapIconEmoji[data.sharing_status?.map_icon]
+          ? data.sharing_status.map_icon
+          : 'pin';
+        if (ownMarker) ownMarker.setIcon(mapMarkerIcon(currentMapIcon));
         retryOwnLocationButton.hidden = sharingEnabled;
         if (sharingEnabled) {
           stopPrivateLocationTracking();
           if (data.own_location) renderOwnLocation(data.own_location, false);
-          else ownStatus.textContent = 'Sharing is enabled. Waiting for the next shared GPS update for your blue marker.';
+          else ownStatus.textContent = 'Sharing is enabled. Waiting for the next shared GPS update for your selected marker.';
         } else {
           startPrivateLocationTracking();
         }
@@ -361,6 +419,7 @@
         await loadOverview();
       } catch (error) { message(notice, error.message, true); }
     });
+
 
     toggleSharingButton.addEventListener('click', async () => {
       toggleSharingButton.disabled = true;

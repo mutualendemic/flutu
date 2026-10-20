@@ -3,6 +3,8 @@
 ## Rota e interface
 
 - `/map` é privada, nível 2, ligada ao dashboard e fornece retorno ao dashboard.
+- O ícone do marcador é escolhido na página de perfil. O mapa aplica essa preferência ao marcador próprio e os marcadores de terceiros usam o ícone escolhido pelo proprietário.
+- Em “People you share with”, a página mostra a distância aproximada até cada solicitante que autorizou acesso. O cálculo Haversine é feito no navegador somente se houver coordenadas próprias recentes (até 120 s) e um ponto recente dessa pessoa que ela tenha compartilhado com o usuário. Sem compartilhamento recíproco ou coordenada recente, a interface explica que não há distância disponível; não tenta obter nem inferir a posição dela.
 - Os botões para habilitar/pausar atualizações e interromper todos os compartilhamentos ficam desativados e visualmente esmaecidos quando não há permissões de compartilhamento aceitas.
 - O mapa usa Leaflet e tiles OpenStreetMap e exibe os últimos pontos compartilhados com o usuário atual. Ao abrir o mapa, solicita a localização do próprio dispositivo e atualiza um marcador azul localmente a cada 30 segundos, mesmo sem nenhum compartilhamento aceito. Um botão permite tentar novamente após erro/permissão negada. No modo privado, o ponto próprio não é enviado nem salvo no servidor. Se o usuário habilitar compartilhamento, o marcador próprio passa a refletir o último ponto atualizado no servidor, que é entregue apenas aos destinatários autorizados.
 - A tela lista solicitações recebidas, solicitações pendentes enviadas e pessoas que autorizaram compartilhar com o usuário. Permite pedir localização a um contato com e-mail, aceitar/recusar/cancelar pedidos, revogar uma permissão ou revogar todas.
@@ -20,7 +22,7 @@
 - Cada update faz upsert do ponto GeoJSON mais precisão e timestamp em um documento único com `owner_id` exclusivo. Não se guarda histórico.
 - API de overview retorna localização apenas ao requester de uma relação `accepted`; dados com idade >=120 s são omitidos. TTL MongoDB remove pontos após 180 s de inatividade. Pausar opt-in ou revogar o último grant apaga imediatamente.
 - Revogar um grant individual deixa os outros grants aceitos ativos. Remover último grant desabilita opt-in e remove o ponto.
-- Rotas API privadas: `GET /api/location/overview`, `GET /api/location/status`, `POST /api/location/sharing`, `POST /api/location/requests`, `POST /api/location/requests/<id>/respond`, `POST /api/location/updates`, `DELETE /api/location/shares`, `DELETE /api/location/shares/<id>`. Validação, escopo e regras constam na especificação [arquitetural](../architecture.md).
+- Rotas API privadas: `GET /api/location/overview`, `GET /api/location/status`, `POST /api/location/sharing`, `POST /api/location/map-icon`, `POST /api/location/requests`, `POST /api/location/requests/<id>/respond`, `POST /api/location/updates`, `DELETE /api/location/shares`, `DELETE /api/location/shares/<id>`. Validação, escopo e regras constam na especificação [arquitetural](../architecture.md).
 - Localização é sensível. O uso depende de consentimento explícito, browser permitir GPS e contexto HTTPS fora de localhost. Os erros de GPS do atualizador global são apresentados na página de mapa e no indicador de compartilhamento do dashboard. Não usar esses dados como trilha/histórico.
 
 ## Arquivos relacionados

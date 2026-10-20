@@ -15,6 +15,7 @@ from app.services.location_sharing import (
     respond_to_request,
     revoke_share,
     save_location,
+    set_map_icon,
     set_sharing_enabled,
 )
 
@@ -38,6 +39,12 @@ def contacts():
 @login_required
 def location_map():
     return render_template("location_map.html", user=session["user"])
+
+
+@main_bp.get("/profile")
+@login_required
+def profile():
+    return render_template("profile.html", user=session["user"])
 
 
 def _normalize_contact(value):
@@ -152,6 +159,20 @@ def api_set_location_sharing():
     except (PyMongoError, RuntimeError):
         current_app.logger.exception("Could not update location-sharing status")
         return jsonify(error="Location sharing is temporarily unavailable."), 503
+
+
+@main_bp.post("/api/location/map-icon")
+@login_required
+def api_set_map_icon():
+    payload = request.get_json(silent=True)
+    map_icon = payload.get("map_icon") if isinstance(payload, dict) else None
+    try:
+        if not set_map_icon(session["user"]["sub"], map_icon):
+            return jsonify(error="Choose one of the available map icons."), 400
+        return jsonify(map_icon=map_icon)
+    except (PyMongoError, RuntimeError):
+        current_app.logger.exception("Could not update map icon preference")
+        return jsonify(error="Map preferences are temporarily unavailable."), 503
 
 
 @main_bp.post("/api/location/requests")
