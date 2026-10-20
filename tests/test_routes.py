@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 
 from app import create_app
 import app.config as config_module
-from app.services.location_sharing import register_user
+from app.services.location_sharing import _isoformat_utc, register_user
 
 
 class RouteTests(unittest.TestCase):
@@ -30,6 +30,27 @@ class RouteTests(unittest.TestCase):
 
         update = users.update_one.call_args.args[1]["$set"]
         self.assertNotIn("picture", update)
+
+    def test_register_user_persists_google_profile_picture(self):
+        users = Mock()
+        with patch("app.services.location_sharing.get_collection", return_value=users):
+            register_user({
+                "sub": "google-user",
+                "email": "user@example.com",
+                "name": "Test User",
+                "picture": "https://example.com/avatar.png",
+            })
+
+        update = users.update_one.call_args.args[1]["$set"]
+        self.assertEqual(update["picture"], "https://example.com/avatar.png")
+
+    def test_mongo_utc_timestamps_are_serialized_with_timezone(self):
+        from datetime import datetime
+
+        self.assertEqual(
+            _isoformat_utc(datetime(2026, 10, 20, 12, 30)),
+            "2026-10-20T12:30:00Z",
+        )
 
     def sign_in(self):
         with self.client.session_transaction() as session:
@@ -137,6 +158,8 @@ class RouteTests(unittest.TestCase):
         self.assertIn(b"OpenStreetMap", location_map.data)
         self.assertIn(b"Back to dashboard", location_map.data)
         self.assertIn(b"calculateDistanceKm", location_map.data)
+        self.assertIn(b"popupContent(location)", location_map.data)
+        self.assertIn(b"refreshMarkerPopups", location_map.data)
         self.assertIn(b"Distance unavailable", location_map.data)
         self.assertIn(b"your device location is not current", location_map.data)
         self.assertIn(b"they are not currently sharing their location with you", location_map.data)
@@ -263,7 +286,9 @@ class RouteTests(unittest.TestCase):
                 "/api/location/updates", json={"latitude": 45.2, "longitude": -73.5, "accuracy": 12}
             )
         self.assertEqual(forbidden.status_code, 403)
-        save_mock.assert_called_once_with("google-user", 45.2, -73.5, 12)
+        save_mock.assert_called_once_with(
+            "google-user", 45.2, -73.5, 12, "https://example.com/test-user.png"
+        )
 
     def test_location_request_response_is_scoped_to_signed_in_user(self):
         self.sign_in()

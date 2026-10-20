@@ -15,6 +15,7 @@ from app.services.location_sharing import (
     respond_to_request,
     revoke_share,
     save_location,
+    register_user,
     set_sharing_enabled,
 )
 
@@ -128,6 +129,8 @@ def api_delete_contact(contact_id):
 @login_required
 def api_location_overview():
     try:
+        if current_app.config.get("MONGODB_URI"):
+            register_user(session["user"])
         return jsonify(get_overview(session["user"]["sub"]))
     except (PyMongoError, RuntimeError):
         current_app.logger.exception("Could not load location-sharing data")
@@ -138,6 +141,8 @@ def api_location_overview():
 @login_required
 def api_location_status():
     try:
+        if current_app.config.get("MONGODB_URI"):
+            register_user(session["user"])
         return jsonify(get_sharing_status(session["user"]["sub"]))
     except (PyMongoError, RuntimeError):
         current_app.logger.exception("Could not load location-sharing status")
@@ -218,7 +223,9 @@ def api_update_location():
     if not (-90 <= latitude <= 90 and -180 <= longitude <= 180 and 0 <= accuracy <= 100000):
         return jsonify(error="The location values are outside the allowed range."), 400
     try:
-        if not save_location(session["user"]["sub"], latitude, longitude, accuracy):
+        if not save_location(
+            session["user"]["sub"], latitude, longitude, accuracy, session["user"].get("picture")
+        ):
             return jsonify(error="Accept a sharing request before publishing your location."), 403
         return jsonify(updated=True)
     except (PyMongoError, RuntimeError):

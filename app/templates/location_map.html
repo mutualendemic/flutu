@@ -247,6 +247,7 @@
       ownStatus.textContent = privateOnly
         ? `${detail}. Your marker is private on this device; it is not shared unless you enable location updates.`
         : `${detail}. Your marker is shared with authorized contacts.`;
+      refreshMarkerPopups();
       renderSharingPeople();
     }
 
@@ -263,9 +264,15 @@
 
     function formatDistance(contact) {
       const theirLocation = sharedLocationsByUser.get(contact.requester_id);
-      const ownLocationIsFresh = ownCoordinates && Date.now() - ownCoordinatesUpdatedAt < 120000;
-      const theirLocationIsFresh = theirLocation
-        && Date.now() - new Date(theirLocation.updated_at).getTime() < 120000;
+      return formatDistanceToLocation(theirLocation);
+    }
+
+    function formatDistanceToLocation(theirLocation) {
+      const now = Date.now();
+      const ownLocationIsFresh = ownCoordinates && Math.abs(now - ownCoordinatesUpdatedAt) < 120000;
+      const theirUpdatedAt = theirLocation ? new Date(theirLocation.updated_at).getTime() : NaN;
+      const theirLocationIsFresh = theirLocation && Number.isFinite(theirUpdatedAt)
+        && Math.abs(now - theirUpdatedAt) < 120000;
       if (!ownLocationIsFresh && !theirLocationIsFresh) {
         return 'Distance unavailable — your location and their location are not currently available.';
       }
@@ -275,6 +282,18 @@
       return distanceKm < 1
         ? `Distance: ${Math.round(distanceKm * 1000)} m away`
         : `Distance: ${distanceKm.toFixed(1)} km away`;
+    }
+
+    function popupContent(location) {
+      const detail = `Updated ${new Date(location.updated_at).toLocaleString()} · accuracy ±${Math.round(location.accuracy)} m`;
+      return `<strong>${escapeHtml(location.name)}</strong><br>${escapeHtml(detail)}<br>${escapeHtml(formatDistanceToLocation(location))}`;
+    }
+
+    function refreshMarkerPopups() {
+      for (const [id, marker] of markers) {
+        const location = sharedLocationsByUser.get(id);
+        if (location) marker.setPopupContent(popupContent(location));
+      }
     }
 
     function renderSharingPeople() {
@@ -340,7 +359,6 @@
       locations.forEach(location => {
         visible.add(location.user_id);
         const point = [location.latitude, location.longitude];
-        const detail = `Updated ${new Date(location.updated_at).toLocaleString()} · accuracy ±${Math.round(location.accuracy)} m`;
         let marker = markers.get(location.user_id);
         if (!marker) {
           marker = L.marker(point, { icon: profileMarkerIcon(location.picture, location.name) });
@@ -351,7 +369,7 @@
           marker.setLatLng(point);
           marker.setIcon(profileMarkerIcon(location.picture, location.name));
         }
-        marker.bindPopup(`<strong>${escapeHtml(location.name)}</strong><br>${escapeHtml(detail)}`);
+        marker.bindPopup(popupContent(location));
       });
       for (const [id, marker] of markers) {
         if (!visible.has(id)) { map.removeLayer(marker); markers.delete(id); }

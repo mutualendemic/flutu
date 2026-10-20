@@ -10,6 +10,14 @@ def _now():
     return datetime.now(timezone.utc)
 
 
+def _isoformat_utc(value):
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    else:
+        value = value.astimezone(timezone.utc)
+    return value.isoformat().replace("+00:00", "Z")
+
+
 def register_user(user):
     users = get_collection("users")
     users.create_index([("email", ASCENDING)], unique=True)
@@ -86,7 +94,7 @@ def _serialize_request(document):
         "recipient_id": document["recipient_id"],
         "recipient_name": document["recipient_name"],
         "recipient_email": document["recipient_email"],
-        "updated_at": document["updated_at"].isoformat(),
+        "updated_at": _isoformat_utc(document["updated_at"]),
     }
 
 
@@ -209,11 +217,11 @@ def get_overview(user_id):
             {
                 "user_id": share["recipient_id"],
                 "name": share["recipient_name"],
-                "picture": user_pictures.get(share["recipient_id"]),
+                "picture": location.get("picture") or user_pictures.get(share["recipient_id"]),
                 "latitude": coordinates[1],
                 "longitude": coordinates[0],
                 "accuracy": location["accuracy"],
-                "updated_at": location["updated_at"].isoformat(),
+                "updated_at": _isoformat_utc(location["updated_at"]),
             }
         )
 
@@ -235,7 +243,7 @@ def get_overview(user_id):
                 "latitude": coordinates[1],
                 "longitude": coordinates[0],
                 "accuracy": own_location_document["accuracy"],
-                "updated_at": own_location_document["updated_at"].isoformat(),
+                "updated_at": _isoformat_utc(own_location_document["updated_at"]),
             }
 
     return {
@@ -248,7 +256,7 @@ def get_overview(user_id):
     }
 
 
-def save_location(user_id, latitude, longitude, accuracy):
+def save_location(user_id, latitude, longitude, accuracy, picture=None):
     shares = _shares()
     if not shares.find_one({"recipient_id": user_id, "status": "accepted"}, {"_id": 1}):
         return False
@@ -261,15 +269,16 @@ def save_location(user_id, latitude, longitude, accuracy):
     locations.create_index([("owner_id", ASCENDING)], unique=True)
     locations.create_index([("location", GEOSPHERE)])
     locations.create_index([("updated_at", ASCENDING)], expireAfterSeconds=180)
+    update = {
+        "location": {"type": "Point", "coordinates": [longitude, latitude]},
+        "accuracy": accuracy,
+        "updated_at": _now(),
+    }
+    if picture:
+        update["picture"] = picture
     locations.update_one(
         {"owner_id": user_id},
-        {
-            "$set": {
-                "location": {"type": "Point", "coordinates": [longitude, latitude]},
-                "accuracy": accuracy,
-                "updated_at": _now(),
-            }
-        },
+        {"$set": update},
         upsert=True,
     )
     return True
