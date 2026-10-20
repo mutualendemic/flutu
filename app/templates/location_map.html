@@ -75,7 +75,8 @@
             <button id="stop-all" class="button button-danger small-button" type="button" disabled>Stop all sharing</button>
           </div>
           <p id="share-message" class="notice" role="status" aria-live="polite">Accept an incoming request before sharing your location.</p>
-          <p id="own-location-status" class="subtle" role="status" aria-live="polite">Your device location has not been shared yet.</p>
+          <p id="own-location-status" class="subtle" role="status" aria-live="polite">When you open this map, your device location is tracked privately here every 30 seconds.</p>
+          <button id="retry-own-location" class="button button-secondary small-button" type="button">Locate my device</button>
           <p class="subtle">After enabling, Flutu updates your location about every 30 seconds while you use the app, provided the browser grants location access. You can pause updates or revoke access for one person or everyone.</p>
         </section>
       </div>
@@ -108,9 +109,13 @@
     const toggleSharingButton = document.getElementById('toggle-sharing');
     const stopAllButton = document.getElementById('stop-all');
     const shareMessage = document.getElementById('share-message');
+    const ownStatus = document.getElementById('own-location-status');
+    const retryOwnLocationButton = document.getElementById('retry-own-location');
     let hasCentered = false;
     let sharingCount = 0;
     let sharingEnabled = false;
+    let ownMarker = null;
+    let privateLocationTimer = null;
 
     async function callApi(url, options = {}) {
       const response = await fetch(url, {
@@ -211,23 +216,43 @@
       } catch (error) { message(shareMessage, error.message, true); }
     }
 
-    function renderLocations(locations, ownLocation) {
+    function renderOwnLocation(location, privateOnly = true) {
+      const point = [location.latitude, location.longitude];
+      const detail = `Updated ${new Date(location.updated_at).toLocaleString()} · accuracy ±${Math.round(location.accuracy)} m`;
+      if (!ownMarker) {
+        ownMarker = L.circleMarker(point, {
+          radius: 9,
+          color: '#ffffff',
+          weight: 3,
+          fillColor: '#3655d4',
+          fillOpacity: 1
+        }).addTo(map);
+        map.setView(point, 15);
+        hasCentered = true;
+      } else {
+        ownMarker.setLatLng(point);
+      }
+      const privacyNotice = privateOnly ? 'Private on this device' : 'Shared with authorized contacts';
+      ownMarker.bindPopup(`<strong>Your device</strong><br>${escapeHtml(detail)}<br>${privacyNotice}`);
+      ownStatus.textContent = privateOnly
+        ? `${detail}. Your blue marker is private on this device; it is not shared unless you enable location updates.`
+        : `${detail}. Your blue marker is shared with authorized contacts.`;
+    }
+
+    function renderLocations(locations) {
       const visible = new Set();
-      const allLocations = [...locations, ...(ownLocation ? [{ ...ownLocation, isOwn: true }] : [])];
-      allLocations.forEach(location => {
+      locations.forEach(location => {
         visible.add(location.user_id);
         const point = [location.latitude, location.longitude];
         const detail = `Updated ${new Date(location.updated_at).toLocaleString()} · accuracy ±${Math.round(location.accuracy)} m`;
         let marker = markers.get(location.user_id);
         if (!marker) {
-          marker = location.isOwn
-            ? L.circleMarker(point, { radius: 9, color: '#ffffff', weight: 3, fillColor: '#3655d4', fillOpacity: 1 })
-            : L.marker(point);
+          marker = L.marker(point);
           marker.addTo(map);
           markers.set(location.user_id, marker);
           if (!hasCentered) { map.setView(point, 13); hasCentered = true; }
         } else marker.setLatLng(point);
-        marker.bindPopup(`<strong>${escapeHtml(location.isOwn ? 'Your device' : location.name)}</strong><br>${escapeHtml(detail)}`);
+        marker.bindPopup(`<strong>${escapeHtml(location.name)}</strong><br>${escapeHtml(detail)}`);
       });
       for (const [id, marker] of markers) {
         if (!visible.has(id)) { map.removeLayer(marker); markers.delete(id); }
@@ -240,10 +265,54 @@
       }[character]));
     }
 
+    function locationError(error) {
+      if (!window.isSecureContext) return 'Device location requires HTTPS. Open Flutu using its secure https:// address.';
+      if (!navigator.geolocation) return 'This browser does not support device location. Try your device browser.';
+      if (error?.code === 1) return 'Location permission was denied. Allow location access for this site in browser settings, then tap “Locate my device”.';
+      if (error?.code === 2) return 'Your device could not determine its location. Check that Location is enabled.';
+      if (error?.code === 3) return 'Getting your location timed out. Check device Location and try again.';
+      return error?.message || 'Could not get your device location.';
+    }
+
+    function updatePrivateLocation() {
+      if (sharingEnabled || document.visibilityState === 'hidden') return;
+      if (!window.isSecureContext || !navigator.geolocation) {
+        ownStatus.textContent = locationError();
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(position => {
+        if (sharingEnabled) return;
+        renderOwnLocation({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          updated_at: new Date().toISOString()
+        });
+      }, error => {
+        ownStatus.textContent = locationError(error);
+      }, { enableHighAccuracy: true, maximumAge: 15000, timeout: 20000 });
+    }
+
+    function startPrivateLocationTracking() {
+      if (sharingEnabled || privateLocationTimer !== null) return;
+      updatePrivateLocation();
+      privateLocationTimer = window.setInterval(updatePrivateLocation, 30000);
+    }
+
+    function stopPrivateLocationTracking() {
+      if (privateLocationTimer !== null) window.clearInterval(privateLocationTimer);
+      privateLocationTimer = null;
+    }
+
+    retryOwnLocationButton.addEventListener('click', updatePrivateLocation);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') updatePrivateLocation();
+    });
+
     async function loadOverview() {
       try {
         const data = await callApi(api.overview);
-        renderLocations(data.locations, data.own_location);
+        renderLocations(data.locations);
         renderList(incomingList, data.incoming_requests, 'No pending requests.', item => makeItem(
           item.requester_name, `${item.requester_email} wants to see your location.`, [
             { label: 'Accept', action: () => respond(item.id, 'accept') },
@@ -262,6 +331,14 @@
         ));
         sharingCount = data.sharing_with.length;
         sharingEnabled = Boolean(data.sharing_status?.enabled);
+        retryOwnLocationButton.hidden = sharingEnabled;
+        if (sharingEnabled) {
+          stopPrivateLocationTracking();
+          if (data.own_location) renderOwnLocation(data.own_location, false);
+          else ownStatus.textContent = 'Sharing is enabled. Waiting for the next shared GPS update for your blue marker.';
+        } else {
+          startPrivateLocationTracking();
+        }
         toggleSharingButton.disabled = sharingCount === 0;
         toggleSharingButton.textContent = sharingEnabled ? 'Pause location updates' : 'Enable location updates';
         stopAllButton.disabled = sharingCount === 0;
@@ -270,14 +347,6 @@
           : 'No one has authorized a request to receive your location yet. Ask a contact to request it first.');
         else if (sharingEnabled) message(shareMessage, `Location updates are on for ${sharingCount} contact${sharingCount === 1 ? '' : 's'}.`);
         else message(shareMessage, 'A contact has permission, but your location updates are paused. Enable them to share your position.');
-        const ownStatus = document.getElementById('own-location-status');
-        if (data.own_location) {
-          ownStatus.textContent = `Last update: ${new Date(data.own_location.updated_at).toLocaleString()} · accuracy ±${Math.round(data.own_location.accuracy)} m. Your device is marked in blue on the map.`;
-        } else if (sharingEnabled) {
-          ownStatus.textContent = 'Waiting for a fresh GPS update. Keep this app open and allow location access; your own marker will appear here.';
-        } else {
-          ownStatus.textContent = 'Your device location has not been shared yet.';
-        }
       } catch (error) { message(shareMessage, error.message, true); }
     }
 
@@ -359,6 +428,7 @@
     }
 
     loadContacts();
+    startPrivateLocationTracking();
     loadOverview();
     window.setInterval(loadOverview, 15000);
   </script>
