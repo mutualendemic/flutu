@@ -13,16 +13,16 @@ def _now():
 def register_user(user):
     users = get_collection("users")
     users.create_index([("email", ASCENDING)], unique=True)
+    profile = {
+        "email": user["email"].strip().lower(),
+        "name": user["name"],
+        "updated_at": _now(),
+    }
+    if user.get("picture"):
+        profile["picture"] = user["picture"]
     users.update_one(
         {"_id": user["sub"]},
-        {
-            "$set": {
-                "email": user["email"].strip().lower(),
-                "name": user["name"],
-                "picture": user.get("picture"),
-                "updated_at": _now(),
-            }
-        },
+        {"$set": profile},
         upsert=True,
     )
 

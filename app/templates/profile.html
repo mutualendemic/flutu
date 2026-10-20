@@ -16,7 +16,7 @@
     <h1>My profile</h1>
     <section class="profile-header" aria-label="Signed-in account">
       {% if user.picture %}
-        <img class="avatar" src="{{ user.picture }}" alt="" referrerpolicy="no-referrer" />
+        <img id="profile-photo" class="avatar" src="{{ user.picture }}" alt="" referrerpolicy="no-referrer" />
       {% else %}
         <span class="avatar" aria-hidden="true">{{ (user.name or user.email)[0]|upper }}</span>
       {% endif %}
@@ -31,4 +31,18 @@
     </section>
     <a class="back-link" href="{{ url_for('main.dashboard') }}">← Back to dashboard</a>
   </main>
+{% endblock %}
+{% block scripts %}
+  <script>
+    const profilePhoto = document.getElementById('profile-photo');
+    if (profilePhoto) {
+      profilePhoto.addEventListener('error', () => {
+        const fallback = document.createElement('span');
+        fallback.className = 'avatar';
+        fallback.setAttribute('aria-hidden', 'true');
+        fallback.textContent = {{ (user.name or user.email)[0]|upper|tojson }};
+        profilePhoto.replaceWith(fallback);
+      }, { once: true });
+    }
+  </script>
 {% endblock %}

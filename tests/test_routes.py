@@ -1,10 +1,11 @@
 import os
 import unittest
 from importlib import reload
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from app import create_app
 import app.config as config_module
+from app.services.location_sharing import register_user
 
 
 class RouteTests(unittest.TestCase):
@@ -22,12 +23,21 @@ class RouteTests(unittest.TestCase):
         self.app = create_app(TestConfig)
         self.client = self.app.test_client()
 
+    def test_register_user_does_not_clear_saved_picture_when_google_omits_it(self):
+        users = Mock()
+        with patch("app.services.location_sharing.get_collection", return_value=users):
+            register_user({"sub": "google-user", "email": "user@example.com", "name": "Test User"})
+
+        update = users.update_one.call_args.args[1]["$set"]
+        self.assertNotIn("picture", update)
+
     def sign_in(self):
         with self.client.session_transaction() as session:
             session["user"] = {
                 "sub": "google-user",
                 "email": "user@example.com",
                 "name": "Test User",
+                "picture": "https://example.com/test-user.png",
             }
 
     def test_root_redirects_to_google_sign_in(self):
@@ -128,9 +138,11 @@ class RouteTests(unittest.TestCase):
         self.assertIn(b"Back to dashboard", location_map.data)
         self.assertIn(b"calculateDistanceKm", location_map.data)
         self.assertIn(b"Distance unavailable", location_map.data)
-        self.assertIn(b"their location is not currently available to you", location_map.data)
+        self.assertIn(b"your device location is not current", location_map.data)
+        self.assertIn(b"they are not currently sharing their location with you", location_map.data)
         self.assertIn(b"profileMarkerIcon", location_map.data)
         self.assertIn(b"ownProfilePicture", location_map.data)
+        self.assertIn(b"https://example.com/test-user.png", location_map.data)
         self.assertIn(b"user-map-avatar", location_map.data)
         self.assertIn(b"user-map-initials", location_map.data)
         self.assertIn(b"safeProfilePicture", location_map.data)
@@ -157,6 +169,8 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(profile.status_code, 200)
         self.assertIn(b"Your map marker", profile.data)
         self.assertIn(b"Google profile photo", profile.data)
+        self.assertIn(b"profile-photo", profile.data)
+        self.assertIn(b"profilePhoto.replaceWith(fallback)", profile.data)
         self.assertNotIn(b"map-icon-select", profile.data)
         self.assertIn(b"Back to dashboard", profile.data)
 
@@ -218,7 +232,13 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(response.get_json(), {"request": saved_request, "created": True})
         find_mock.assert_called_once_with("alex@example.com")
         request_mock.assert_called_once_with(
-            {"sub": "google-user", "email": "user@example.com", "name": "Test User"}, recipient
+            {
+                "sub": "google-user",
+                "email": "user@example.com",
+                "name": "Test User",
+                "picture": "https://example.com/test-user.png",
+            },
+            recipient,
         )
 
     def test_location_request_rejects_contact_not_owned_by_user(self):

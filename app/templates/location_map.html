@@ -15,7 +15,8 @@
   .contact-form { display: grid; gap: 10px; }
   select { width: 100%; padding: 12px; border: 1px solid #cfd7e6; border-radius: 10px; color: #14213d; font: inherit; background: white; }
   .small-button { width: auto; margin: 0; padding: 10px 12px; font-size: .9rem; }
-  .user-map-avatar, .user-map-initials { display: grid; width: 42px; height: 42px; place-items: center; border: 3px solid white; border-radius: 50%; background: #3655d4; box-shadow: 0 2px 8px #14213d66; color: white; font-size: .9rem; font-weight: 800; object-fit: cover; }
+  .user-map-avatar { display: block; width: 42px; height: 42px; border: 3px solid white; border-radius: 50%; background: #3655d4; box-shadow: 0 2px 8px #14213d66; object-fit: cover; }
+  .user-map-initials { display: grid; width: 42px; height: 42px; place-items: center; border: 3px solid white; border-radius: 50%; background: #3655d4; box-shadow: 0 2px 8px #14213d66; color: white; font-size: .9rem; font-weight: 800; }
   .share-controls button:disabled { opacity: .45; cursor: not-allowed; filter: grayscale(1); }
   .button-danger { background: #b42318; }
   .button-danger:hover { background: #912018; }
@@ -101,6 +102,7 @@
     };
     const ownProfilePicture = {{ user.get('picture')|tojson }};
     const ownProfileName = {{ user.get('name', '')|tojson }};
+    let currentOwnProfilePicture = ownProfilePicture;
     const map = L.map('map').setView([20, 0], 2);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
@@ -227,7 +229,7 @@
 
     function renderOwnLocation(location, privateOnly = true) {
       const point = [location.latitude, location.longitude];
-      const picture = location.picture || ownProfilePicture;
+      const picture = location.picture || currentOwnProfilePicture;
       const name = location.name || ownProfileName;
       ownCoordinates = { latitude: location.latitude, longitude: location.longitude };
       ownCoordinatesUpdatedAt = new Date(location.updated_at).getTime();
@@ -262,9 +264,13 @@
     function formatDistance(contact) {
       const theirLocation = sharedLocationsByUser.get(contact.requester_id);
       const ownLocationIsFresh = ownCoordinates && Date.now() - ownCoordinatesUpdatedAt < 120000;
-      if (!ownLocationIsFresh || !theirLocation) {
-        return 'Distance unavailable — their location is not currently available to you.';
+      const theirLocationIsFresh = theirLocation
+        && Date.now() - new Date(theirLocation.updated_at).getTime() < 120000;
+      if (!ownLocationIsFresh && !theirLocationIsFresh) {
+        return 'Distance unavailable — your location and their location are not currently available.';
       }
+      if (!ownLocationIsFresh) return 'Distance unavailable — your device location is not current.';
+      if (!theirLocationIsFresh) return 'Distance unavailable — they are not currently sharing their location with you.';
       const distanceKm = calculateDistanceKm(ownCoordinates, theirLocation);
       return distanceKm < 1
         ? `Distance: ${Math.round(distanceKm * 1000)} m away`
@@ -288,7 +294,6 @@
         image.className = 'user-map-avatar';
         image.alt = '';
         image.referrerPolicy = 'no-referrer';
-        image.src = safePicture;
         image.addEventListener('error', () => {
           const fallback = document.createElement('span');
           fallback.className = 'user-map-initials';
@@ -296,6 +301,7 @@
           fallback.textContent = initials;
           image.replaceWith(fallback);
         }, { once: true });
+        image.src = safePicture;
         content.append(image);
       } else {
         const fallback = document.createElement('span');
@@ -422,6 +428,7 @@
         renderSharingPeople();
         sharingCount = data.sharing_with.length;
         sharingEnabled = Boolean(data.sharing_status?.enabled);
+        currentOwnProfilePicture = data.sharing_status?.picture || ownProfilePicture;
         retryOwnLocationButton.hidden = sharingEnabled;
         if (sharingEnabled) {
           stopPrivateLocationTracking();
