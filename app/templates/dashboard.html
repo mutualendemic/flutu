@@ -7,7 +7,8 @@
   .brand img { width: 42px; height: 42px; }
   .logout { padding: 10px 15px; border-radius: 10px; background: #dfe8ff; font-weight: 700; text-decoration: none; }
   .badge { display: inline-block; padding: 8px 12px; border-radius: 999px; background: #e8f8f1; color: #0f7c5d; font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
-  .actions { margin-top: 24px; }
+  .actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-top: 24px; }
+  .actions .button { margin-top: 0; }
   @media (max-width: 520px) { .dashboard { margin-top: 0; } .topbar { align-items: flex-start; } }
 {% endblock %}
 {% block content %}
@@ -21,6 +22,7 @@
     <p>Signed in as: <strong>{{ user.name }}</strong> ({{ user.email }})</p>
     <nav class="actions" aria-label="Dashboard pages">
       <a class="button" href="{{ url_for('main.decision') }}">Choose a path</a>
+      <a class="button button-secondary" href="{{ url_for('main.contacts') }}">My contacts</a>
     </nav>
   </main>
 {% endblock %}

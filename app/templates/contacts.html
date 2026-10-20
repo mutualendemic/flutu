@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+{% block title %}Flutu | My contacts{% endblock %}
+{% block styles %}
+  .contacts { max-width: 720px; margin-top: 5vh; }
+  .contact-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin: 22px 0; }
+  .contact-actions .button { margin-top: 0; }
+  .manual-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 20px 0 28px; }
+  .manual-form label { display: grid; gap: 6px; color: #53627b; font-size: .9rem; font-weight: 700; }
+  .manual-form input, .search { width: 100%; padding: 12px; border: 1px solid #d5deef; border-radius: 10px; color: #14213d; font: inherit; }
+  .manual-form button { grid-column: 1 / -1; }
+  .list-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 28px; }
+  .list-heading h2 { margin: 0; font-size: 1.2rem; }
+  .count { color: #687791; font-size: .9rem; }
+  .search { margin: 14px 0; }
+  .contact-list { display: grid; gap: 10px; padding: 0; list-style: none; }
+  .contact-card { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 15px; border: 1px solid #e2e9f5; border-radius: 14px; background: #fbfcff; }
+  .contact-card h3 { margin: 0 0 5px; font-size: 1rem; }
+  .contact-card p { margin: 2px 0; font-size: .9rem; overflow-wrap: anywhere; }
+  .remove-contact { flex: 0 0 auto; padding: 8px 10px; border: 1px solid #f0d6d3; border-radius: 9px; background: white; color: #a2342c; font: inherit; cursor: pointer; }
+  .notice { min-height: 24px; margin: 8px 0; color: #53627b; font-size: .9rem; }
+  .empty { padding: 22px 12px; border: 1px dashed #cbd6e8; border-radius: 14px; text-align: center; }
+  @media (max-width: 520px) { .manual-form { grid-template-columns: 1fr; } .manual-form button { grid-column: auto; } .contacts { margin-top: 0; } }
+{% endblock %}
+{% block content %}
+  <main class="card contacts">
+    <p class="eyebrow">Your address book</p>
+    <h1>My contacts</h1>
+    <p>Your contacts are saved to your Flutu account. Import contacts from your phone when your browser supports it, or add someone manually.</p>
+
+    <div class="contact-actions">
+      <button class="button" id="import-contacts" type="button">Import from phone</button>
+      <button class="button button-secondary" id="import-vcf" type="button">Import .vcf file</button>
+      <button class="button button-secondary" id="clear-contacts" type="button">Clear all contacts</button>
+    </div>
+    <input id="vcf-file" type="file" accept=".vcf,text/vcard,text/x-vcard" hidden />
+    <p class="notice">If direct phone access is unavailable, export contacts as a .vcf file from your phone and import that file here.</p>
+    <p class="notice" id="contact-status" role="status" aria-live="polite"></p>
+
+    <form class="manual-form" id="contact-form">
+      <label>Name <input name="name" autocomplete="name" maxlength="120" required /></label>
+      <label>Phone <input name="tel" type="tel" autocomplete="tel" maxlength="80" /></label>
+      <label>Email <input name="email" type="email" autocomplete="email" maxlength="254" /></label>
+      <button class="button button-secondary" type="submit">Add contact</button>
+    </form>
+
+    <div class="list-heading">
+      <h2>Saved contacts</h2>
+      <span class="count" id="contact-count">0 contacts</span>
+    </div>
+    <input class="search" id="contact-search" type="search" placeholder="Search contacts" aria-label="Search contacts" />
+    <ul class="contact-list" id="contact-list"></ul>
+    <p class="empty" id="empty-state">No contacts yet. Import from your phone or add a contact above.</p>
+    <a class="back-link" href="{{ url_for('main.dashboard') }}">← Back to dashboard</a>
+  </main>
+{% endblock %}
+{% block scripts %}
+  <script>
+    (() => {
+      const contactsApi = {{ url_for('main.api_contacts')|tojson }};
+      const list = document.getElementById("contact-list");
+      const status = document.getElementById("contact-status");
+      const count = document.getElementById("contact-count");
+      const emptyState = document.getElementById("empty-state");
+      const search = document.getElementById("contact-search");
+      let contacts = [];
+
+      async function request(url, options = {}) {
+        const response = await fetch(url, {
+          ...options,
+          headers: { "Content-Type": "application/json", ...options.headers },
+        });
+        if (response.status === 204) return null;
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Could not complete this action.");
+        return result;
+      }
+
+      function firstValue(value) {
+        if (Array.isArray(value)) return value.find((item) => typeof item === "string" && item.trim()) || "";
+        return typeof value === "string" ? value.trim() : "";
+      }
+
+      function unescapeVcard(value) {
+        return value.replace(/\\n/gi, " ").replace(/\\([,;\\])/g, "$1").trim();
+      }
+
+      function parseVcard(text) {
+        const unfolded = text.replace(/\r?\n[ \t]/g, "");
+        const cards = unfolded.split(/BEGIN:VCARD/i).slice(1);
+        return cards.map((block) => {
+          const values = { name: "", formattedName: "", structuredName: "", tel: "", email: "" };
+          block.split(/\r?\n/).forEach((line) => {
+            const separator = line.indexOf(":");
+            if (separator < 0) return;
+            const property = line.slice(0, separator).split(";")[0].toUpperCase();
+            const value = unescapeVcard(line.slice(separator + 1));
+            if (property === "FN" && !values.formattedName) values.formattedName = value;
+            if (property === "N" && !values.structuredName) {
+              const [family = "", given = "", additional = "", prefix = "", suffix = ""] = value.split(";");
+              values.structuredName = [prefix, given, additional, family, suffix].filter(Boolean).join(" ");
+            }
+            if (property === "TEL" && !values.tel) values.tel = value;
+            if (property === "EMAIL" && !values.email) values.email = value;
+          });
+          values.name = values.formattedName || values.structuredName;
+          if (!values.name) values.name = values.email || values.tel;
+          return values;
+        }).filter((contact) => contact.name && (contact.tel || contact.email));
+      }
+
+      function uniqueContacts(values) {
+        const known = new Set(contacts.flatMap((saved) => [
+          saved.email && `email:${saved.email.toLowerCase()}`,
+          saved.tel && `tel:${saved.tel.replace(/\s/g, "")}`,
+        ].filter(Boolean)));
+        return values.filter((contact) => {
+          const normalized = {
+            name: firstValue(contact.name),
+            tel: firstValue(contact.tel),
+            email: firstValue(contact.email),
+          };
+          const emailKey = normalized.email && `email:${normalized.email.toLowerCase()}`;
+          const telKey = normalized.tel && `tel:${normalized.tel.replace(/\s/g, "")}`;
+          if (!normalized.name || (!normalized.email && !normalized.tel) ||
+              (emailKey && known.has(emailKey)) || (telKey && known.has(telKey))) return false;
+          if (emailKey) known.add(emailKey);
+          if (telKey) known.add(telKey);
+          contact.name = normalized.name;
+          contact.tel = normalized.tel;
+          contact.email = normalized.email;
+          return true;
+        });
+      }
+
+      async function createContacts(values) {
+        const additions = uniqueContacts(values);
+        if (!additions.length) return 0;
+        const result = await request(contactsApi, {
+          method: "POST",
+          body: JSON.stringify({ contacts: additions }),
+        });
+        contacts = [...contacts, ...result.contacts];
+        render();
+        return result.contacts.length;
+      }
+
+      function render() {
+        const query = search.value.trim().toLowerCase();
+        const visible = contacts.filter((contact) =>
+          [contact.name, contact.tel, contact.email].some((value) => (value || "").toLowerCase().includes(query))
+        );
+        list.replaceChildren();
+        visible.forEach((contact) => {
+          const item = document.createElement("li");
+          item.className = "contact-card";
+          const details = document.createElement("div");
+          const name = document.createElement("h3");
+          name.textContent = contact.name;
+          details.append(name);
+          if (contact.tel) {
+            const phone = document.createElement("p");
+            phone.textContent = contact.tel;
+            details.append(phone);
+          }
+          if (contact.email) {
+            const email = document.createElement("p");
+            email.textContent = contact.email;
+            details.append(email);
+          }
+          const remove = document.createElement("button");
+          remove.className = "remove-contact";
+          remove.type = "button";
+          remove.textContent = "Remove";
+          remove.setAttribute("aria-label", `Remove ${contact.name}`);
+          remove.addEventListener("click", async () => {
+            remove.disabled = true;
+            try {
+              await request(`${contactsApi}/${encodeURIComponent(contact.id)}`, { method: "DELETE" });
+              contacts = contacts.filter((saved) => saved.id !== contact.id);
+              status.textContent = "Contact removed.";
+              render();
+            } catch (error) {
+              status.textContent = error.message;
+              remove.disabled = false;
+            }
+          });
+          item.append(details, remove);
+          list.append(item);
+        });
+        count.textContent = `${contacts.length} ${contacts.length === 1 ? "contact" : "contacts"}`;
+        emptyState.hidden = visible.length > 0;
+        emptyState.textContent = contacts.length && !visible.length
+          ? "No contacts match your search."
+          : "No contacts yet. Import from your phone or add a contact above.";
+      }
+
+      document.getElementById("contact-form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const form = new FormData(event.currentTarget);
+        const contact = { name: form.get("name"), tel: form.get("tel"), email: form.get("email") };
+        if (!contact.tel && !contact.email) {
+          status.textContent = "Add a phone number or email address for this contact.";
+          return;
+        }
+        try {
+          const added = await createContacts([contact]);
+          event.currentTarget.reset();
+          status.textContent = added ? "Contact added." : "That contact is already in your list.";
+        } catch (error) {
+          status.textContent = error.message;
+        }
+        render();
+      });
+
+      document.getElementById("import-contacts").addEventListener("click", async () => {
+        if (!window.isSecureContext || !navigator.contacts || typeof navigator.contacts.select !== "function") {
+          status.textContent = "Direct phone contact access is unavailable in this browser. Use Import .vcf file instead, or try a supported mobile browser over HTTPS.";
+          return;
+        }
+        try {
+          const selected = await navigator.contacts.select(["name", "tel", "email"], { multiple: true });
+          const added = await createContacts(selected);
+          status.textContent = `${added} contact${added === 1 ? "" : "s"} imported.`;
+        } catch (error) {
+          status.textContent = error.name === "AbortError"
+            ? "Import cancelled."
+            : error.message || "Could not import contacts. Check browser permissions and try again.";
+        }
+      });
+
+      const vcfFile = document.getElementById("vcf-file");
+      document.getElementById("import-vcf").addEventListener("click", () => vcfFile.click());
+      vcfFile.addEventListener("change", async () => {
+        const file = vcfFile.files[0];
+        if (!file) return;
+        if (file.size > 5 * 1024 * 1024) {
+          status.textContent = "That file is too large. Choose a .vcf file smaller than 5 MB.";
+          vcfFile.value = "";
+          return;
+        }
+        try {
+          const parsed = parseVcard(await file.text());
+          if (!parsed.length) {
+            status.textContent = "No usable contacts found. Choose a valid .vcf contact export.";
+            return;
+          }
+          const added = await createContacts(parsed.slice(0, 100));
+          status.textContent = `${added} contact${added === 1 ? "" : "s"} imported from file.`;
+        } catch (error) {
+          status.textContent = error.message || "Could not import that .vcf file.";
+        } finally {
+          vcfFile.value = "";
+        }
+      });
+
+      document.getElementById("clear-contacts").addEventListener("click", async () => {
+        if (!contacts.length || !window.confirm("Remove all your saved contacts?")) return;
+        try {
+          await request(contactsApi, { method: "DELETE" });
+          contacts = [];
+          status.textContent = "All contacts removed.";
+          render();
+        } catch (error) {
+          status.textContent = error.message;
+        }
+      });
+
+      search.addEventListener("input", render);
+      request(contactsApi)
+        .then((result) => {
+          contacts = result.contacts;
+          render();
+        })
+        .catch((error) => {
+          status.textContent = error.message;
+          emptyState.textContent = "Contacts could not be loaded. Try refreshing the page.";
+          render();
+        });
+    })();
+  </script>
+{% endblock %}

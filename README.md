@@ -1,6 +1,6 @@
 # Flutu
 
-Flutu is a small Flask application with Google-only OAuth sign-in, a protected dashboard, and a quantum-random direction demo.
+Flutu is a small Flask application with Google-only OAuth sign-in, a protected dashboard, a personal contacts list, and a quantum-random direction demo.
 
 ## Requirements
 
@@ -16,7 +16,8 @@ Flutu is a small Flask application with Google-only OAuth sign-in, a protected d
   ./.venv/bin/python -m pip install -r requirements.txt
   ```
 
-2. Copy `.env.example` to `.env` and fill in the Google OAuth client ID, client secret, a unique `FLASK_SECRET_KEY`, and `FLUTU_GOOGLE_REDIRECT_URI`.
+2. Copy `.env.example` to `.env` and fill in the Google OAuth client ID, client secret, a unique `FLASK_SECRET_KEY`, `FLUTU_GOOGLE_REDIRECT_URI`, and the MongoDB Atlas values `MONGODB_URI` and `MONGODB_DATABASE`. Keep the URI quoted in `.env`, and never commit credentials.
+   The app also accepts the standard Vercel/Google names (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `SECRET_KEY`) as fallbacks when those are configured instead.
 3. Add the exact redirect URI to the authorized redirect URIs in Google Cloud Console. For local development it is `http://127.0.0.1:8000/auth/google/callback`.
 4. Start the app with `bash start_server.sh`.
 5. Open http://127.0.0.1:8000. The development server binds exclusively to `127.0.0.1` and is not exposed to the local network.
@@ -35,6 +36,8 @@ The repository includes a Vercel-compatible Flask export at `api/index.py`. Verc
    - `FLUTU_GOOGLE_REDIRECT_URI`
    - `FLASK_SECRET_KEY`
    - `FLASK_SESSION_COOKIE_SECURE=true`
+  - `MONGODB_URI` (Atlas connection string; server-side only)
+  - `MONGODB_DATABASE` (for example, `flutu`)
 
 3. Set `FLUTU_GOOGLE_REDIRECT_URI` to the exact HTTPS callback URL Vercel assigns to the app, such as `https://<your-project>.vercel.app/auth/google/callback`.
 4. Add that exact callback URL to the Google OAuth client authorized redirect URIs.
@@ -78,11 +81,13 @@ app/
     routes.py                 Dashboard, decision and API routes
   services/
     google_oauth.py           Google authorization-code and userinfo integration
+    contacts.py               MongoDB contacts, scoped by Google account
     quantum_random.py         ANU quantum-random integration
   templates/
     base.html                 Shared Jinja layout
     login.html                Google-only sign-in page
     dashboard.html            Authenticated root (level 1)
+    contacts.html             Private contacts list with optional phone import (level 2)
     decision.html             Decision page (level 2)
     quantum_info.html          Decision information (level 3)
   static/
@@ -98,11 +103,15 @@ Routes are grouped by concern in Flask Blueprints and registered by `create_app(
 
 - Google OAuth login: `/auth/login`; callback: `/auth/callback` (the legacy `/auth/google/callback` remains supported); logout: `/auth/logout`.
 - `/dashboard` is the authenticated root at level 1. Its child pages return to their immediate parent.
+- `/contacts` is a level-2 page linked from the dashboard. Contacts are persisted in MongoDB and scoped to the signed-in Google account's stable `sub` identifier, making them available across devices. The server derives the owner from the authenticated session and never accepts an owner ID from the browser.
+- **Import from phone** uses the browser Contact Picker API when available; support varies by mobile browser and it requires HTTPS. As a fallback, export contacts from the phone as a `.vcf`/vCard file and use **Import .vcf file**. The page also allows manual entry and search.
 - `/decision` is level 2; `/decision/info` is level 3 and returns to `/decision`.
-- The dashboard provides the single **Choose a path** option.
+- The dashboard provides **Choose a path** and **My contacts** options.
 - Unauthenticated page requests redirect to sign-in. Protected APIs return JSON `401` without performing the requested action.
 
 ## APIs
+
+`GET /api/contacts`, `POST /api/contacts`, and `DELETE /api/contacts` manage the signed-in user's contacts. `DELETE /api/contacts/<id>` removes an individual contact. Every route requires authentication and scopes data to the Google account in the session.
 
 `POST /api/decision` fetches a fresh permutation from the ANU Quantum Random Number Generator and returns the chosen direction:
 

@@ -1,7 +1,10 @@
+import os
 import unittest
+from importlib import reload
 from unittest.mock import patch
 
 from app import create_app
+import app.config as config_module
 
 
 class RouteTests(unittest.TestCase):
@@ -40,6 +43,24 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.headers["Location"], "/auth/login")
 
+    def test_standard_google_env_names_are_supported_for_vercel(self):
+        with patch.dict(
+            os.environ,
+            {
+                "GOOGLE_CLIENT_ID": "vercel-client-id",
+                "GOOGLE_CLIENT_SECRET": "vercel-client-secret",
+                "GOOGLE_REDIRECT_URI": "https://example.vercel.app/auth/google/callback",
+                "FLASK_SECRET_KEY": "vercel-secret",
+            },
+            clear=False,
+        ):
+            reload(config_module)
+            app = create_app(config_module.Config)
+            self.assertEqual(app.config["GOOGLE_CLIENT_ID"], "vercel-client-id")
+            self.assertEqual(app.config["GOOGLE_CLIENT_SECRET"], "vercel-client-secret")
+            self.assertEqual(app.config["GOOGLE_REDIRECT_URI"], "https://example.vercel.app/auth/google/callback")
+            reload(config_module)
+
     def test_login_is_google_only_and_local_login_is_removed(self):
         response = self.client.get("/auth/login")
         self.assertEqual(response.status_code, 503)
@@ -48,14 +69,14 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(self.client.post("/login").status_code, 404)
 
     def test_private_html_redirects_without_session(self):
-        for path in ("/dashboard", "/decision", "/decision/info"):
+        for path in ("/dashboard", "/contacts", "/decision", "/decision/info"):
             with self.subTest(path=path):
                 response = self.client.get(path, follow_redirects=False)
                 self.assertEqual(response.status_code, 302)
                 self.assertEqual(response.headers["Location"], "/")
 
     def test_private_apis_return_json_401_without_session(self):
-        for path in ("/api/decision",):
+        for path in ("/api/decision", "/api/contacts"):
             with self.subTest(path=path):
                 response = self.client.post(path)
                 self.assertEqual(response.status_code, 401)
@@ -66,7 +87,17 @@ class RouteTests(unittest.TestCase):
         dashboard = self.client.get("/dashboard")
         self.assertEqual(dashboard.status_code, 200)
         self.assertIn(b"Choose a path", dashboard.data)
+        self.assertIn(b"My contacts", dashboard.data)
         self.assertNotIn(b"Check a number set", dashboard.data)
+
+        contacts = self.client.get("/contacts")
+        self.assertEqual(contacts.status_code, 200)
+        self.assertIn(b"Import from phone", contacts.data)
+        self.assertIn(b"Import .vcf file", contacts.data)
+        self.assertIn(b"parseVcard", contacts.data)
+        self.assertIn(b"Saved contacts", contacts.data)
+        self.assertIn(b"/dashboard", contacts.data)
+        self.assertIn(b'const contactsApi = "/api/contacts"', contacts.data)
 
         decision = self.client.get("/decision")
         self.assertEqual(decision.status_code, 200)
@@ -88,6 +119,39 @@ class RouteTests(unittest.TestCase):
             response = self.client.post("/api/decision")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json(), {"go_right": True})
+
+    def test_contacts_api_scopes_every_operation_to_signed_in_user(self):
+        self.sign_in()
+        saved_contacts = [{"id": "contact-1", "name": "Alex", "tel": "+15551234567", "email": "alex@example.com"}]
+        with patch("app.main.routes.list_contacts", return_value=saved_contacts) as list_mock:
+            response = self.client.get("/api/contacts")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json(), {"contacts": saved_contacts})
+        list_mock.assert_called_once_with("google-user")
+
+        with patch("app.main.routes.add_contacts", return_value=saved_contacts) as add_mock:
+            response = self.client.post("/api/contacts", json={"name": "Alex", "tel": "+15551234567"})
+        self.assertEqual(response.status_code, 201)
+        add_mock.assert_called_once_with("google-user", [{"name": "Alex", "tel": "+15551234567", "email": ""}])
+
+        contact_id = "65b0e7a3a6c6f166f1c3a001"
+        with patch("app.main.routes.delete_contact", return_value=True) as delete_mock:
+            response = self.client.delete(f"/api/contacts/{contact_id}")
+        self.assertEqual(response.status_code, 204)
+        delete_mock.assert_called_once_with("google-user", contact_id)
+
+        with patch("app.main.routes.delete_all_contacts", return_value=1) as delete_all_mock:
+            response = self.client.delete("/api/contacts")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json(), {"deleted": 1})
+        delete_all_mock.assert_called_once_with("google-user")
+
+    def test_contacts_api_rejects_invalid_payload_without_saving(self):
+        self.sign_in()
+        with patch("app.main.routes.add_contacts") as add_mock:
+            response = self.client.post("/api/contacts", json={"name": "No contact details"})
+        self.assertEqual(response.status_code, 400)
+        add_mock.assert_not_called()
 
     def test_google_oauth_state_and_callback(self):
         class GoogleConfig:
