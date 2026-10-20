@@ -11,6 +11,7 @@
   let updateTimer = null;
   let statusTimer = null;
   let updatePending = false;
+  let lastLocationError = '';
 
   async function api(url, options = {}) {
     const response = await fetch(url, {
@@ -33,6 +34,12 @@
     } else if (status.enabled && !locationSupported) {
       indicator.textContent = 'Location access unavailable in this browser';
       indicator.title = 'This browser does not support geolocation.';
+    } else if (status.enabled && !window.isSecureContext) {
+      indicator.textContent = 'Location requires a secure connection';
+      indicator.title = 'Open Flutu using HTTPS to share device location.';
+    } else if (status.enabled && lastLocationError) {
+      indicator.textContent = 'Location sharing needs attention';
+      indicator.title = lastLocationError;
     } else if (status.enabled) {
       indicator.textContent = `Sharing location with ${status.active_recipients} contact${status.active_recipients === 1 ? '' : 's'}`;
       indicator.title = 'Your latest location is shared while you are using Flutu.';
@@ -64,12 +71,21 @@
             accuracy: position.coords.accuracy
           })
         });
+        lastLocationError = '';
+        window.dispatchEvent(new CustomEvent('location-sharing-error', { detail: { message: '' } }));
       } catch (error) {
+        lastLocationError = error.message;
+        window.dispatchEvent(new CustomEvent('location-sharing-error', { detail: { message: error.message } }));
         if (error.message.includes('Accept a sharing request')) stopUpdates();
       } finally {
         updatePending = false;
       }
-    }, () => {
+    }, error => {
+      if (error.code === 1) lastLocationError = 'Location permission was denied. Allow access in your browser settings.';
+      else if (error.code === 2) lastLocationError = 'Your device could not determine its location. Check that Location is enabled.';
+      else if (error.code === 3) lastLocationError = 'Getting your location timed out. Check your device Location setting.';
+      else lastLocationError = error.message || 'Could not get your device location.';
+      window.dispatchEvent(new CustomEvent('location-sharing-error', { detail: { message: lastLocationError } }));
       updatePending = false;
     }, { enableHighAccuracy: false, maximumAge: 15000, timeout: 20000 });
   }
@@ -92,6 +108,12 @@
       stopUpdates();
     }
   }
+
+  window.addEventListener('location-sharing-error', event => {
+    if (event.detail?.message) lastLocationError = event.detail.message;
+    else lastLocationError = '';
+    refreshStatus();
+  });
 
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && active) sendLocation();

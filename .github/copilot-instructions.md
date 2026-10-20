@@ -20,6 +20,8 @@
 - Update the relevant documentation whenever a meaningful code change changes user-visible behavior, routes, APIs, authentication, configuration, setup, or operating procedures.
 - Keep `README.md` accurate for changes affecting how the project is installed, configured, run, or used. Update other relevant docs when a change is specific to a feature or API.
 - Make documentation updates in the same change as the implementation, and verify examples, URLs, and instructions against the current code. Do not make unrelated documentation-only edits for changes that do not affect documented behavior.
+- Maintain the implementation specifications under `docs/specifications/` as the authoritative record of current decisions. Every user-facing page must have its own up-to-date page specification in `docs/specifications/pages/`; cross-page decisions belong in `docs/specifications/architecture.md`. Update these specifications in the same change as any behavior or design decision, and describe the current implementation rather than an aspirational design.
+- Keep `docs/specifications/README.md` as the index of all pages/routes and link every page specification from it. If a new page is added, add its spec and index entry together with its route, template, tests, and navigation.
 
 ## Application architecture (Flask)
 
@@ -27,7 +29,6 @@
 - Keep the entry point in `run.py` and configuration in `app/config.py`. Add `app/extensions.py` only when the project uses shared Flask extension instances that need centralized initialization.
 - Bind the local development server to `127.0.0.1` only. Do not expose it on `0.0.0.0` or another network interface unless explicitly requested.
 - For container deployment, the production WSGI server must listen on `0.0.0.0` inside the container and honor the platform-provided `PORT`; do not change the local development server's loopback-only binding.
-- Keep SnapDeploy's source ZIP a clean Docker build context rooted at the repository files (`Dockerfile`, `.dockerignore`, `requirements.txt`, `run.py`, and `app/`). Exclude `.env`, credentials, `.git`, `.venv`, generated artifacts, and tests. Update the ZIP builder and release workflow when deployment inputs change.
 - Group routes by responsibility in Python packages and register each feature's Blueprint in the application factory. Authentication and OAuth belong in `app/auth/`; general pages and HTTP endpoints belong in `app/main/`.
 - Put reusable business logic and external integrations in `app/services/`, separated by concern. Route functions should validate HTTP input, call a service, and return a response; do not put provider integration or business logic in `server.py` or templates.
 - All HTML must be Jinja templates under `app/templates/`. Extend `base.html`, use `url_for()` for internal URLs and static assets, and do not add standalone root-level HTML pages.

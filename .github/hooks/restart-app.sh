@@ -7,7 +7,7 @@ STATE_FILE="$STATE_DIR/copilot-app-source.sha256"
 LOG_FILE="${TMPDIR:-/tmp}/flutu-server.log"
 
 mkdir -p "$STATE_DIR"
-source_hash="$(find "$ROOT/app" -type f ! -path '*/__pycache__/*' ! -name '*.pyc' -print0 | sort -z | xargs -0 sha256sum; sha256sum "$ROOT/run.py" "$ROOT/requirements.txt" "$ROOT/start_server.sh" "$ROOT/Dockerfile" "$ROOT/.dockerignore" "$ROOT/scripts/create_snapdeploy_zip.py")"
+source_hash="$(find "$ROOT/app" -type f ! -path '*/__pycache__/*' ! -name '*.pyc' -print0 | sort -z | xargs -0 sha256sum; sha256sum "$ROOT/run.py" "$ROOT/requirements.txt" "$ROOT/start_server.sh" "$ROOT/Dockerfile" "$ROOT/.dockerignore")"
 source_hash="$(printf '%s\n' "$source_hash" | sha256sum | cut -d ' ' -f 1)"
 
 # Record a baseline on first use; only restart after one of the app files changes.

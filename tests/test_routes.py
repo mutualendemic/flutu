@@ -123,6 +123,10 @@ class RouteTests(unittest.TestCase):
         self.assertIn(b"Back to dashboard", location_map.data)
         self.assertIn(b"Enable location updates", location_map.data)
         self.assertIn(b"every 30 seconds", location_map.data)
+        self.assertIn(b"Requesting your device location", location_map.data)
+        self.assertIn(b"Location requires HTTPS", location_map.data)
+        self.assertIn(b"Location permission was denied", location_map.data)
+        self.assertIn(b"could not determine its location", location_map.data)
 
         removed_page = self.client.get("/permutation-checker")
         self.assertEqual(removed_page.status_code, 404)
