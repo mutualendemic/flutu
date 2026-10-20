@@ -3,6 +3,7 @@
 ## Rota e interface
 
 - `/map` é privada, nível 2, ligada ao dashboard e fornece retorno ao dashboard.
+- Os botões para habilitar/pausar atualizações e interromper todos os compartilhamentos ficam desativados e visualmente esmaecidos quando não há permissões de compartilhamento aceitas.
 - O mapa usa Leaflet e tiles OpenStreetMap e exibe os últimos pontos compartilhados com o usuário atual. Ao abrir o mapa, solicita a localização do próprio dispositivo e atualiza um marcador azul localmente a cada 30 segundos, mesmo sem nenhum compartilhamento aceito. Um botão permite tentar novamente após erro/permissão negada. No modo privado, o ponto próprio não é enviado nem salvo no servidor. Se o usuário habilitar compartilhamento, o marcador próprio passa a refletir o último ponto atualizado no servidor, que é entregue apenas aos destinatários autorizados.
 - A tela lista solicitações recebidas, solicitações pendentes enviadas e pessoas que autorizaram compartilhar com o usuário. Permite pedir localização a um contato com e-mail, aceitar/recusar/cancelar pedidos, revogar uma permissão ou revogar todas.
 
