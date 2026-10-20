@@ -3,7 +3,7 @@
 ## Rota e interface
 
 - `/map` é privada, nível 2, ligada ao dashboard e fornece retorno ao dashboard.
-- O mapa usa Leaflet e tiles OpenStreetMap, e exibe somente os últimos pontos compartilhados com o usuário atual.
+- O mapa usa Leaflet e tiles OpenStreetMap, e exibe somente os últimos pontos compartilhados com o usuário atual. Quando o próprio usuário habilitou o envio, também mostra um marcador azul do próprio aparelho e o horário/precisão do último ponto recebido pelo servidor.
 - A tela lista solicitações recebidas, solicitações pendentes enviadas e pessoas que autorizaram compartilhar com o usuário. Permite pedir localização a um contato com e-mail, aceitar/recusar/cancelar pedidos, revogar uma permissão ou revogar todas.
 
 ## Fluxo e consentimento
@@ -11,7 +11,7 @@
 1. O remetente escolhe um contato salvo. O servidor confirma que esse contato pertence à conta autenticada e resolve sua conta pelo e-mail normalizado do diretório Flutu.
 2. Se a conta já entrou via Google, o servidor cria uma solicitação `pending`, identificada por IDs de conta Google (`sub`). Solicitações são internas ao app; não há envio de e-mail/push.
 3. O destinatário decide aceitar ou recusar. Aceitar adiciona o solicitante à lista de contatos do destinatário, se o e-mail ainda não existir.
-4. O proprietário da localização decide separadamente habilitar atualizações. Ao clicar para habilitar, a página solicita a posição imediatamente, no contexto direto da ação do usuário, para iniciar o prompt de permissão do browser; só após obter posição grava o opt-in e envia o primeiro ponto. Opt-in é persistido no perfil e pode ser pausado na página. Mensagens distinguem contexto sem HTTPS, permissão negada, GPS indisponível e timeout.
+4. O proprietário da localização decide separadamente habilitar atualizações. Sem ao menos um pedido recebido aceito, o botão fica desativado; a interface explica que um contato deve solicitar a localização primeiro. Ao clicar para habilitar, a página solicita a posição imediatamente, no contexto direto da ação do usuário, para iniciar o prompt de permissão nativo do browser (não há uma página Flutu de autorização); só após obter posição grava o opt-in e envia o primeiro ponto. Se o browser já tiver uma decisão salva, ele não exibe novo prompt e segue essa decisão. Opt-in é persistido no perfil e pode ser pausado na página. Mensagens distinguem contexto sem HTTPS, permissão negada, GPS indisponível e timeout.
 5. Se habilitado e houver ao menos um destinatário aceito, `location-sharing.js` consulta GPS e envia atualização aproximadamente a cada 30 s por qualquer rota autenticada visível. A página oculta suspende o ciclo e a volta ao primeiro plano solicita atualização. Página fechada não envia.
 
 ## Armazenamento e acesso

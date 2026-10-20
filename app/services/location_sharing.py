@@ -195,12 +195,33 @@ def get_overview(user_id):
             }
         )
 
+    sharing_status = get_sharing_status(user_id)
+    own_location = None
+    if sharing_status["enabled"]:
+        own_location_document = get_collection("locations").find_one(
+            {
+                "owner_id": user_id,
+                "updated_at": {"$gte": _now() - timedelta(seconds=120)},
+            }
+        )
+        if own_location_document:
+            coordinates = own_location_document["location"]["coordinates"]
+            own_location = {
+                "user_id": user_id,
+                "name": "Your device",
+                "latitude": coordinates[1],
+                "longitude": coordinates[0],
+                "accuracy": own_location_document["accuracy"],
+                "updated_at": own_location_document["updated_at"].isoformat(),
+            }
+
     return {
         "incoming_requests": [_serialize_request(item) for item in pending],
         "outgoing_pending": [_serialize_request(item) for item in outgoing_pending],
         "sharing_with": [_serialize_request(item) for item in sharing],
         "locations": visible_locations,
-        "sharing_status": get_sharing_status(user_id),
+        "sharing_status": sharing_status,
+        "own_location": own_location,
     }
 
 
