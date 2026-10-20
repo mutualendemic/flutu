@@ -5,6 +5,7 @@ from app.config import Config
 def create_app(config_object=Config):
     app = Flask(__name__, template_folder="templates", static_folder="static")
     app.config.from_object(config_object)
+    app.config.setdefault("BUILD_COMMIT", Config.BUILD_COMMIT)
 
     from app.auth.routes import auth_bp
     from app.main.routes import main_bp

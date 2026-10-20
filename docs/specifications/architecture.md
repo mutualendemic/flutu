@@ -8,6 +8,7 @@ Esta especificação descreve as decisões compartilhadas entre páginas e APIs,
 - Autenticação/OAuth está no Blueprint `auth`; páginas gerais e APIs estão no Blueprint `main`. Templates Jinja ficam em `app/templates/`, CSS/JavaScript/imagens em `app/static/`, e integrações/regra de negócio em `app/services/`.
 - O servidor local usa `127.0.0.1:8000`. O container de produção usa Gunicorn em `0.0.0.0` e a porta definida em `PORT`; o comportamento local não deve ser exposto à rede sem requisito explícito.
 - Vercel publica a aplicação pelo adaptador `api/index.py` e `vercel.json`.
+- A versão apresentada no login usa o SHA do build injetado no ambiente (`FLUTU_BUILD_COMMIT`, `VERCEL_GIT_COMMIT_SHA`, `GITHUB_SHA`, `SOURCE_VERSION`), truncado em 12 caracteres; sem SHA de build, a configuração tenta obter o commit Git local e usa `unknown` se não conseguir.
 
 ## Sessão e identidade
 

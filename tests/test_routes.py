@@ -51,6 +51,7 @@ class RouteTests(unittest.TestCase):
                 "GOOGLE_CLIENT_SECRET": "vercel-client-secret",
                 "GOOGLE_REDIRECT_URI": "https://example.vercel.app/auth/google/callback",
                 "FLASK_SECRET_KEY": "vercel-secret",
+                "VERCEL_GIT_COMMIT_SHA": "abcdef1234567890abcdef1234567890abcdef12",
             },
             clear=True,
         ):
@@ -59,12 +60,15 @@ class RouteTests(unittest.TestCase):
             self.assertEqual(app.config["GOOGLE_CLIENT_ID"], "vercel-client-id")
             self.assertEqual(app.config["GOOGLE_CLIENT_SECRET"], "vercel-client-secret")
             self.assertEqual(app.config["GOOGLE_REDIRECT_URI"], "https://example.vercel.app/auth/google/callback")
+            self.assertEqual(app.config["BUILD_COMMIT"], "abcdef123456")
             reload(config_module)
 
     def test_login_is_google_only_and_local_login_is_removed(self):
         response = self.client.get("/auth/login")
         self.assertEqual(response.status_code, 503)
         self.assertIn(b"Google sign-in is not configured", response.data)
+        self.assertIn(b"Version:", response.data)
+        self.assertIn(self.app.config["BUILD_COMMIT"].encode(), response.data)
         self.assertNotIn(b"type=\"password\"", response.data)
         self.assertEqual(self.client.post("/login").status_code, 404)
 

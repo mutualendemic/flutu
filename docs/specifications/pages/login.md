@@ -12,6 +12,7 @@
 
 - Login é público. Não há login por senha nem usuário local fixo.
 - O link GitHub na interface aponta para `https://github.com/mutualendemic/flutu`, abre em nova aba e usa `rel="noopener noreferrer"`.
+- A página exibe a versão como hash curto do commit. Em deploy, usa `FLUTU_BUILD_COMMIT`, `VERCEL_GIT_COMMIT_SHA`, `GITHUB_SHA` ou `SOURCE_VERSION` (nessa prioridade); em desenvolvimento, tenta obter `git rev-parse`; se indisponível, apresenta `unknown`.
 - Rotas privadas são protegidas no servidor pelo decorador `login_required`; ver a especificação transversal de [arquitetura](../architecture.md).
 
 ## Arquivos relacionados

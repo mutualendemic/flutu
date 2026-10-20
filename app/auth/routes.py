@@ -18,7 +18,11 @@ def google_is_configured():
 def login():
     if session.get("user"):
         return redirect(url_for("main.dashboard"))
-    return render_template("login.html", google_configured=google_is_configured()), (
+    return render_template(
+        "login.html",
+        google_configured=google_is_configured(),
+        build_commit=current_app.config.get("BUILD_COMMIT", "unknown"),
+    ), (
         200 if google_is_configured() else 503
     )
 

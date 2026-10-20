@@ -29,6 +29,8 @@ Flutu is a small Flask application with Google-only OAuth sign-in, a protected d
 
 Google OAuth is the only sign-in method; there is no local email/password login. For local development, `FLASK_SESSION_COOKIE_SECURE=false` allows cookies over HTTP. Set it to `true` when serving over HTTPS. Never use the development fallback session key in a deployed environment.
 
+The sign-in page displays the running version as a short Git commit hash. Deployments should provide `FLUTU_BUILD_COMMIT` (or the platform's `VERCEL_GIT_COMMIT_SHA`, `GITHUB_SHA`, or `SOURCE_VERSION`); local development reads the current Git commit when available.
+
 ## Vercel deployment
 
 The repository includes a Vercel-compatible Flask export at `api/index.py`. Vercel looks for a callable WSGI app object at the `api` entrypoint, and this project exports the existing Flask application factory there without changing the local development behavior.
