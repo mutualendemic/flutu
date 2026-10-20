@@ -52,7 +52,7 @@ class RouteTests(unittest.TestCase):
                 "GOOGLE_REDIRECT_URI": "https://example.vercel.app/auth/google/callback",
                 "FLASK_SECRET_KEY": "vercel-secret",
             },
-            clear=False,
+            clear=True,
         ):
             reload(config_module)
             app = create_app(config_module.Config)

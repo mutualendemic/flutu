@@ -15,6 +15,7 @@ class Config:
     )
     MONGODB_URI = os.environ.get("MONGODB_URI", "")
     MONGODB_DATABASE = os.environ.get("MONGODB_DATABASE", "flutu")
+    MONGODB_DNS_NAMESERVERS = os.environ.get("MONGODB_DNS_NAMESERVERS", "1.1.1.1,8.8.8.8")
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
     SESSION_COOKIE_SECURE = os.environ.get("FLASK_SESSION_COOKIE_SECURE", "false").lower() == "true"
