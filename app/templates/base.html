@@ -22,6 +22,12 @@
       .back-link { display: inline-block; margin-top: 24px; font-weight: 700; text-decoration: none; }
       .back-link:hover { text-decoration: underline; }
       .error { margin: 12px 0; color: #b42318; }
+      .sharing-status { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 16px; padding: 8px 12px; border: 1px solid #d9dee8; border-radius: 999px; background: #f7f8fa; color: #53627b; font-size: .85rem; font-weight: 700; }
+      .sharing-status::before { width: 8px; height: 8px; border-radius: 50%; background: #98a2b3; content: ""; }
+      .sharing-status.is-sharing { border-color: #a6f4c5; background: #ecfdf3; color: #067647; }
+      .sharing-status.is-sharing::before { background: #12b76a; box-shadow: 0 0 0 3px #d1fadf; }
+      .sharing-status.is-paused { border-color: #fedf89; background: #fffaeb; color: #93370d; }
+      .sharing-status.is-paused::before { background: #f79009; }
       code { padding: 2px 5px; border-radius: 5px; background: #f0f3fa; }
       {% block styles %}{% endblock %}
     </style>
@@ -29,5 +35,12 @@
   <body>
     {% block content %}{% endblock %}
     {% block scripts %}{% endblock %}
+    {% if session.get('user') %}
+      <div id="location-sharing-config"
+           data-status-url="{{ url_for('main.api_location_status') }}"
+           data-updates-url="{{ url_for('main.api_update_location') }}"
+           hidden></div>
+      <script src="{{ url_for('static', filename='location-sharing.js') }}" defer></script>
+    {% endif %}
   </body>
 </html>

@@ -4,6 +4,7 @@ import requests
 from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for
 
 from app.services.google_oauth import build_authorization_url, fetch_google_user
+from app.services.location_sharing import register_user
 
 
 auth_bp = Blueprint("auth", __name__)
@@ -82,6 +83,11 @@ def callback():
         "name": google_user.get("name") or google_user["email"],
         "picture": google_user.get("picture"),
     }
+    if current_app.config.get("MONGODB_URI"):
+        try:
+            register_user(session["user"])
+        except Exception:
+            current_app.logger.exception("Could not register the signed-in user for location sharing")
     return redirect(url_for("main.dashboard"))
 
 

@@ -1,0 +1,307 @@
+{% extends "base.html" %}
+{% block title %}Flutu | Location map{% endblock %}
+{% block styles %}
+  .map-page { width: min(100%, 1180px); padding: clamp(18px, 3vw, 30px); }
+  .map-header, .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+  .map-header { margin-bottom: 18px; }
+  .map-header h1 { margin-bottom: 4px; }
+  .map-header p { margin: 0; }
+  .columns { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(280px, .85fr); gap: 20px; }
+  .panel { min-width: 0; padding: 18px; border: 1px solid #e3e9f4; border-radius: 16px; background: #fff; }
+  .panel h2 { margin: 0 0 12px; font-size: 1.1rem; }
+  #map { height: min(60vh, 560px); min-height: 340px; border-radius: 12px; background: #eaf0f6; z-index: 0; }
+  .map-caption, .subtle { color: #667085; font-size: .88rem; }
+  .stack { display: grid; gap: 16px; align-content: start; }
+  .contact-form { display: grid; gap: 10px; }
+  select { width: 100%; padding: 12px; border: 1px solid #cfd7e6; border-radius: 10px; color: #14213d; font: inherit; background: white; }
+  .small-button { width: auto; margin: 0; padding: 10px 12px; font-size: .9rem; }
+  .button-danger { background: #b42318; }
+  .button-danger:hover { background: #912018; }
+  .items { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+  .item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px; border: 1px solid #e7ebf2; border-radius: 12px; }
+  .item-copy { min-width: 0; }
+  .item-copy strong, .item-copy span { display: block; overflow-wrap: anywhere; }
+  .item-copy span { margin-top: 3px; color: #667085; font-size: .83rem; }
+  .item-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+  .item-actions button { padding: 8px 10px; border: 1px solid #d7deeb; border-radius: 9px; background: white; color: #344054; font: inherit; font-size: .8rem; font-weight: 700; cursor: pointer; }
+  .item-actions button:hover { background: #f2f5fa; }
+  .share-controls { display: flex; gap: 10px; flex-wrap: wrap; }
+  .share-controls .button { flex: 1; }
+  .notice { min-height: 1.4em; margin: 8px 0 0; font-size: .9rem; }
+  .notice.error { color: #b42318; }
+  .notice.success { color: #067647; }
+  .empty { margin: 0; color: #667085; font-size: .9rem; }
+  .back-link { margin-top: 20px; }
+  @media (max-width: 800px) { .columns { grid-template-columns: 1fr; } #map { height: 48vh; min-height: 300px; } }
+{% endblock %}
+{% block content %}
+  <main class="card map-page">
+    <header class="map-header">
+      <div>
+        <p class="eyebrow">Private location sharing</p>
+        <h1>Location map</h1>
+        <p>See locations shared with you and manage who can see yours.</p>
+      </div>
+    </header>
+    <div class="columns">
+      <section class="panel" aria-label="Shared locations map">
+        <div id="map" role="application" aria-label="OpenStreetMap showing shared contact locations"></div>
+        <p class="map-caption">Map data © OpenStreetMap contributors. Locations are visible only while sharing permission is active.</p>
+      </section>
+      <div class="stack">
+        <section class="panel">
+          <h2>Request a location</h2>
+          <p class="subtle">Choose a saved contact with an email address. They must have signed in to Flutu; they decide whether to share.</p>
+          <form id="request-form" class="contact-form">
+            <label for="contact-select">Contact</label>
+            <select id="contact-select" required><option value="">Loading contacts…</option></select>
+            <button class="button small-button" type="submit">Request location sharing</button>
+          </form>
+          <p id="request-message" class="notice" role="status" aria-live="polite"></p>
+        </section>
+        <section class="panel">
+          <h2>Requests for you</h2>
+          <ul id="incoming-list" class="items"><li class="empty">Loading…</li></ul>
+        </section>
+        <section class="panel">
+          <h2>Requests you sent</h2>
+          <ul id="outgoing-list" class="items"><li class="empty">Loading…</li></ul>
+        </section>
+        <section class="panel">
+          <div class="section-heading"><h2>People you share with</h2></div>
+          <ul id="sharing-list" class="items"><li class="empty">Loading…</li></ul>
+          <div class="share-controls" style="margin-top:12px">
+            <button id="toggle-sharing" class="button small-button" type="button" disabled>Enable location updates</button>
+            <button id="stop-all" class="button button-danger small-button" type="button" disabled>Stop all sharing</button>
+          </div>
+          <p id="share-message" class="notice" role="status" aria-live="polite">Location updates are off.</p>
+          <p class="subtle">After enabling, Flutu updates your location about every 30 seconds while you use the app, provided the browser grants location access. You can pause updates or revoke access for one person or everyone.</p>
+        </section>
+      </div>
+    </div>
+    <a class="back-link" href="{{ url_for('main.dashboard') }}">← Back to dashboard</a>
+  </main>
+{% endblock %}
+{% block scripts %}
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script>
+    const api = {
+      contacts: {{ url_for('main.api_contacts')|tojson }},
+      overview: {{ url_for('main.api_location_overview')|tojson }},
+      requests: {{ url_for('main.api_request_location')|tojson }},
+      updates: {{ url_for('main.api_update_location')|tojson }},
+      sharing: {{ url_for('main.api_set_location_sharing')|tojson }},
+      shares: {{ url_for('main.api_revoke_all_location_shares')|tojson }}
+    };
+    const map = L.map('map').setView([20, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    const markers = new Map();
+    const incomingList = document.getElementById('incoming-list');
+    const outgoingList = document.getElementById('outgoing-list');
+    const sharingList = document.getElementById('sharing-list');
+    const toggleSharingButton = document.getElementById('toggle-sharing');
+    const stopAllButton = document.getElementById('stop-all');
+    const shareMessage = document.getElementById('share-message');
+    let hasCentered = false;
+    let sharingCount = 0;
+    let sharingEnabled = false;
+
+    async function callApi(url, options = {}) {
+      const response = await fetch(url, {
+        ...options,
+        headers: { 'Content-Type': 'application/json', ...(options.headers || {}) }
+      });
+      const data = response.status === 204 ? {} : await response.json();
+      if (!response.ok) throw new Error(data.error || 'The request could not be completed.');
+      return data;
+    }
+
+    function message(element, text, isError = false) {
+      element.textContent = text;
+      element.className = `notice${text ? (isError ? ' error' : ' success') : ''}`;
+    }
+
+    function makeItem(name, detail, buttons = []) {
+      const li = document.createElement('li');
+      li.className = 'item';
+      const copy = document.createElement('div');
+      copy.className = 'item-copy';
+      const strong = document.createElement('strong');
+      strong.textContent = name;
+      const span = document.createElement('span');
+      span.textContent = detail;
+      copy.append(strong, span);
+      li.append(copy);
+      if (buttons.length) {
+        const actions = document.createElement('div');
+        actions.className = 'item-actions';
+        buttons.forEach(({ label, action, danger = false }) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.textContent = label;
+          if (danger) button.style.color = '#b42318';
+          button.addEventListener('click', action);
+          actions.append(button);
+        });
+        li.append(actions);
+      }
+      return li;
+    }
+
+    function renderList(list, records, emptyText, render) {
+      list.replaceChildren();
+      if (!records.length) {
+        const empty = document.createElement('li');
+        empty.className = 'empty';
+        empty.textContent = emptyText;
+        list.append(empty);
+        return;
+      }
+      records.forEach(record => list.append(render(record)));
+    }
+
+    async function respond(id, action) {
+      try {
+        await callApi(`${api.requests}/${encodeURIComponent(id)}/respond`, {
+          method: 'POST', body: JSON.stringify({ action })
+        });
+        message(shareMessage, action === 'accept' ? 'Request accepted. Start sharing when you are ready.' : 'Request updated.');
+        await loadOverview();
+      } catch (error) { message(shareMessage, error.message, true); }
+    }
+
+    async function revoke(id) {
+      try {
+        await callApi(`${api.shares}/${encodeURIComponent(id)}`, { method: 'DELETE' });
+        message(shareMessage, 'Location access revoked for that person.');
+        await loadOverview();
+      } catch (error) { message(shareMessage, error.message, true); }
+    }
+
+    function renderLocations(locations) {
+      const visible = new Set();
+      locations.forEach(location => {
+        visible.add(location.user_id);
+        const point = [location.latitude, location.longitude];
+        const detail = `Updated ${new Date(location.updated_at).toLocaleString()} · accuracy ±${Math.round(location.accuracy)} m`;
+        let marker = markers.get(location.user_id);
+        if (!marker) {
+          marker = L.marker(point).addTo(map);
+          markers.set(location.user_id, marker);
+          if (!hasCentered) { map.setView(point, 13); hasCentered = true; }
+        } else marker.setLatLng(point);
+        marker.bindPopup(`<strong>${escapeHtml(location.name)}</strong><br>${escapeHtml(detail)}`);
+      });
+      for (const [id, marker] of markers) {
+        if (!visible.has(id)) { map.removeLayer(marker); markers.delete(id); }
+      }
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, character => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[character]));
+    }
+
+    async function loadOverview() {
+      try {
+        const data = await callApi(api.overview);
+        renderLocations(data.locations);
+        renderList(incomingList, data.incoming_requests, 'No pending requests.', item => makeItem(
+          item.requester_name, `${item.requester_email} wants to see your location.`, [
+            { label: 'Accept', action: () => respond(item.id, 'accept') },
+            { label: 'Decline', action: () => respond(item.id, 'decline'), danger: true }
+          ]
+        ));
+        renderList(outgoingList, data.outgoing_pending, 'No outgoing requests.', item => makeItem(
+          item.recipient_name, `Waiting for ${item.recipient_email} to respond.`, [
+            { label: 'Cancel', action: () => respond(item.id, 'cancel'), danger: true }
+          ]
+        ));
+        renderList(sharingList, data.sharing_with, 'You are not sharing your location with anyone.', item => makeItem(
+          item.requester_name, item.requester_email, [
+            { label: 'Stop sharing', action: () => revoke(item.id), danger: true }
+          ]
+        ));
+        sharingCount = data.sharing_with.length;
+        sharingEnabled = Boolean(data.sharing_status?.enabled);
+        toggleSharingButton.disabled = sharingCount === 0;
+        toggleSharingButton.textContent = sharingEnabled ? 'Pause location updates' : 'Enable location updates';
+        stopAllButton.disabled = sharingCount === 0;
+        if (!sharingCount) message(shareMessage, 'There are no active sharing permissions.');
+        else if (sharingEnabled) message(shareMessage, `Location updates are on for ${sharingCount} contact${sharingCount === 1 ? '' : 's'}.`);
+        else message(shareMessage, 'Location updates are paused.');
+      } catch (error) { message(shareMessage, error.message, true); }
+    }
+
+    document.getElementById('request-form').addEventListener('submit', async event => {
+      event.preventDefault();
+      const contactId = document.getElementById('contact-select').value;
+      const notice = document.getElementById('request-message');
+      try {
+        const result = await callApi(api.requests, { method: 'POST', body: JSON.stringify({ contact_id: contactId }) });
+        message(notice, result.created ? 'Request sent. It will be visible when the contact next opens Flutu.' : 'A request is already pending.');
+        await loadOverview();
+      } catch (error) { message(notice, error.message, true); }
+    });
+
+    toggleSharingButton.addEventListener('click', async () => {
+      toggleSharingButton.disabled = true;
+      try {
+        await callApi(api.sharing, {
+          method: 'POST', body: JSON.stringify({ enabled: !sharingEnabled })
+        });
+        window.dispatchEvent(new Event('location-sharing-updated'));
+        message(shareMessage, sharingEnabled ? 'Location updates paused.' : 'Location updates enabled. Your browser may ask for location permission.');
+        await loadOverview();
+      } catch (error) {
+        message(shareMessage, error.message, true);
+        toggleSharingButton.disabled = sharingCount === 0;
+      }
+    });
+    stopAllButton.addEventListener('click', async () => {
+      if (!window.confirm('Revoke location access for everyone and stop sharing?')) return;
+      try {
+        await callApi(api.shares, { method: 'DELETE' });
+        await callApi(api.sharing, { method: 'POST', body: JSON.stringify({ enabled: false }) });
+        window.dispatchEvent(new Event('location-sharing-updated'));
+        message(shareMessage, 'Sharing stopped for everyone.');
+        await loadOverview();
+      } catch (error) { message(shareMessage, error.message, true); }
+    });
+
+    async function loadContacts() {
+      const select = document.getElementById('contact-select');
+      try {
+        const data = await callApi(api.contacts);
+        const contacts = data.contacts.filter(contact => contact.email);
+        select.replaceChildren();
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = contacts.length ? 'Select a contact…' : 'No contacts with email addresses';
+        select.append(option);
+        contacts.forEach(contact => {
+          const item = document.createElement('option');
+          item.value = contact.id;
+          item.textContent = `${contact.name} — ${contact.email}`;
+          select.append(item);
+        });
+      } catch (error) {
+        select.replaceChildren();
+        const option = document.createElement('option');
+        option.textContent = 'Contacts are unavailable';
+        select.append(option);
+        message(document.getElementById('request-message'), error.message, true);
+      }
+    }
+
+    loadContacts();
+    loadOverview();
+    window.setInterval(loadOverview, 15000);
+  </script>
+{% endblock %}

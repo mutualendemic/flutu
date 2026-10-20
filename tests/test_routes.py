@@ -69,18 +69,25 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(self.client.post("/login").status_code, 404)
 
     def test_private_html_redirects_without_session(self):
-        for path in ("/dashboard", "/contacts", "/decision", "/decision/info"):
+        for path in ("/dashboard", "/contacts", "/decision", "/decision/info", "/map"):
             with self.subTest(path=path):
                 response = self.client.get(path, follow_redirects=False)
                 self.assertEqual(response.status_code, 302)
                 self.assertEqual(response.headers["Location"], "/")
 
     def test_private_apis_return_json_401_without_session(self):
-        for path in ("/api/decision", "/api/contacts"):
+        for path in ("/api/decision", "/api/contacts", "/api/location/requests"):
             with self.subTest(path=path):
                 response = self.client.post(path)
                 self.assertEqual(response.status_code, 401)
                 self.assertEqual(response.get_json(), {"error": "Authentication required."})
+        for path in ("/api/location/overview", "/api/location/status"):
+            with self.subTest(path=path):
+                overview = self.client.get(path)
+                self.assertEqual(overview.status_code, 401)
+                self.assertEqual(overview.get_json(), {"error": "Authentication required."})
+        sharing = self.client.post("/api/location/sharing", json={"enabled": True})
+        self.assertEqual(sharing.status_code, 401)
 
     def test_authenticated_dashboard_and_child_navigation(self):
         self.sign_in()
@@ -88,6 +95,8 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(dashboard.status_code, 200)
         self.assertIn(b"Choose a path", dashboard.data)
         self.assertIn(b"My contacts", dashboard.data)
+        self.assertIn(b"Location map", dashboard.data)
+        self.assertIn(b"location-sharing-indicator", dashboard.data)
         self.assertNotIn(b"Check a number set", dashboard.data)
 
         contacts = self.client.get("/contacts")
@@ -107,6 +116,13 @@ class RouteTests(unittest.TestCase):
         info = self.client.get("/decision/info")
         self.assertEqual(info.status_code, 200)
         self.assertIn(b"Back to the decision", info.data)
+
+        location_map = self.client.get("/map")
+        self.assertEqual(location_map.status_code, 200)
+        self.assertIn(b"OpenStreetMap", location_map.data)
+        self.assertIn(b"Back to dashboard", location_map.data)
+        self.assertIn(b"Enable location updates", location_map.data)
+        self.assertIn(b"every 30 seconds", location_map.data)
 
         removed_page = self.client.get("/permutation-checker")
         self.assertEqual(removed_page.status_code, 404)
@@ -152,6 +168,87 @@ class RouteTests(unittest.TestCase):
             response = self.client.post("/api/contacts", json={"name": "No contact details"})
         self.assertEqual(response.status_code, 400)
         add_mock.assert_not_called()
+
+    def test_location_request_uses_only_signed_in_users_saved_contacts(self):
+        self.sign_in()
+        contact = {"id": "contact-1", "name": "Alex", "tel": "", "email": "alex@example.com"}
+        recipient = {"id": "other-google-user", "name": "Alex", "email": "alex@example.com"}
+        saved_request = {"id": "request-1", "status": "pending"}
+        with patch("app.main.routes.list_contacts", return_value=[contact]), patch(
+            "app.main.routes.find_user_by_email", return_value=recipient
+        ) as find_mock, patch("app.main.routes.request_location", return_value=(saved_request, True)) as request_mock:
+            response = self.client.post("/api/location/requests", json={"contact_id": "contact-1"})
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.get_json(), {"request": saved_request, "created": True})
+        find_mock.assert_called_once_with("alex@example.com")
+        request_mock.assert_called_once_with(
+            {"sub": "google-user", "email": "user@example.com", "name": "Test User"}, recipient
+        )
+
+    def test_location_request_rejects_contact_not_owned_by_user(self):
+        self.sign_in()
+        with patch("app.main.routes.list_contacts", return_value=[]), patch(
+            "app.main.routes.find_user_by_email"
+        ) as find_mock:
+            response = self.client.post("/api/location/requests", json={"contact_id": "someone-elses-contact"})
+        self.assertEqual(response.status_code, 400)
+        find_mock.assert_not_called()
+
+    def test_location_sharing_requires_valid_coordinates_and_authorization(self):
+        self.sign_in()
+        with patch("app.main.routes.save_location", return_value=False) as save_mock:
+            invalid = self.client.post(
+                "/api/location/updates", json={"latitude": 91, "longitude": 0, "accuracy": 4}
+            )
+            self.assertEqual(invalid.status_code, 400)
+            save_mock.assert_not_called()
+
+            forbidden = self.client.post(
+                "/api/location/updates", json={"latitude": 45.2, "longitude": -73.5, "accuracy": 12}
+            )
+        self.assertEqual(forbidden.status_code, 403)
+        save_mock.assert_called_once_with("google-user", 45.2, -73.5, 12)
+
+    def test_location_request_response_is_scoped_to_signed_in_user(self):
+        self.sign_in()
+        accepted = {"id": "request-1", "status": "accepted"}
+        with patch("app.main.routes.respond_to_request", return_value=accepted) as respond_mock:
+            response = self.client.post("/api/location/requests/request-1/respond", json={"action": "accept"})
+        self.assertEqual(response.status_code, 200)
+        respond_mock.assert_called_once_with("google-user", "request-1", "accept")
+
+    def test_location_sharing_can_be_revoked_individually_or_all(self):
+        self.sign_in()
+        with patch("app.main.routes.revoke_share", return_value=1) as revoke_mock:
+            individual = self.client.delete("/api/location/shares/request-1")
+            all_shares = self.client.delete("/api/location/shares")
+        self.assertEqual(individual.get_json(), {"revoked": 1})
+        self.assertEqual(all_shares.get_json(), {"revoked": 1})
+        revoke_mock.assert_any_call("google-user", "request-1")
+        revoke_mock.assert_any_call("google-user")
+
+    def test_location_status_and_opt_in_are_scoped_to_signed_in_user(self):
+        self.sign_in()
+        status = {"enabled": True, "active_recipients": 2}
+        with patch("app.main.routes.get_sharing_status", return_value=status) as status_mock:
+            response = self.client.get("/api/location/status")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json(), status)
+        status_mock.assert_called_once_with("google-user")
+
+        with patch("app.main.routes.set_sharing_enabled", return_value=True) as set_mock, patch(
+            "app.main.routes.get_sharing_status", return_value=status
+        ):
+            enabled = self.client.post("/api/location/sharing", json={"enabled": True})
+        self.assertEqual(enabled.status_code, 200)
+        set_mock.assert_called_once_with("google-user", True)
+
+    def test_location_opt_in_requires_an_active_recipient(self):
+        self.sign_in()
+        with patch("app.main.routes.set_sharing_enabled", return_value=False) as set_mock:
+            response = self.client.post("/api/location/sharing", json={"enabled": True})
+        self.assertEqual(response.status_code, 403)
+        set_mock.assert_called_once_with("google-user", True)
 
     def test_google_oauth_state_and_callback(self):
         class GoogleConfig:

@@ -1,6 +1,11 @@
 # Flutu
 
-Flutu is a small Flask application with Google-only OAuth sign-in, a protected dashboard, a personal contacts list, and a quantum-random direction demo.
+Flutu is a small Flask application with Google-only OAuth sign-in, a protected dashboard, a personal contacts list, private OpenStreetMap-based location sharing, and a quantum-random direction demo.
+
+## Links
+
+- **Demo:** [https://ux9.eu](https://ux9.eu)
+- **GitHub repository:** [mutualendemic/flutu](https://github.com/mutualendemic/flutu)
 
 ## Requirements
 
@@ -82,16 +87,20 @@ app/
   services/
     google_oauth.py           Google authorization-code and userinfo integration
     contacts.py               MongoDB contacts, scoped by Google account
+    location_sharing.py       Consent requests and private location updates
+    mongodb.py                Shared MongoDB collection access
     quantum_random.py         ANU quantum-random integration
   templates/
     base.html                 Shared Jinja layout
     login.html                Google-only sign-in page
     dashboard.html            Authenticated root (level 1)
     contacts.html             Private contacts list with optional phone import (level 2)
+    location_map.html         Private OpenStreetMap and sharing controls (level 2)
     decision.html             Decision page (level 2)
     quantum_info.html          Decision information (level 3)
   static/
     logo.svg                  Shared static logo
+    location-sharing.js       Authenticated cross-route location updates
 tests/
   test_routes.py              Authentication, route, and session tests
   test_google_oauth.py         Google OAuth service tests
@@ -104,14 +113,19 @@ Routes are grouped by concern in Flask Blueprints and registered by `create_app(
 - Google OAuth login: `/auth/login`; callback: `/auth/callback` (the legacy `/auth/google/callback` remains supported); logout: `/auth/logout`.
 - `/dashboard` is the authenticated root at level 1. Its child pages return to their immediate parent.
 - `/contacts` is a level-2 page linked from the dashboard. Contacts are persisted in MongoDB and scoped to the signed-in Google account's stable `sub` identifier, making them available across devices. The server derives the owner from the authenticated session and never accepts an owner ID from the browser.
+- `/map` is a level-2 page linked from the dashboard. It lets a user request location sharing from a saved contact with an email address. The recipient sees the request on their map page and can accept or decline it; accepting also adds the requester to the recipient's contacts. A recipient can revoke one grant or all grants at any time.
+- The Google profile directory used to match sharing requests is refreshed on sign-in and stored in MongoDB. A contact must have signed in to Flutu at least once to receive a request. Requests are in-app and appear when the recipient next opens the map page; there are no push notifications.
+- Sharing requires recipient consent and a separate explicit start action by the location owner, in addition to browser geolocation permission. Once enabled on the map page, the app updates location about every 30 seconds on any authenticated app route while the app is visible. The opt-in is stored in the user's MongoDB profile and remains active across route changes; it can be paused from the map page. MongoDB upserts one latest GeoJSON location document per user instead of creating a record for every update. The location is returned only to accepted requesters, hidden when it has not been updated for two minutes, and automatically expires from MongoDB after three minutes without an update; pausing sharing or revoking the final active grant deletes it immediately. Browser geolocation requires HTTPS outside localhost. OpenStreetMap map tiles come from its public tile service and are subject to the OpenStreetMap tile usage policy.
 - **Import from phone** uses the browser Contact Picker API when available; support varies by mobile browser and it requires HTTPS. As a fallback, export contacts from the phone as a `.vcf`/vCard file and use **Import .vcf file**. The page also allows manual entry and search.
 - `/decision` is level 2; `/decision/info` is level 3 and returns to `/decision`.
-- The dashboard provides **Choose a path** and **My contacts** options.
+- The dashboard provides **Choose a path**, **My contacts**, and **Location map** options.
 - Unauthenticated page requests redirect to sign-in. Protected APIs return JSON `401` without performing the requested action.
 
 ## APIs
 
 `GET /api/contacts`, `POST /api/contacts`, and `DELETE /api/contacts` manage the signed-in user's contacts. `DELETE /api/contacts/<id>` removes an individual contact. Every route requires authentication and scopes data to the Google account in the session.
+
+Location sharing APIs also require a session and derive identities from it: `GET /api/location/status` returns the caller's opt-in and active-recipient count; `POST /api/location/sharing` enables or pauses updates; `GET /api/location/overview` returns pending requests, active grants, and locations shared with the caller; `POST /api/location/requests` requests a saved contact's location; `POST /api/location/requests/<id>/respond` accepts, declines, or cancels a pending request; `POST /api/location/updates` upserts the signed-in user's latest coordinates only if the owner opted in and an active grant exists; `DELETE /api/location/shares/<id>` revokes one grant; and `DELETE /api/location/shares` revokes all grants. Coordinates are validated server-side, and a location is disclosed only when an accepted request connects its owner and the viewer.
 
 `POST /api/decision` fetches a fresh permutation from the ANU Quantum Random Number Generator and returns the chosen direction:
 

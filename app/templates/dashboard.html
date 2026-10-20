@@ -18,11 +18,13 @@
       <a class="logout" href="{{ url_for('auth.logout') }}">Sign out</a>
     </header>
     <span class="badge">Active session</span>
+    <p id="location-sharing-indicator" class="sharing-status" role="status" aria-live="polite" hidden>Checking location sharing…</p>
     <h1>Welcome to Flutu</h1>
     <p>Signed in as: <strong>{{ user.name }}</strong> ({{ user.email }})</p>
     <nav class="actions" aria-label="Dashboard pages">
       <a class="button" href="{{ url_for('main.decision') }}">Choose a path</a>
       <a class="button button-secondary" href="{{ url_for('main.contacts') }}">My contacts</a>
+      <a class="button button-secondary" href="{{ url_for('main.location_map') }}">Location map</a>
     </nav>
   </main>
 {% endblock %}
