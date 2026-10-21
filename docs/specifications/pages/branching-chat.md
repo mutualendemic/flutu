@@ -36,7 +36,7 @@ MongoDB writes use unique indexes and atomic upserts for answers. There is no cr
 
 ## Deployment
 
-Supabase mode requires `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and `SUPABASE_JWT_SECRET`. In Supabase Dashboard, open **SQL Editor → New query** and execute this setup. It enables RLS and replaces the named policy if it already exists:
+Supabase mode requires `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and `SUPABASE_JWT_SECRET`. `SUPABASE_JWT_SECRET` must be the project's legacy HS256 JWT secret used for signing tokens, not the anon key, service-role key, database password, or a publishable key. Keep the URL, anon key, service-role key, and JWT secret from the same Supabase project. In Supabase Dashboard, open **SQL Editor → New query** and execute this setup. It enables RLS and replaces the named policy if it already exists:
 
 ```sql
 alter table realtime.messages enable row level security;

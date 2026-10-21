@@ -53,7 +53,7 @@ The repository includes a Vercel-compatible Flask export at `api/index.py`. Verc
    - `MONGODB_DATABASE` (for example, `flutu`)
    - `SUPABASE_URL` and `SUPABASE_ANON_KEY` (the anon/publishable key is intended for browser use)
    - `SUPABASE_SERVICE_ROLE_KEY` (server-only secret; never expose it to the browser)
-   - `SUPABASE_JWT_SECRET` (server-only signing secret used to mint short-lived channel authorization tokens)
+  - `SUPABASE_JWT_SECRET` (the same project's legacy HS256 JWT signing secret; server-only, not the anon key, service-role key, or database password)
    - `CHAT_REALTIME_MODE=supabase`
 
 3. In Supabase Dashboard, open **SQL Editor → New query** and run this setup to enable RLS and add the topic allow-list policy:

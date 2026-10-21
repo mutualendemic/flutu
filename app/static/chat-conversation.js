@@ -317,6 +317,7 @@
         status.dataset.connected = 'true';
         status.textContent = 'Private channel authorized · Supabase Realtime';
         status.title = 'Supabase accepted the private channel subscription under its Realtime authorization policy.';
+        setError('');
         if (polling) {
           polling = false;
           window.clearTimeout(pollingTimer);

@@ -86,9 +86,9 @@
           const channel = client.channel(topic, {config: {private: true}});
           channel.on('broadcast', {event: 'chat_update'}, message => onEvent(topic, message.payload || {}));
           channels.push(channel);
-          channel.subscribe(status => {
+          channel.subscribe((status, error) => {
             if (stopped) return;
-            onStatus(status);
+            onStatus(status, error);
             if (status === 'SUBSCRIBED') {
               subscribed += 1;
               if (subscribed === topics.length && !protectionProbeStarted) {
@@ -106,8 +106,9 @@
               }
             } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
               window.clearTimeout(authorizationTimer);
+              const providerMessage = error?.message || error?.reason || error?.code;
               onStatus('AUTHORIZATION_FAILED', new Error(
-                'Supabase rejected or could not authorize a private chat topic. Check Realtime private-channel settings, the JWT secret, and the realtime.messages SELECT RLS policy.'
+                `Supabase subscription failed (${status})${providerMessage ? `: ${providerMessage}` : ''}. Check that SUPABASE_JWT_SECRET is the project's legacy HS256 JWT secret, the Supabase URL and keys are from the same project, private Realtime is enabled, and the realtime.messages SELECT RLS policy is installed.`
               ));
             }
           });

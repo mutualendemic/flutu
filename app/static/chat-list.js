@@ -85,7 +85,9 @@
         window.clearInterval(listPollingTimer);
         listPollingTimer = undefined;
         realtimeStatus.textContent = 'Supabase accepted the private channel subscription.';
+        realtimeStatus.classList.remove('error');
       } else if (state === 'AUTHORIZATION_FAILED' || state === 'CHANNEL_ERROR' || state === 'TIMED_OUT' || state === 'CLOSED' || state === 'ERROR') {
+        realtimeStatus.classList.add('error');
         realtimeStatus.textContent = `${detail?.message || 'Supabase private-channel authorization failed. Check the realtime.messages SELECT RLS policy.'} Using slower polling.`;
         startListPolling();
       }
