@@ -24,6 +24,7 @@ This specification describes decisions shared across pages and APIs, as reflecte
 - Main variables: `FLUTU_GOOGLE_CLIENT_ID`, `FLUTU_GOOGLE_CLIENT_SECRET`, `FLUTU_GOOGLE_REDIRECT_URI`, `FLASK_SECRET_KEY`, `FLASK_SESSION_COOKIE_SECURE`, `MONGODB_URI`, `MONGODB_DATABASE` and, in environments without system DNS configuration, `MONGODB_DNS_NAMESERVERS`. Standard Google/Vercel aliases are supported for credentials/URI/secret.
 - Development callback: `http://127.0.0.1:8000/auth/google/callback`. The public callback must use HTTPS and exactly match the URL authorized in Google; the same configuration is used for authorization and OAuth code exchange.
 - MongoDB is accessed on demand through `app/services/mongodb.py`; missing configuration causes functions requiring the database to report unavailability explicitly. Current collections: `contacts`, `users`, `location_shares`, `locations`.
+- Branching chat persists to `chat_conversations`, `chat_members`, `chat_questions`, `chat_options`, and `chat_answers`, with unique MongoDB indexes enforcing membership, option, and answer uniqueness. It uses Flask-SocketIO with authenticated session identity, gevent, and Redis in production. The details and current limitations are in [branching-chat.md](pages/branching-chat.md).
 - The decision service queries ANU's quantum random permutation generator on each request. The application does not persist the result.
 - Maps use Leaflet loaded from the unpkg CDN and tiles from the public OpenStreetMap service. The page includes copyright attribution; comply with the tile usage policy. Browser geolocation requires a secure context (HTTPS, except localhost).
 
@@ -45,4 +46,5 @@ This specification describes decisions shared across pages and APIs, as reflecte
 
 - `/dashboard` is level 1. Pages linked from it are level 2 and return to the dashboard. The information page is level 3 and returns to the decision page that opened it.
 - Protected APIs return appropriate HTTP status codes and JSON messages; MongoDB unavailability is reported as 503. Location APIs validate coordinates on the server and do not accept user identity from the client.
+- Chat mutation APIs additionally require the session CSRF token and same-origin request validation. Socket handlers authorize active membership on every event and broadcast to active per-user rooms.
 - Each page has a specification in `docs/specifications/pages/`; this specification contains cross-cutting decisions only. The README describes configuration and operation; update both alongside relevant changes. All project documentation must be written in English.

@@ -9,9 +9,13 @@ def create_app(config_object=Config):
 
     from app.auth.routes import auth_bp
     from app.main.routes import main_bp
+    from app.chat import chat_bp
+    from app.chat.sockets import init_socketio
 
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(main_bp)
+    app.register_blueprint(chat_bp, url_prefix="/chat")
+    init_socketio(app)
 
     @app.errorhandler(404)
     def not_found(_error):

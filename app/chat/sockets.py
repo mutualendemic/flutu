@@ -1,0 +1,206 @@
+from collections import defaultdict, deque
+from functools import wraps
+import threading
+import time
+
+from flask import current_app, request, session
+from flask_socketio import SocketIO, emit, join_room, leave_room
+
+from app.services import chat as service
+
+
+socketio = SocketIO()
+_rate_events = defaultdict(deque)
+_rate_lock = threading.Lock()
+
+
+def init_socketio(app):
+    origins = app.config.get("SOCKETIO_CORS_ORIGINS") or None
+    if isinstance(origins, str):
+        origins = [origin.strip() for origin in origins.split(",") if origin.strip()] or None
+    polling_mode = app.config.get("CHAT_REALTIME_MODE") == "polling"
+    queue = None if polling_mode else (app.config.get("REDIS_URL") or None)
+    production = str(app.config.get("APP_ENV", "")).lower() == "production" and not polling_mode
+    async_mode = "threading" if polling_mode else "gevent"
+    if not polling_mode:
+        try:
+            import gevent  # noqa: F401
+        except ImportError:
+            async_mode = "threading"
+    if production and app.config.get("SOCKETIO_REQUIRE_REDIS", True):
+        if not queue:
+            raise RuntimeError("REDIS_URL is required for production chat real-time delivery")
+        try:
+            import redis
+            redis.Redis.from_url(queue, socket_connect_timeout=3).ping()
+        except Exception as error:
+            raise RuntimeError("Redis is required for production chat and is not reachable") from error
+    socketio.init_app(
+        app,
+        async_mode=async_mode,
+        message_queue=queue,
+        cors_allowed_origins=origins,
+        manage_session=True,
+    )
+    app.extensions["socketio"] = socketio
+    return socketio
+
+
+def _error(code):
+    return {"ok": False, "error": code}
+
+
+def _rate_limited(sid):
+    now = time.monotonic()
+    with _rate_lock:
+        events = _rate_events[sid]
+        while events and now - events[0] >= 10:
+            events.popleft()
+        if len(events) >= 20:
+            return True
+        events.append(now)
+        return False
+
+
+def _authorized(handler):
+    @wraps(handler)
+    def wrapped(data=None):
+        user = session.get("user")
+        if not user:
+            return _error("unauthenticated")
+        if _rate_limited(request.sid):
+            return _error("rate_limited")
+        return handler(user, data if isinstance(data, dict) else {})
+    return wrapped
+
+
+def _conversation_for_question(question_id, user_id):
+    question = service.question_by_id(question_id)
+    if not question:
+        return None, None
+    conversation_id = str(question["conversation_id"])
+    if not service.is_active_member(conversation_id, user_id):
+        return None, None
+    return question, conversation_id
+
+
+def emit_to_active_members(event, payload, conversation_id, include_users=()):
+    """Fan out only to current member user rooms, never to a stale conversation room."""
+    recipient_ids = {member["user_id"] for member in service.get_active_members(conversation_id)}
+    recipient_ids.update(include_users)
+    for user_id in recipient_ids:
+        socketio.emit(event, payload, to=f"user:{user_id}", namespace="/chat")
+
+
+def _closed_payload(conversation_id, question_id):
+    graph = service.graph_payload(conversation_id)
+    question_node = next((node for node in graph["nodes"] if node["id"] == f"q{question_id}"), {})
+    return {
+        "question_id": question_id,
+        "winning_option_id": question_node.get("winning_option_id"),
+        "merge_edges": [edge for edge in graph["edges"] if edge["kind"] == "merge" and edge["from"].startswith("o")],
+    }
+
+
+@socketio.on("connect", namespace="/chat")
+def connect_chat(auth=None):
+    user = session.get("user")
+    if not user or not user.get("sub"):
+        return False
+    join_room(f"user:{user['sub']}")
+    return True
+
+
+@socketio.on("disconnect", namespace="/chat")
+def disconnect_chat(reason=None):
+    with _rate_lock:
+        _rate_events.pop(request.sid, None)
+
+
+@socketio.on("join", namespace="/chat")
+@_authorized
+def join_conversation(user, data):
+    conversation_id = data.get("conversation_id")
+    if not isinstance(conversation_id, str) or not service.is_active_member(conversation_id, user["sub"]):
+        return _error("forbidden")
+    try:
+        snapshot = service.graph_payload(conversation_id, user["sub"])
+    except ValueError:
+        return _error("not_found")
+    join_room(f"conv:{conversation_id}")
+    return {"ok": True, "graph": snapshot}
+
+
+@socketio.on("leave", namespace="/chat")
+@_authorized
+def leave_conversation(user, data):
+    conversation_id = data.get("conversation_id")
+    if not isinstance(conversation_id, str) or not service.is_active_member(conversation_id, user["sub"]):
+        return _error("forbidden")
+    leave_room(f"conv:{conversation_id}")
+    return {"ok": True}
+
+
+@socketio.on("create_question", namespace="/chat")
+@_authorized
+def socket_create_question(user, data):
+    conversation_id = data.get("conversation_id")
+    if not isinstance(conversation_id, str) or not service.is_active_member(conversation_id, user["sub"]):
+        return _error("forbidden")
+    try:
+        question_id = service.create_question(
+            conversation_id,
+            user["sub"],
+            data.get("text"),
+            data.get("options"),
+            data.get("parent_option_id"),
+            data.get("allow_vote_change", True),
+        )
+        payload = service.question_event_payload(conversation_id, question_id)
+        emit_to_active_members("question_created", payload, conversation_id)
+        return {"ok": True, "question_id": question_id}
+    except ValueError as error:
+        return _error(str(error))
+
+
+@socketio.on("submit_answer", namespace="/chat")
+@_authorized
+def socket_submit_answer(user, data):
+    question, conversation_id = _conversation_for_question(data.get("question_id"), user["sub"])
+    if not question:
+        return _error("forbidden")
+    try:
+        result = service.submit_answer(data.get("question_id"), user["sub"], data.get("option_id"))
+        if result["changed"]:
+            payload = {
+                "question_id": str(data["question_id"]),
+                "option_id": str(data["option_id"]),
+                "previous_option_id": result["previous_option_id"],
+                "user_id": user["sub"],
+                "counts": service.answer_counts(data["question_id"]),
+            }
+            emit_to_active_members("answer_recorded", payload, conversation_id)
+            if result["closed"]:
+                emit_to_active_members("question_closed", _closed_payload(conversation_id, str(data["question_id"])), conversation_id)
+        return {"ok": True, **result}
+    except ValueError as error:
+        return _error(str(error))
+
+
+@socketio.on("close_question", namespace="/chat")
+@_authorized
+def socket_close_question(user, data):
+    question, conversation_id = _conversation_for_question(data.get("question_id"), user["sub"])
+    if not question:
+        return _error("forbidden")
+    try:
+        closed = service.close_question(data.get("question_id"), user["sub"], data.get("winning_option_id"))
+        if not closed:
+            return _error("already_closed")
+        payload = _closed_payload(conversation_id, str(data["question_id"]))
+        emit_to_active_members("question_closed", payload, conversation_id)
+        return {"ok": True, **payload}
+    except PermissionError:
+        return _error("forbidden")
+    except ValueError as error:
+        return _error(str(error))

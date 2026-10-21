@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Flutu | Conversation{% endblock %}
+{% block styles %}
+  .conversation-page { width:min(100%,1100px); margin:0 auto; }
+  .conversation-top { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+  .conversation-top h1 { margin:0; }
+  .conversation-actions { display:flex; gap:8px; }
+  .conversation-actions .button { width:auto; margin:0; padding:10px 14px; }
+  .connection { display:inline-flex; align-items:center; gap:7px; color:var(--muted); font-size:.85rem; }
+  .connection::before { content:""; width:9px; height:9px; border-radius:50%; background:#f79009; }
+  .connection[data-connected="true"]::before { background:#12b76a; }
+  #graph { width:100%; height:min(55vh,520px); min-height:300px; margin:18px 0; border:1px solid var(--border); border-radius:16px; background:var(--surface-muted); }
+  .detail-panel, .composer, .members-panel { padding:18px; border:1px solid var(--border); border-radius:16px; background:var(--surface-muted); margin:12px 0; }
+  .detail-panel h2 { margin:0 0 8px; font-size:1.1rem; }
+  .detail-panel p { margin:6px 0; }
+  .composer label, .answer-dialog label, .members-panel label { display:block; margin:10px 0 6px; font-weight:700; }
+  textarea, input[type=text], input[type=search] { width:100%; padding:12px; border:1px solid var(--input-border); border-radius:10px; background:var(--input-bg); color:var(--text); font:inherit; }
+  .option-editor { display:grid; grid-template-columns:1fr auto; gap:8px; margin:8px 0; }
+  .option-editor button { border:1px solid var(--border); border-radius:9px; background:var(--surface-solid); color:var(--text); padding:7px 12px; }
+  .composer-tools { display:flex; gap:10px; flex-wrap:wrap; }
+  .composer-tools .button { width:auto; }
+  .member-list { display:flex; flex-wrap:wrap; gap:8px; padding:0; list-style:none; }
+  .member-chip { display:flex; align-items:center; gap:7px; padding:6px 10px; border:1px solid var(--border); border-radius:999px; color:var(--text); }
+  .member-chip button { border:0; background:transparent; color:#b42318; font-weight:700; cursor:pointer; }
+  .answer-dialog { width:min(100% - 24px,500px); border:1px solid var(--border); border-radius:20px; background:var(--surface); color:var(--text); padding:24px; }
+  .answer-dialog::backdrop { background:#10182899; }
+  .answer-option { padding:10px; border:1px solid var(--border); border-radius:10px; margin:8px 0; }
+  .answer-option input { margin-right:8px; }
+  .screen-reader { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+  @media(max-width:520px) { body { padding:10px; } .conversation-top { align-items:flex-start; flex-direction:column; } #graph { height:50vh; } .detail-panel,.composer,.members-panel { padding:14px; } }
+{% endblock %}
+{% block content %}
+<main class="card conversation-page" data-conversation-id="{{ conversation_id }}" data-csrf="{{ csrf_token() }}" data-realtime-mode="{{ chat_realtime_mode }}">
+  <header class="conversation-top"><div><p class="eyebrow">Branching chat</p><h1 id="conversation-title">Conversation</h1></div><div class="conversation-actions"><span id="connection-status" class="connection" data-connected="false" role="status">Connecting</span><button id="members-toggle" class="button button-secondary" type="button">Members</button></div></header>
+  <div id="graph" role="img" aria-label="Live conversation question graph"></div>
+  <section id="details" class="detail-panel" aria-live="polite"><h2>Select a question or option</h2><p>Questions and votes appear here as text as well as in the graph.</p></section>
+  <section class="composer" aria-labelledby="composer-title"><h2 id="composer-title">Ask a question</h2><label for="question-text">Question</label><textarea id="question-text" maxlength="280" rows="2" placeholder="What should we decide?"></textarea><div id="option-editors"></div><div class="composer-tools"><button id="add-option" class="button button-secondary" type="button">Add option</button><button id="send-question" class="button" type="button">Send question</button></div><p id="chat-error" class="error" role="alert"></p></section>
+  <section id="members-panel" class="members-panel" hidden><h2>Members</h2><ul id="member-list" class="member-list"></ul><label for="member-search">Add people from Contacts</label><input id="member-search" type="search" placeholder="Search contacts"><div id="member-picker" class="picker"></div></section>
+  <a class="back-link" href="{{ url_for('chat.conversation_list_page') }}">Back to conversations</a>
+</main>
+<dialog id="answer-dialog" class="answer-dialog"><form id="answer-form"><h2 id="answer-title"></h2><div id="answer-options"></div><p id="answer-error" class="error" role="alert"></p><button class="button" type="submit">Submit answer</button><button id="cancel-answer" class="button button-secondary" type="button">Cancel</button></form></dialog>
+<script src="https://cdn.jsdelivr.net/npm/cytoscape@3.30.4/dist/cytoscape.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.8.1/dist/socket.io.min.js" defer></script>
+<script src="{{ url_for('static', filename='chat-conversation.js') }}" defer></script>
+{% endblock %}

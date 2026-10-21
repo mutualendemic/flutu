@@ -2,7 +2,7 @@
 
 Flutu is a small Flask application with Google-only OAuth sign-in, a protected dashboard, a personal contacts list, private OpenStreetMap-based location sharing, and a quantum-random direction demo.
 
-The interface automatically follows the device's light or dark appearance preference, including system browser controls and the map's interface elements.
+The interface automatically follows the device's light or dark appearance preference, including system browser controls and the map's interface elements. Authenticated users can also create live branching conversations with contacts who have Flutu accounts.
 
 ## Links
 
@@ -13,6 +13,8 @@ The interface automatically follows the device's light or dark appearance prefer
 
 - Python 3.10 or later
 - Google OAuth 2.0 credentials (Web application)
+- MongoDB for persistent data
+- Redis for production Socket.IO broadcasts
 
 ## Setup and run
 
@@ -29,13 +31,15 @@ The interface automatically follows the device's light or dark appearance prefer
 4. Start the app with `bash start_server.sh`.
 5. Open http://127.0.0.1:8000. The development server binds exclusively to `127.0.0.1` and is not exposed to the local network.
 
+The local server starts through Flask-SocketIO and gevent (not `flask run`) so chat can use WebSockets. Redis is optional for local development. For push-based production chat on a WebSocket-capable host, set `APP_ENV=production`, provide `REDIS_URL`, and set `SOCKETIO_CORS_ORIGINS` only to the app's own origins when cross-origin access is required. Production startup fails clearly if Redis is missing or unreachable.
+
 Google OAuth is the only sign-in method; there is no local email/password login. For local development, `FLASK_SESSION_COOKIE_SECURE=false` allows cookies over HTTP. Set it to `true` when serving over HTTPS. Never use the development fallback session key in a deployed environment.
 
 The sign-in page displays the running version as a short Git commit hash. Deployments should provide `FLUTU_BUILD_COMMIT` (or the platform's `VERCEL_GIT_COMMIT_SHA`, `GITHUB_SHA`, or `SOURCE_VERSION`); local development reads the current Git commit when available.
 
 ## Vercel deployment
 
-The repository includes a Vercel-compatible Flask export at `api/index.py`. Vercel looks for a callable WSGI app object at the `api` entrypoint, and this project exports the existing Flask application factory there without changing the local development behavior.
+The repository includes a Vercel-compatible Flask export at `api/index.py`. Vercel looks for a callable WSGI app object at the `api` entrypoint. This adapter serves the HTTP application. On Vercel, branching chat uses authenticated REST actions and periodic graph refreshes (about every 3 seconds in a conversation and 5 seconds in the conversation list); persistent Socket.IO connections and instant push updates are not supported by the serverless WSGI runtime. The app selects polling mode automatically when Vercel sets `VERCEL=1`. To use push-based updates instead, deploy the app on a WebSocket-capable container host with Redis and the production settings described below.
 
 1. Add the project to Vercel and keep the repository root as the project root.
 2. In the Vercel project environment settings, define the same Google OAuth variables used in local development:
@@ -47,6 +51,8 @@ The repository includes a Vercel-compatible Flask export at `api/index.py`. Verc
    - `FLASK_SESSION_COOKIE_SECURE=true`
   - `MONGODB_URI` (Atlas connection string; server-side only)
   - `MONGODB_DATABASE` (for example, `flutu`)
+  - No Redis setting is needed for Vercel's polling mode. Set `CHAT_REALTIME_MODE=polling` explicitly if platform detection is unavailable.
+  - `REDIS_URL` and `SOCKETIO_CORS_ORIGINS` are for Socket.IO push updates on a supported container host, not the Vercel WSGI adapter.
 
 3. Set `FLUTU_GOOGLE_REDIRECT_URI` to the exact HTTPS callback URL Vercel assigns to the app, such as `https://<your-project>.vercel.app/auth/google/callback`.
 4. Add that exact callback URL to the Google OAuth client authorized redirect URIs.
@@ -66,10 +72,14 @@ app/
     routes.py                 Google login, OAuth callback, logout
   main/
     routes.py                 Dashboard, decision and API routes
+    chat/
+      routes.py                 Protected chat pages and REST endpoints
+      sockets.py                Authenticated Socket.IO event handlers
   services/
     google_oauth.py           Google authorization-code and userinfo integration
     contacts.py               MongoDB contacts, scoped by Google account
     location_sharing.py       Consent requests and private location updates
+    chat.py                   MongoDB chat documents, validation and graph snapshots
     mongodb.py                Shared MongoDB collection access
     quantum_random.py         ANU quantum-random integration
   templates/
@@ -84,6 +94,8 @@ app/
   static/
     logo.svg                  Shared static logo
     location-sharing.js       Authenticated cross-route location updates
+    chat-list.js               Conversation list and contact picker
+    chat-conversation.js       Cytoscape graph, voting and live updates
 tests/
   test_routes.py              Authentication, route, and session tests
   test_google_oauth.py         Google OAuth service tests
@@ -107,6 +119,7 @@ The implementation decisions for cross-page architecture and each user-facing pa
 - **Import from phone** uses the browser Contact Picker API when available; support varies by mobile browser and it requires HTTPS. As a fallback, export contacts from the phone as a `.vcf`/vCard file and use **Import .vcf file**. The page also allows manual entry and search.
 - `/decision` is level 2; `/decision/info` is level 3 and returns to `/decision`.
 - The dashboard provides **Quantum path selector**, **My contacts**, **Location map**, and **My profile** options.
+- `/chat/` is a level-2 page linked from the dashboard. It lists conversations, creates conversations using account-linked Contacts, and links to each member-only graph at `/chat/<conversation_id>`. A conversation returns to its list. REST mutations require a session CSRF token. Socket handlers reuse the Google-authenticated Flask session, verify active membership for every event, and broadcast only to active per-user rooms. Questions default to Yes/No, allow 2–10 options, support vote changes while open, close on unanimous participation or an authorized close action, and allow follow-ups up to three nested levels. Former-member answers remain in graph history.
 - Unauthenticated page requests redirect to sign-in. Protected APIs return JSON `401` without performing the requested action.
 
 ## APIs
@@ -114,6 +127,8 @@ The implementation decisions for cross-page architecture and each user-facing pa
 `GET /api/contacts`, `POST /api/contacts`, and `DELETE /api/contacts` manage the signed-in user's contacts. `DELETE /api/contacts/<id>` removes an individual contact. Every route requires authentication and scopes data to the Google account in the session.
 
 Location sharing APIs also require a session and derive identities from it: `GET /api/location/status` returns the caller's opt-in, active-recipient count, and profile photo; `POST /api/location/sharing` enables or pauses updates; `GET /api/location/overview` returns pending requests, active grants, and locations shared with the caller; `POST /api/location/requests` requests a saved contact's location; `POST /api/location/requests/<id>/respond` accepts, declines, or cancels a pending request; `POST /api/location/updates` upserts the signed-in user's latest coordinates only if the owner opted in and an active grant exists; `DELETE /api/location/shares/<id>` revokes one grant; and `DELETE /api/location/shares` revokes all grants. Coordinates are validated server-side, and a location is disclosed only when an accepted request connects its owner and the viewer. Map markers use the Google profile photo (or initials if unavailable); there is no marker-selection API.
+
+Chat APIs are under `/chat/api/`: list/create conversations, graph snapshots, member add/remove, addable contacts, question creation, voting, closing, and edit/delete unanswered questions. Socket.IO namespace `/chat` provides push events with acknowledgements on WebSocket-capable hosts. Vercel automatically uses the REST actions plus periodic snapshot polling instead; set `CHAT_REALTIME_MODE=polling` to force that mode on another host. For push updates, configure production with gevent Gunicorn, one worker per process, Redis shared among instances, sticky sessions, and WebSocket proxy upgrade support. Set the container's `PORT`; the Docker image binds to `0.0.0.0` while local development remains on `127.0.0.1`. `SOCKETIO_CORS_ORIGINS` is an optional comma-separated allowlist; leaving it unset uses same-origin policy. Cytoscape 3.30.4 and Socket.IO client 4.8.1 are pinned on jsDelivr and require client access to that CDN. See [docs/specifications/pages/branching-chat.md](docs/specifications/pages/branching-chat.md).
 
 `POST /api/decision` fetches a fresh permutation from the ANU Quantum Random Number Generator and returns the chosen direction:
 
