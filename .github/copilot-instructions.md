@@ -17,6 +17,7 @@
 
 ## Keep documentation up to date
 
+- Write all project documentation in English, including README files, implementation specifications, guides, comments intended as documentation, and other Markdown or text documentation. When updating existing documentation, translate any non-English content in the affected document so the file remains entirely in English.
 - Update the relevant documentation whenever a meaningful code change changes user-visible behavior, routes, APIs, authentication, configuration, setup, or operating procedures.
 - Keep `README.md` accurate for changes affecting how the project is installed, configured, run, or used. Update other relevant docs when a change is specific to a feature or API.
 - Make documentation updates in the same change as the implementation, and verify examples, URLs, and instructions against the current code. Do not make unrelated documentation-only edits for changes that do not affect documented behavior.

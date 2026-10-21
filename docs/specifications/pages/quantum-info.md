@@ -1,16 +1,16 @@
-# Especificação — informações sobre mecânica quântica
+# Quantum mechanics information specification
 
-## Rota e acesso
+## Route and access
 
-- `/decision/info` é privada, nível 3, filha de `/decision`. Seu link de retorno aponta para a página da decisão, não diretamente para o dashboard.
+- `/decision/info` is a private level-3 child of `/decision`. Its back link points to the decision page, not directly to the dashboard.
 
-## Conteúdo
+## Content
 
-- Explica que a sugestão usa um resultado aleatório externo e não representa destino, decisão vinculante ou prova de ramificação de universos.
-- Resume flutuações quânticas e interpretação de muitos mundos, identificando esta última como interpretação sem consenso definitivo.
-- Inclui fontes externas para ANU e Stanford Encyclopedia of Philosophy.
-- É conteúdo informativo; não chama APIs nem persiste dados.
+- Explains that the suggestion uses an external random result and does not represent destiny, a binding decision, or proof of branching universes.
+- Summarizes quantum fluctuations and the many-worlds interpretation, identifying the latter as an interpretation without definitive consensus.
+- Includes external sources from ANU and the Stanford Encyclopedia of Philosophy.
+- This is informational content; it does not call APIs or persist data.
 
-## Arquivos relacionados
+## Related files
 
 `app/main/routes.py` (`quantum_info`), `app/templates/quantum_info.html`.

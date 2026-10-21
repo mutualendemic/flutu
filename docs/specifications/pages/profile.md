@@ -1,16 +1,16 @@
-# Especificação — perfil
+# Profile specification
 
-## Rota, acesso e navegação
+## Route, access, and navigation
 
-- `/profile` é privada, nível 2, e aparece como **My profile** no dashboard. A página retorna ao dashboard.
-- A página apresenta nome e e-mail da sessão autenticada Google.
+- `/profile` is a private level-2 page and appears as **My profile** on the dashboard. It returns to the dashboard.
+- The page displays the name and email from the authenticated Google session.
 
-## Foto de perfil no mapa
+## Profile photo on the map
 
-- Não há opção para selecionar o marcador. A foto fornecida pelo perfil Google autenticado é usada para representar o usuário no mapa; quando indisponível ou não carregável, são exibidas as iniciais do nome.
-- A página continua apresentando nome e e-mail associados à sessão, e esclarece o uso da foto no mapa.
-- A foto é incluída nos dados de localização apenas para relacionamentos com consentimento aceito; não é compartilhada com usuários sem autorização.
+- There is no marker selection option. The photo from the authenticated Google profile represents the user on the map; when unavailable or unable to load, the user's initials are displayed.
+- The page continues to show the name and email associated with the session and explains how the photo is used on the map.
+- The photo is included in location data only for relationships with accepted consent; it is not shared with unauthorized users.
 
-## Arquivos relacionados
+## Related files
 
 `app/main/routes.py`, `app/services/location_sharing.py`, `app/templates/profile.html`, `app/templates/dashboard.html`, `app/templates/location_map.html`.

@@ -1,17 +1,17 @@
-# Especificação — dashboard
+# Dashboard specification
 
-## Rota, acesso e posição
+## Route, access, and position
 
-- `/dashboard` é privado, nível 1 e raiz da área autenticada. Sem sessão válida a requisição volta à entrada.
-- Exibe nome/e-mail do usuário da sessão e ação para encerrar sessão.
-- Navega para as páginas nível 2: **Choose a path** (`/decision`), **My contacts** (`/contacts`), **Location map** (`/map`) e **My profile** (`/profile`). Não mostra links de páginas privadas antes da autenticação.
+- `/dashboard` is a private level-1 page and the root of the authenticated area. Without a valid session, the request returns to sign-in.
+- Displays the session user's name/email and a sign-out action.
+- Links to level-2 pages: **Choose a path** (`/decision`), **My contacts** (`/contacts`), **Location map** (`/map`), and **My profile** (`/profile`). Private-page links are not shown before authentication.
 
-## Indicador de compartilhamento
+## Sharing indicator
 
-- O dashboard apresenta um indicador acessível atualizado pelo script global `location-sharing.js`.
-- Estados: compartilhamento ativo com número de destinatários, permissões existentes mas atualizações pausadas, sem compartilhamento ativo, ou estado indisponível.
-- O indicador informa estado de consentimento/opt-in, não confirma sozinho que uma leitura recente de GPS teve sucesso.
+- The dashboard presents an accessible indicator updated by the global `location-sharing.js` script.
+- States: sharing active with recipient count, permissions exist but updates are paused, no active sharing, or status unavailable.
+- The indicator reports consent/opt-in state; by itself it does not confirm that a recent GPS reading succeeded.
 
-## Arquivos relacionados
+## Related files
 
 `app/main/routes.py` (`dashboard`), `app/templates/dashboard.html`, `app/templates/base.html`, `app/static/location-sharing.js`.

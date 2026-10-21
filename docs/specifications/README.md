@@ -1,21 +1,21 @@
-# Especificações de implementação
+# Implementation specifications
 
-Este diretório registra decisões implementadas no código atual. Não é uma proposta de funcionalidades futuras. Atualize a especificação afetada no mesmo commit que mudar o comportamento e confira os links e rotas contra o código.
+This directory records decisions implemented in the current code. It is not a proposal for future features. Update the affected specification in the same change as behavior changes, and verify links and routes against the code.
 
-## Especificações transversais
+## Cross-cutting specifications
 
-- [Arquitetura e decisões compartilhadas](architecture.md)
+- [Architecture and shared decisions](architecture.md)
 
-## Páginas
+## Pages
 
-| Página | Rota | Especificação |
+| Page | Route | Specification |
 | --- | --- | --- |
-| Entrada e autenticação | `/`, `/auth/*` | [login.md](pages/login.md) |
+| Sign-in and authentication | `/`, `/auth/*` | [login.md](pages/login.md) |
 | Dashboard | `/dashboard` | [dashboard.md](pages/dashboard.md) |
-| Contatos | `/contacts` | [contacts.md](pages/contacts.md) |
-| Mapa e compartilhamento | `/map` | [location-map.md](pages/location-map.md) |
-| Perfil e preferências | `/profile` | [profile.md](pages/profile.md) |
-| Escolha de direção | `/decision` | [decision.md](pages/decision.md) |
-| Informações sobre a decisão | `/decision/info` | [quantum-info.md](pages/quantum-info.md) |
+| Contacts | `/contacts` | [contacts.md](pages/contacts.md) |
+| Map and sharing | `/map` | [location-map.md](pages/location-map.md) |
+| Profile and preferences | `/profile` | [profile.md](pages/profile.md) |
+| Direction choice | `/decision` | [decision.md](pages/decision.md) |
+| Decision information | `/decision/info` | [quantum-info.md](pages/quantum-info.md) |
 
-Toda nova página precisa de uma especificação própria e de uma entrada nesta tabela. APIs sem uma página dedicada e decisões comuns a mais de uma página pertencem a [architecture.md](architecture.md).
+Every new page needs its own specification and an entry in this table. APIs without a dedicated page and decisions shared by multiple pages belong in [architecture.md](architecture.md).

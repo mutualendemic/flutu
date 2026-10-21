@@ -118,7 +118,6 @@
     const shareMessage = document.getElementById('share-message');
     const ownStatus = document.getElementById('own-location-status');
     const retryOwnLocationButton = document.getElementById('retry-own-location');
-    let hasCentered = false;
     let sharingCount = 0;
     let sharingEnabled = false;
     let ownMarker = null;
@@ -127,6 +126,22 @@
     let ownCoordinatesUpdatedAt = 0;
     let sharingContacts = [];
     let sharedLocationsByUser = new Map();
+
+    function fitMapToMarkers() {
+      const visibleMarkers = [...markers.values()];
+      if (ownMarker) visibleMarkers.push(ownMarker);
+      const points = visibleMarkers.map(marker => marker.getLatLng());
+      if (!points.length) return;
+      if (points.length === 1) {
+        map.setView(points[0], 15, { animate: true });
+        return;
+      }
+      map.fitBounds(L.latLngBounds(points), {
+        padding: [48, 48],
+        maxZoom: 15,
+        animate: true
+      });
+    }
 
     async function callApi(url, options = {}) {
       const response = await fetch(url, {
@@ -234,14 +249,16 @@
       ownCoordinates = { latitude: location.latitude, longitude: location.longitude };
       ownCoordinatesUpdatedAt = new Date(location.updated_at).getTime();
       const detail = `Updated ${new Date(location.updated_at).toLocaleString()} · accuracy ±${Math.round(location.accuracy)} m`;
+      let locationChanged = !ownMarker;
       if (!ownMarker) {
         ownMarker = L.marker(point, { icon: profileMarkerIcon(picture, name) }).addTo(map);
-        map.setView(point, 15);
-        hasCentered = true;
       } else {
+        const previousPoint = ownMarker.getLatLng();
+        locationChanged = previousPoint.lat !== point[0] || previousPoint.lng !== point[1];
         ownMarker.setLatLng(point);
         ownMarker.setIcon(profileMarkerIcon(picture, name));
       }
+      if (locationChanged) fitMapToMarkers();
       const privacyNotice = privateOnly ? 'Private on this device' : 'Shared with authorized contacts';
       ownMarker.bindPopup(`<strong>Your device</strong><br>${escapeHtml(detail)}<br>${privacyNotice}`);
       ownStatus.textContent = privateOnly
@@ -355,6 +372,7 @@
 
     function renderLocations(locations) {
       const visible = new Set();
+      let locationChanged = false;
       sharedLocationsByUser = new Map(locations.map(location => [location.user_id, location]));
       locations.forEach(location => {
         visible.add(location.user_id);
@@ -364,16 +382,23 @@
           marker = L.marker(point, { icon: profileMarkerIcon(location.picture, location.name) });
           marker.addTo(map);
           markers.set(location.user_id, marker);
-          if (!hasCentered) { map.setView(point, 13); hasCentered = true; }
+          locationChanged = true;
         } else {
+          const previousPoint = marker.getLatLng();
+          if (previousPoint.lat !== point[0] || previousPoint.lng !== point[1]) locationChanged = true;
           marker.setLatLng(point);
           marker.setIcon(profileMarkerIcon(location.picture, location.name));
         }
         marker.bindPopup(popupContent(location));
       });
       for (const [id, marker] of markers) {
-        if (!visible.has(id)) { map.removeLayer(marker); markers.delete(id); }
+        if (!visible.has(id)) {
+          map.removeLayer(marker);
+          markers.delete(id);
+          locationChanged = true;
+        }
       }
+      if (locationChanged) fitMapToMarkers();
       renderSharingPeople();
     }
 

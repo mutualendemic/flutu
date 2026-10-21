@@ -1,20 +1,20 @@
-# Especificação — entrada e autenticação
+# Sign-in and authentication specification
 
-## Rotas e estado
+## Routes and state
 
-- `/` encaminha usuários com sessão para `/dashboard`; sem sessão, encaminha para `/auth/login`.
-- `/auth/login` mostra a página pública com acesso Google quando as credenciais estão configuradas; sem configuração, exibe a mensagem e retorna 503.
-- `/auth/google/login` inicia OAuth com state ligado à sessão. `/auth/google/callback` e `/auth/callback` processam o retorno; state ausente/divergente, erro Google, código ausente ou falha de validação retorna à tela de login sem autenticar.
-- A identidade é validada com userinfo do Google. No sucesso, o callback substitui a sessão, marca-a permanente e guarda `sub`, e-mail normalizado, nome e foto. Com MongoDB configurado, também atualiza o perfil do usuário para a funcionalidade de compartilhamento.
-- `/auth/logout` limpa a sessão e retorna ao login.
+- `/` forwards users with a session to `/dashboard`; without a session, it forwards them to `/auth/login`.
+- `/auth/login` shows the public Google sign-in page when credentials are configured; without configuration, it displays a message and returns 503.
+- `/auth/google/login` starts OAuth with session-bound state. `/auth/google/callback` and `/auth/callback` process the response; missing/mismatched state, a Google error, a missing code, or validation failure returns to sign-in without authenticating.
+- Identity is validated using Google's userinfo endpoint. On success, the callback replaces the session, marks it permanent, and stores `sub`, normalized email, name, and photo. When MongoDB is configured, it also updates the user profile for location sharing.
+- `/auth/logout` clears the session and returns to sign-in.
 
-## Interface e acesso
+## Interface and access
 
-- Login é público. Não há login por senha nem usuário local fixo.
-- O link GitHub na interface aponta para `https://github.com/mutualendemic/flutu`, abre em nova aba e usa `rel="noopener noreferrer"`.
-- A página exibe a versão como hash curto do commit. Em deploy, usa `FLUTU_BUILD_COMMIT`, `VERCEL_GIT_COMMIT_SHA`, `GITHUB_SHA` ou `SOURCE_VERSION` (nessa prioridade); em desenvolvimento, tenta obter `git rev-parse`; se indisponível, apresenta `unknown`.
-- Rotas privadas são protegidas no servidor pelo decorador `login_required`; ver a especificação transversal de [arquitetura](../architecture.md).
+- Sign-in is public. There is no password login or fixed local user.
+- The GitHub link in the interface points to `https://github.com/mutualendemic/flutu`, opens in a new tab, and uses `rel="noopener noreferrer"`.
+- The page shows the version as a short commit hash. In deployment, it uses `FLUTU_BUILD_COMMIT`, `VERCEL_GIT_COMMIT_SHA`, `GITHUB_SHA`, or `SOURCE_VERSION` (in that order); in development, it tries `git rev-parse`; if unavailable, it displays `unknown`.
+- Private routes are protected on the server by the `login_required` decorator; see the cross-cutting [architecture specification](../architecture.md).
 
-## Arquivos relacionados
+## Related files
 
 `app/auth/routes.py`, `app/auth/decorators.py`, `app/services/google_oauth.py`, `app/templates/login.html`, `app/__init__.py`.
