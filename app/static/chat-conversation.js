@@ -30,7 +30,11 @@
   }
 
   function setError(message) { error.textContent = message || ''; }
-  function position(data) { return {x: 90 + Number(data.lane || 0) * 145, y: 55 + Number(data.row || 0) * 58}; }
+  function position(data) {
+    const x = 90 + Number(data.lane || 0) * 145;
+    const y = 55 + Number(data.row || 0) * 58;
+    return data.type === 'author_avatar' ? {x: x - 66, y: y} : {x, y};
+  }
   function cyNode(data) {
     return {group: 'nodes', data: {...data}, position: position(data)};
   }
@@ -48,6 +52,7 @@
       style: [
         {selector: 'node[type="question"]', style: {label: 'data(label)', shape: 'round-rectangle', width: 145, height: 46, 'text-wrap': 'wrap', 'text-max-width': 132, 'font-size': 11, color: '#14213d', 'background-color': '#ffffff', 'border-width': 2, 'border-color': '#f79009', 'text-valign': 'center', 'text-halign': 'center'}},
         {selector: 'node[type="question"][status="closed"]', style: {'background-color': '#f2f4f7', 'border-color': '#98a2b3'}},
+        {selector: 'node[type="author_avatar"]', style: {label: 'data(label)', shape: 'ellipse', width: 34, height: 34, 'font-size': 9, 'font-weight': 700, color: '#fff', 'text-valign': 'center', 'text-halign': 'center', 'background-color': '#53627b', 'background-image': 'data(picture)', 'background-fit': 'cover', 'background-clip': 'node', 'border-width': 2, 'border-color': '#ffffff'}},
         {selector: 'node[type="option"]', style: {label: 'data(display)', shape: 'round-rectangle', width: 132, height: 40, 'font-size': 10, color: '#344054', 'background-color': '#fff7e6', 'border-width': 1, 'border-color': '#f79009', 'text-valign': 'center', 'text-halign': 'center'}},
         {selector: 'node[type="option"][is_winner]', style: {'border-width': 3, 'border-color': '#12b76a', 'background-color': '#ecfdf3'}},
         {selector: 'node[type="option"][is_tied]', style: {'border-width': 3, 'border-color': '#12b76a'}},
@@ -66,8 +71,28 @@
     snapshot = data;
     document.getElementById('conversation-title').textContent = data.title || 'Conversation';
     ensureGraph();
+    const graphNodes = data.nodes.flatMap(node => {
+      if (node.type !== 'question') return [node];
+      const authorName = node.author_name || memberName(node.author_user_id);
+      let picture = '';
+      try {
+        const parsed = new URL(node.author_picture || '', window.location.origin);
+        if (parsed.protocol === 'https:') picture = parsed.href;
+      } catch (_) { /* Use initials when the profile image URL is invalid. */ }
+      const initials = authorName.trim().split(/\s+/).map(part => part[0] || '').slice(0, 2).join('').toUpperCase();
+      return [node, {
+        id: `a${node.id.slice(1)}`,
+        type: 'author_avatar',
+        label: picture ? '' : initials,
+        picture,
+        author_name: authorName,
+        question_id: node.id.slice(1),
+        lane: node.lane,
+        row: node.row,
+      }];
+    });
     const nextNodeIds = new Set();
-    for (const node of data.nodes) {
+    for (const node of graphNodes) {
       nextNodeIds.add(node.id);
       node.display = node.type === 'option' ? `${node.label} · ${node.count}${node.count === 1 ? ' vote' : ' votes'}` : node.label;
       nodes.set(node.id, node);
@@ -148,6 +173,11 @@
 
   function selectNode(node) {
     const value = nodes.get(node.id) || node;
+    if (value.type === 'author_avatar') {
+      const question = nodes.get(`q${value.question_id}`);
+      if (question) renderDetailsQuestion(question);
+      return;
+    }
     if (value.type === 'question') {
       renderDetailsQuestion(value);
       return;
@@ -463,6 +493,7 @@
     const toggle = event.currentTarget;
     membersPanel.hidden = !membersPanel.hidden;
     toggle.setAttribute('aria-expanded', String(!membersPanel.hidden));
+    toggle.setAttribute('aria-checked', String(!membersPanel.hidden));
     if (!membersPanel.hidden) await loadMemberPicker();
   });
   document.getElementById('member-picker').addEventListener('change', async event => {

@@ -6,6 +6,12 @@
   .conversation-top h1 { margin:0; }
   .conversation-actions { display:flex; gap:8px; }
   .conversation-actions .button { width:auto; margin:0; padding:10px 14px; }
+  .members-toggle { display:inline-flex; align-items:center; gap:10px; min-height:42px; padding:8px 12px; border:1px solid var(--border); border-radius:999px; background:var(--surface-solid); color:var(--text); font:inherit; font-weight:700; cursor:pointer; }
+  .members-switch-track { position:relative; width:42px; height:24px; flex:0 0 auto; border-radius:999px; background:#98a2b3; transition:background .18s ease; }
+  .members-switch-thumb { position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:#fff; box-shadow:0 1px 3px #0004; transition:transform .18s ease; }
+  .members-toggle[aria-checked="true"] .members-switch-track { background:#4f6fff; }
+  .members-toggle[aria-checked="true"] .members-switch-thumb { transform:translateX(18px); }
+  .members-toggle:focus-visible { outline:3px solid #8ba2ff; outline-offset:2px; }
   .connection { display:inline-flex; align-items:center; gap:7px; color:var(--muted); font-size:.85rem; }
   .connection::before { content:""; width:9px; height:9px; border-radius:50%; background:#f79009; }
   .connection[data-connected="true"]::before { background:#12b76a; }
@@ -24,6 +30,7 @@
   .member-avatar, .question-author-avatar { width:34px; height:34px; flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; object-fit:cover; background:var(--surface-solid); color:var(--text); font-size:.8rem; font-weight:800; }
   .question-author { display:flex; align-items:center; gap:10px; margin:8px 0 12px; }
   .question-author p { margin:0; }
+  #graph .cy-author-avatar { border:2px solid var(--surface); }
   .member-chip button { border:0; background:transparent; color:#b42318; font-weight:700; cursor:pointer; }
   .answer-dialog { width:min(100% - 24px,500px); border:1px solid var(--border); border-radius:20px; background:var(--surface); color:var(--text); padding:24px; }
   .answer-dialog::backdrop { background:#10182899; }
@@ -34,7 +41,7 @@
 {% endblock %}
 {% block content %}
 <main class="card conversation-page" data-conversation-id="{{ conversation_id }}" data-csrf="{{ csrf_token() }}" data-realtime-mode="{{ chat_realtime_mode }}">
-  <header class="conversation-top"><div><p class="eyebrow">Branching chat</p><h1 id="conversation-title">Conversation</h1></div><div class="conversation-actions"><span id="connection-status" class="connection" data-connected="false" role="status">Connecting</span><button id="members-toggle" class="button button-secondary" type="button" aria-expanded="false" aria-controls="members-panel">Members</button></div></header>
+  <header class="conversation-top"><div><p class="eyebrow">Branching chat</p><h1 id="conversation-title">Conversation</h1></div><div class="conversation-actions"><span id="connection-status" class="connection" data-connected="false" role="status">Connecting</span><button id="members-toggle" class="members-toggle" type="button" role="switch" aria-checked="false" aria-expanded="false" aria-controls="members-panel"><span>Members</span><span class="members-switch-track" aria-hidden="true"><span class="members-switch-thumb"></span></span></button></div></header>
   <div id="graph" role="img" aria-label="Live conversation question graph"></div>
   <section id="details" class="detail-panel" aria-live="polite"><h2>Select a question or option</h2><p>Questions and votes appear here as text as well as in the graph.</p></section>
   <section class="composer" aria-labelledby="composer-title"><h2 id="composer-title">Ask a question</h2><label for="question-text">Question</label><textarea id="question-text" maxlength="280" rows="2" placeholder="What should we decide?"></textarea><div id="option-editors"></div><div class="composer-tools"><button id="add-option" class="button button-secondary" type="button">Add option</button><button id="send-question" class="button" type="button">Send question</button></div><p id="chat-error" class="error" role="alert"></p></section>

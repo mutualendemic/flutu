@@ -1,9 +1,12 @@
 import unittest
-from unittest.mock import patch
+from datetime import datetime, timezone
+from unittest.mock import Mock, patch
+
+from bson import ObjectId
 
 from app import create_app
 from app.chat.sockets import socketio
-from app.services.chat import _serialize_member, validate_question
+from app.services.chat import _serialize_member, graph_payload, validate_question
 
 
 class ChatTests(unittest.TestCase):
@@ -82,7 +85,7 @@ class ChatTests(unittest.TestCase):
         with patch("app.chat.routes.service.is_active_member", return_value=True):
             response = self.http.get("/chat/conversation-id")
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b'aria-expanded="false" aria-controls="members-panel"', response.data)
+        self.assertIn(b'role="switch" aria-checked="false" aria-expanded="false" aria-controls="members-panel"', response.data)
 
     def test_member_snapshot_preserves_profile_photo_for_author_avatar(self):
         member = _serialize_member({
@@ -93,6 +96,52 @@ class ChatTests(unittest.TestCase):
         })
         self.assertEqual(member["picture"], "https://example.com/avatar.png")
         self.assertTrue(member["active"])
+
+    def test_graph_question_node_includes_author_photo_and_name(self):
+        conversation_id = ObjectId()
+        question_id = ObjectId()
+        option_id = ObjectId()
+        created_at = datetime.now(timezone.utc)
+        conversation = {"_id": conversation_id, "title": "Planning"}
+        question = {
+            "_id": question_id,
+            "conversation_id": conversation_id,
+            "author_user_id": "google-user",
+            "text": "Where should we meet?",
+            "status": "open",
+            "parent_option_id": None,
+            "winning_option_id": None,
+            "created_at": created_at,
+        }
+        option = {
+            "_id": option_id,
+            "question_id": question_id,
+            "conversation_id": conversation_id,
+            "label": "Park",
+            "position": 0,
+        }
+        members = Mock()
+        members.find.return_value = [{
+            "user_id": "google-user",
+            "name": "Test User",
+            "picture": "https://example.com/avatar.png",
+            "left_at": None,
+        }]
+        questions = Mock()
+        questions.find.return_value.sort.return_value = [question]
+        options = Mock()
+        options.find.return_value.sort.return_value = [option]
+        answers = Mock()
+        answers.find.return_value = []
+
+        with patch("app.services.chat.get_conversation", return_value=conversation), patch(
+            "app.services.chat._collections", return_value=(Mock(), members, questions, options, answers)
+        ):
+            graph = graph_payload(str(conversation_id), "google-user")
+
+        question_node = next(node for node in graph["nodes"] if node["type"] == "question")
+        self.assertEqual(question_node["author_name"], "Test User")
+        self.assertEqual(question_node["author_picture"], "https://example.com/avatar.png")
 
     def test_chat_list_displays_private_channel_authorization_check(self):
         self.sign_in()

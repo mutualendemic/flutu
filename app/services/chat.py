@@ -491,6 +491,8 @@ def graph_payload(conversation_id, viewer_id=None):
         nodes.append({
             "id": f"q{qid}", "type": "question", "label": question["text"],
             "status": question["status"], "author_user_id": question["author_user_id"],
+            "author_name": member_by_id.get(question["author_user_id"], {}).get("name", "Former member"),
+            "author_picture": member_by_id.get(question["author_user_id"], {}).get("picture", ""),
             "lane": lane, "row": row, "winning_option_id": str(question["winning_option_id"]) if question.get("winning_option_id") else None,
             "created_at": question["created_at"].isoformat(), "allow_vote_change": question.get("allow_vote_change", True),
         })
