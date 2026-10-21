@@ -10,6 +10,8 @@
   .panel { min-width: 0; padding: 18px; border: 1px solid #e3e9f4; border-radius: 16px; background: #fff; }
   .panel h2 { margin: 0 0 12px; font-size: 1.1rem; }
   #map { height: min(60vh, 560px); min-height: 340px; border-radius: 12px; background: #eaf0f6; z-index: 0; }
+  .map-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+  .map-controls p { margin: 0; }
   .map-caption, .subtle { color: #667085; font-size: .88rem; }
   .stack { display: grid; gap: 16px; align-content: start; }
   .contact-form { display: grid; gap: 10px; }
@@ -48,6 +50,10 @@
     </header>
     <div class="columns">
       <section class="panel" aria-label="Shared locations map">
+        <div class="map-controls">
+          <button id="toggle-map-follow" class="button button-secondary small-button" type="button" aria-pressed="false">Follow location updates: Off</button>
+          <p id="map-follow-status" class="map-caption" role="status" aria-live="polite">Turn on map following to center the view on all participant markers as locations update.</p>
+        </div>
         <div id="map" role="application" aria-label="OpenStreetMap showing shared contact locations"></div>
         <p class="map-caption">Map data © OpenStreetMap contributors. Locations are visible only while sharing permission is active.</p>
       </section>
@@ -118,8 +124,11 @@
     const shareMessage = document.getElementById('share-message');
     const ownStatus = document.getElementById('own-location-status');
     const retryOwnLocationButton = document.getElementById('retry-own-location');
+    const toggleMapFollowButton = document.getElementById('toggle-map-follow');
+    const mapFollowStatus = document.getElementById('map-follow-status');
     let sharingCount = 0;
     let sharingEnabled = false;
+    let mapFollowingLocations = false;
     let ownMarker = null;
     let privateLocationTimer = null;
     let ownCoordinates = null;
@@ -142,6 +151,16 @@
         animate: true
       });
     }
+
+    toggleMapFollowButton.addEventListener('click', () => {
+      mapFollowingLocations = !mapFollowingLocations;
+      toggleMapFollowButton.setAttribute('aria-pressed', String(mapFollowingLocations));
+      toggleMapFollowButton.textContent = `Follow location updates: ${mapFollowingLocations ? 'On' : 'Off'}`;
+      mapFollowStatus.textContent = mapFollowingLocations
+        ? 'Map following is on. The view includes all participant markers and adjusts when their locations change.'
+        : 'Map following is off. The map will stay where you place it.';
+      if (mapFollowingLocations) fitMapToMarkers();
+    });
 
     async function callApi(url, options = {}) {
       const response = await fetch(url, {
@@ -258,7 +277,7 @@
         ownMarker.setLatLng(point);
         ownMarker.setIcon(profileMarkerIcon(picture, name));
       }
-      if (locationChanged) fitMapToMarkers();
+      if (locationChanged && mapFollowingLocations) fitMapToMarkers();
       const privacyNotice = privateOnly ? 'Private on this device' : 'Shared with authorized contacts';
       ownMarker.bindPopup(`<strong>Your device</strong><br>${escapeHtml(detail)}<br>${privacyNotice}`);
       ownStatus.textContent = privateOnly
@@ -398,7 +417,7 @@
           locationChanged = true;
         }
       }
-      if (locationChanged) fitMapToMarkers();
+      if (locationChanged && mapFollowingLocations) fitMapToMarkers();
       renderSharingPeople();
     }
 
