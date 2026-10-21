@@ -6,8 +6,14 @@ from pymongo.errors import PyMongoError
 
 from app.auth.decorators import login_required
 from app.chat import chat_bp
-from app.chat.sockets import emit_to_active_members, socketio
+from app.chat.sockets import emit_to_active_members, emit_to_user
 from app.services import chat as service
+from app.services.supabase_realtime import (
+    TOKEN_TTL_SECONDS,
+    conversation_topic,
+    create_access_token,
+    user_topic,
+)
 
 
 def _user_id():
@@ -90,6 +96,36 @@ def api_conversations():
         return _api_error("chat_unavailable", 503)
 
 
+@chat_bp.get("/api/realtime-token")
+def api_realtime_token():
+    config = current_app.config
+    required = ("SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_JWT_SECRET")
+    if any(not config.get(key) for key in required):
+        return _api_error("realtime_not_configured", 503)
+    try:
+        user_id = _user_id()
+        topics = [user_topic(user_id)]
+        conversation_id = request.args.get("conversation_id")
+        conversation_topics = {}
+        if conversation_id:
+            if not service.is_active_member(conversation_id, user_id):
+                return _api_error("forbidden", 403)
+            conversation_topics[conversation_id] = conversation_topic(conversation_id)
+            topics.append(conversation_topics[conversation_id])
+        access_token = create_access_token(user_id, topics, config["SUPABASE_JWT_SECRET"])
+        return jsonify(
+            url=config["SUPABASE_URL"],
+            anon_key=config["SUPABASE_ANON_KEY"],
+            access_token=access_token,
+            expires_in=TOKEN_TTL_SECONDS,
+            user_topic=user_topic(user_id),
+            conversation_topics=conversation_topics,
+        )
+    except (PyMongoError, RuntimeError):
+        current_app.logger.exception("Could not create Supabase Realtime token")
+        return _api_error("chat_unavailable", 503)
+
+
 @chat_bp.post("/api/conversations")
 def api_create_conversation():
     payload = request.get_json(silent=True)
@@ -101,7 +137,7 @@ def api_create_conversation():
         member_ids = conversation.get("member_user_ids", [])
         event = {"id": conversation_id, "title": conversation["title"]}
         for uid in member_ids:
-            socketio.emit("conversation_added", event, to=f"user:{uid}", namespace="/chat")
+            emit_to_user("conversation_added", event, uid)
         return jsonify(conversation_id=conversation_id), 201
     except (ValueError, PermissionError) as error:
         return _api_error(str(error), _status_for_error(error))
@@ -227,7 +263,7 @@ def api_add_members(conversation_id):
         added = service.add_members(conversation_id, _user_id(), user_ids)
         for member in added:
             event = {"id": conversation_id, "title": (service.get_conversation(conversation_id) or {}).get("title", "")}
-            socketio.emit("conversation_added", event, to=f"user:{member['user_id']}", namespace="/chat")
+            emit_to_user("conversation_added", event, member["user_id"])
             emit_to_active_members("member_added", member, conversation_id)
         return jsonify(members=added)
     except (ValueError, PermissionError) as error:
@@ -242,7 +278,7 @@ def api_remove_member(conversation_id, user_id):
     try:
         member = service.remove_member(conversation_id, _user_id(), user_id)
         emit_to_active_members("member_removed", member, conversation_id, include_users=(user_id,))
-        socketio.emit("conversation_removed", {"id": conversation_id}, to=f"user:{user_id}", namespace="/chat")
+        emit_to_user("conversation_removed", {"id": conversation_id}, user_id)
         return jsonify(member=member)
     except (ValueError, PermissionError) as error:
         return _api_error(str(error), _status_for_error(error))

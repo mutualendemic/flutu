@@ -4,12 +4,14 @@
   const api = '/chat/api';
   const list = document.getElementById('conversation-list');
   const error = document.getElementById('list-error');
+  const realtimeStatus = document.getElementById('realtime-status');
   const dialog = document.getElementById('create-dialog');
   const picker = document.getElementById('contact-picker');
   const search = document.getElementById('contact-search');
   let contacts = [];
   let socket;
-  let listPollingStarted = false;
+  let realtimeConnection;
+  let listPollingTimer;
 
   function initials(value) {
     return (value || '?').trim().split(/\s+/).slice(0, 2).map(part => part[0] || '').join('').toUpperCase();
@@ -61,10 +63,34 @@
   }
 
   function startListPolling() {
-    if (listPollingStarted) return;
-    listPollingStarted = true;
+    if (listPollingTimer) return;
     if (socket) socket.disconnect();
-    window.setInterval(() => loadConversations().catch(() => {}), 5000);
+    realtimeStatus.textContent = 'Supabase private-channel check failed. Using slower polling.';
+    listPollingTimer = window.setInterval(() => loadConversations().catch(() => {}), 5000);
+  }
+
+  function setupSupabaseRealtime() {
+    realtimeStatus.textContent = 'Checking private channel access with Supabase…';
+    if (!window.FlutuChatRealtime?.connect) {
+      realtimeStatus.textContent = 'Supabase client is unavailable. Using slower polling.';
+      startListPolling();
+      return;
+    }
+    window.FlutuChatRealtime.connect((topic, payload) => {
+      if (!topic.startsWith('chat-user:')) return;
+      loadConversations().catch(() => {});
+      if (realtimeConnection) realtimeConnection.refresh().catch(() => startListPolling());
+    }, (state, detail) => {
+      if (state === 'CONNECTED') {
+        window.clearInterval(listPollingTimer);
+        listPollingTimer = undefined;
+        realtimeStatus.textContent = 'Supabase accepted the private channel subscription.';
+      } else if (state === 'AUTHORIZATION_FAILED' || state === 'CHANNEL_ERROR' || state === 'TIMED_OUT' || state === 'CLOSED' || state === 'ERROR') {
+        realtimeStatus.textContent = `${detail?.message || 'Supabase private-channel authorization failed. Check the realtime.messages SELECT RLS policy.'} Using slower polling.`;
+        startListPolling();
+      }
+    }, {userOnly: true}).then(connection => { realtimeConnection = connection; })
+      .catch(() => startListPolling());
   }
 
   function renderContacts() {
@@ -130,7 +156,9 @@
   });
 
   loadConversations().catch(err => { error.textContent = err.message; });
-  if (realtimeMode === 'polling') {
+  if (realtimeMode === 'supabase') {
+    setupSupabaseRealtime();
+  } else if (realtimeMode === 'polling') {
     startListPolling();
   } else if (typeof window.io === 'function') {
     socket = window.io('/chat');

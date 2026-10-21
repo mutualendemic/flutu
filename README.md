@@ -31,7 +31,7 @@ The interface automatically follows the device's light or dark appearance prefer
 4. Start the app with `bash start_server.sh`.
 5. Open http://127.0.0.1:8000. The development server binds exclusively to `127.0.0.1` and is not exposed to the local network.
 
-The local server starts through Flask-SocketIO and gevent (not `flask run`) so chat can use WebSockets. Redis is optional for local development. For push-based production chat on a WebSocket-capable host, set `APP_ENV=production`, provide `REDIS_URL`, and set `SOCKETIO_CORS_ORIGINS` only to the app's own origins when cross-origin access is required. Production startup fails clearly if Redis is missing or unreachable.
+Chat uses Supabase Realtime Broadcast by default when Supabase is configured; MongoDB remains the source of truth. Without Supabase, local development can use Flask-SocketIO/gevent (start with `bash start_server.sh`, not `flask run`). Redis is only needed for multi-instance Socket.IO deployment. `CHAT_REALTIME_MODE` supports `supabase`, `socketio`, and `polling`.
 
 Google OAuth is the only sign-in method; there is no local email/password login. For local development, `FLASK_SESSION_COOKIE_SECURE=false` allows cookies over HTTP. Set it to `true` when serving over HTTPS. Never use the development fallback session key in a deployed environment.
 
@@ -39,7 +39,7 @@ The sign-in page displays the running version as a short Git commit hash. Deploy
 
 ## Vercel deployment
 
-The repository includes a Vercel-compatible Flask export at `api/index.py`. Vercel looks for a callable WSGI app object at the `api` entrypoint. This adapter serves the HTTP application. On Vercel, branching chat uses authenticated REST actions and periodic graph refreshes (about every 3 seconds in a conversation and 5 seconds in the conversation list); persistent Socket.IO connections and instant push updates are not supported by the serverless WSGI runtime. The app selects polling mode automatically when Vercel sets `VERCEL=1`. To use push-based updates instead, deploy the app on a WebSocket-capable container host with Redis and the production settings described below.
+The repository includes a Vercel-compatible Flask export at `api/index.py`. Vercel serves HTTP requests and the browser connects directly to Supabase Realtime for private, low-latency chat invalidations. MongoDB remains authoritative; every notification makes the browser reload data through Flask’s authorized API. If Supabase is missing or unavailable, the client falls back to polling. The app selects Supabase mode automatically on Vercel; set `CHAT_REALTIME_MODE` explicitly to override it.
 
 1. Add the project to Vercel and keep the repository root as the project root.
 2. In the Vercel project environment settings, define the same Google OAuth variables used in local development:
@@ -49,14 +49,70 @@ The repository includes a Vercel-compatible Flask export at `api/index.py`. Verc
    - `FLUTU_GOOGLE_REDIRECT_URI`
    - `FLASK_SECRET_KEY`
    - `FLASK_SESSION_COOKIE_SECURE=true`
-  - `MONGODB_URI` (Atlas connection string; server-side only)
-  - `MONGODB_DATABASE` (for example, `flutu`)
-  - No Redis setting is needed for Vercel's polling mode. Set `CHAT_REALTIME_MODE=polling` explicitly if platform detection is unavailable.
-  - `REDIS_URL` and `SOCKETIO_CORS_ORIGINS` are for Socket.IO push updates on a supported container host, not the Vercel WSGI adapter.
+   - `MONGODB_URI` (Atlas connection string; server-side only)
+   - `MONGODB_DATABASE` (for example, `flutu`)
+   - `SUPABASE_URL` and `SUPABASE_ANON_KEY` (the anon/publishable key is intended for browser use)
+   - `SUPABASE_SERVICE_ROLE_KEY` (server-only secret; never expose it to the browser)
+   - `SUPABASE_JWT_SECRET` (server-only signing secret used to mint short-lived channel authorization tokens)
+   - `CHAT_REALTIME_MODE=supabase`
 
-3. Set `FLUTU_GOOGLE_REDIRECT_URI` to the exact HTTPS callback URL Vercel assigns to the app, such as `https://<your-project>.vercel.app/auth/google/callback`.
-4. Add that exact callback URL to the Google OAuth client authorized redirect URIs.
-5. Deploy; Vercel uses `vercel.json` to route all requests to `api/index.py`.
+3. In Supabase Dashboard, open **SQL Editor → New query** and run this setup to enable RLS and add the topic allow-list policy:
+
+   ```sql
+  alter table realtime.messages enable row level security;
+
+  drop policy if exists "Chat members receive authorized broadcasts"
+  on realtime.messages;
+
+   create policy "Chat members receive authorized broadcasts"
+   on realtime.messages
+   for select
+   to authenticated
+   using ((select auth.jwt() -> 'chat_topics') ? realtime.topic());
+   ```
+
+  When the chat page loads, it first checks that its authorized private topic is accepted, then tries a random topic not allowed by its token. That probe must be rejected; if Supabase accepts it, the page warns that RLS is disabled or too broad and falls back to polling. This verifies the effective authorization path, but does not replace inspecting the SQL policies.
+
+  Run this read-only query to validate the RLS setting, find the expected policy, and inspect every SELECT policy:
+
+   ```sql
+   with target as (
+     select c.relrowsecurity as rls_enabled
+     from pg_class c
+     join pg_namespace n on n.oid = c.relnamespace
+     where n.nspname = 'realtime' and c.relname = 'messages'
+   ), policies as (
+     select
+       count(*) filter (
+         where policyname = 'Chat members receive authorized broadcasts'
+           and cmd = 'SELECT'
+           and 'authenticated' = any(roles)
+           and coalesce(qual, '') ilike '%chat_topics%'
+           and coalesce(qual, '') ilike '%realtime.topic%'
+       ) as expected_policy_count,
+       coalesce(jsonb_agg(jsonb_build_object(
+         'name', policyname,
+         'roles', roles,
+         'using', qual
+       )), '[]'::jsonb) as select_policies
+     from pg_policies
+     where schemaname = 'realtime'
+       and tablename = 'messages'
+       and cmd = 'SELECT'
+   )
+   select
+     coalesce(target.rls_enabled, false) as rls_enabled,
+     policies.expected_policy_count > 0 as expected_topic_policy_exists,
+     policies.select_policies
+   from policies
+   left join target on true;
+   ```
+
+  Expected: both `rls_enabled` and `expected_topic_policy_exists` are `true`. Review all returned policies: permissive SELECT policies are combined with OR, so remove any unintended broad policy. The Flask API issues short-lived topic-scoped tokens after checking the existing session and membership. Broadcasts contain only an event kind; details are fetched from Flask. Never expose the service-role key or JWT signing secret in browser code.
+
+4. Set `FLUTU_GOOGLE_REDIRECT_URI` to the exact HTTPS callback URL Vercel assigns to the app, such as `https://<your-project>.vercel.app/auth/google/callback`.
+5. Add that exact callback URL to the Google OAuth client authorized redirect URIs.
+6. Deploy; Vercel uses `vercel.json` to route all requests to `api/index.py`.
 
 The local development server stays bound to `127.0.0.1`, while the Vercel export keeps the same app factory and routes as the local app.
 
@@ -128,7 +184,7 @@ The implementation decisions for cross-page architecture and each user-facing pa
 
 Location sharing APIs also require a session and derive identities from it: `GET /api/location/status` returns the caller's opt-in, active-recipient count, and profile photo; `POST /api/location/sharing` enables or pauses updates; `GET /api/location/overview` returns pending requests, active grants, and locations shared with the caller; `POST /api/location/requests` requests a saved contact's location; `POST /api/location/requests/<id>/respond` accepts, declines, or cancels a pending request; `POST /api/location/updates` upserts the signed-in user's latest coordinates only if the owner opted in and an active grant exists; `DELETE /api/location/shares/<id>` revokes one grant; and `DELETE /api/location/shares` revokes all grants. Coordinates are validated server-side, and a location is disclosed only when an accepted request connects its owner and the viewer. Map markers use the Google profile photo (or initials if unavailable); there is no marker-selection API.
 
-Chat APIs are under `/chat/api/`: list/create conversations, graph snapshots, member add/remove, addable contacts, question creation, voting, closing, and edit/delete unanswered questions. Socket.IO namespace `/chat` provides push events with acknowledgements on WebSocket-capable hosts. Vercel automatically uses the REST actions plus periodic snapshot polling instead; set `CHAT_REALTIME_MODE=polling` to force that mode on another host. For push updates, configure production with gevent Gunicorn, one worker per process, Redis shared among instances, sticky sessions, and WebSocket proxy upgrade support. Set the container's `PORT`; the Docker image binds to `0.0.0.0` while local development remains on `127.0.0.1`. `SOCKETIO_CORS_ORIGINS` is an optional comma-separated allowlist; leaving it unset uses same-origin policy. Cytoscape 3.30.4 and Socket.IO client 4.8.1 are pinned on jsDelivr and require client access to that CDN. See [docs/specifications/pages/branching-chat.md](docs/specifications/pages/branching-chat.md).
+Chat APIs are under `/chat/api/`: list/create conversations, graph snapshots, member add/remove, addable contacts, question creation, voting, closing, and edit/delete unanswered questions. Supabase Realtime Broadcast sends private invalidation events; Socket.IO remains available for self-hosted deployments. The app also supports REST polling as a fallback. For Socket.IO, use gevent Gunicorn, one worker per process, Redis shared among instances, sticky sessions, and WebSocket proxy upgrade support. Set the container's `PORT`; the Docker image binds to `0.0.0.0` while local development remains on `127.0.0.1`. Supabase JS 2.49.1, Socket.IO client 4.8.1, and Cytoscape 3.30.4 are pinned on jsDelivr. See [docs/specifications/pages/branching-chat.md](docs/specifications/pages/branching-chat.md).
 
 `POST /api/decision` fetches a fresh permutation from the ANU Quantum Random Number Generator and returns the chosen direction:
 

@@ -77,18 +77,58 @@ class ChatTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'data-realtime-mode="polling"', response.data)
 
-    def test_production_polling_mode_does_not_require_redis(self):
+    def test_chat_list_displays_private_channel_authorization_check(self):
+        self.sign_in()
+        response = self.http.get("/chat/")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'id="realtime-status"', response.data)
+        self.assertIn(b"Checking Supabase private-channel authorization", response.data)
+
+    def test_realtime_token_requires_authentication_and_supabase_config(self):
+        response = self.http.get("/chat/api/realtime-token")
+        self.assertEqual(response.status_code, 401)
+
+        self.sign_in()
+        response = self.http.get("/chat/api/realtime-token")
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.get_json(), {"error": "realtime_not_configured"})
+
+    def test_production_supabase_mode_does_not_require_redis(self):
         class VercelProductionConfig:
             SECRET_KEY = "test-secret"
             TESTING = True
             APP_ENV = "production"
-            CHAT_REALTIME_MODE = "polling"
+            CHAT_REALTIME_MODE = "supabase"
             REDIS_URL = ""
             SOCKETIO_REQUIRE_REDIS = True
             SOCKETIO_CORS_ORIGINS = ""
 
         app = create_app(VercelProductionConfig)
         self.assertEqual(app.extensions["socketio"].server.eio.async_mode, "threading")
+
+    def test_supabase_token_endpoint_scopes_topics_to_active_membership(self):
+        self.sign_in()
+        self.app.config.update(
+            SUPABASE_URL="https://project.supabase.co",
+            SUPABASE_ANON_KEY="public-anon-key",
+            SUPABASE_SERVICE_ROLE_KEY="server-only-key",
+            SUPABASE_JWT_SECRET="jwt-secret",
+        )
+        with patch("app.chat.routes.service.is_active_member", return_value=True):
+            response = self.http.get("/chat/api/realtime-token?conversation_id=65b0e7a3a6c6f166f1c3a001")
+        self.assertEqual(response.status_code, 200)
+        body = response.get_json()
+        self.assertEqual(body["url"], "https://project.supabase.co")
+        self.assertEqual(body["anon_key"], "public-anon-key")
+        self.assertNotIn("server-only-key", response.get_data(as_text=True))
+        self.assertEqual(
+            body["conversation_topics"],
+            {"65b0e7a3a6c6f166f1c3a001": "chat-conversation:65b0e7a3a6c6f166f1c3a001"},
+        )
+
+        with patch("app.chat.routes.service.is_active_member", return_value=False):
+            denied = self.http.get("/chat/api/realtime-token?conversation_id=65b0e7a3a6c6f166f1c3a001")
+        self.assertEqual(denied.status_code, 403)
 
     def test_rest_question_creation_is_authenticated_and_csrf_protected(self):
         self.sign_in()

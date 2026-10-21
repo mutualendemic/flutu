@@ -6,14 +6,14 @@
 - Contacts are MongoDB documents owned by the session user's `sub`. A contact is linked to a Flutu account by normalized email against the `users` collection; unlinked contacts are displayed disabled.
 - The application uses MongoDB and PyMongo, not SQLAlchemy or a migration framework. Chat data is stored in dedicated MongoDB collections with unique indexes for members, option labels/positions, and one answer per question and user.
 - The project uses a Flask factory, Blueprints, Jinja templates, and vanilla JavaScript.
-- Development runs through Flask-SocketIO/gevent. The Docker production entry uses Gunicorn's gevent worker and requires Redis for push-based chat delivery. Vercel's serverless WSGI adapter does not provide persistent Socket.IO connections; Vercel deployments instead use authenticated REST actions and periodic graph polling.
+- Chat persistence remains in MongoDB/PyMongo. Realtime invalidation is delivered through Supabase Broadcast on Vercel and can use Flask-SocketIO on a self-hosted deployment. MongoDB is authoritative; clients fetch all conversation data through authenticated Flask APIs.
 
 ## Pages and access
 
 - `/chat/` is a level-2 authenticated page linked from the dashboard; it returns to `/dashboard`.
 - `/chat/<conversation_id>` is a child of the conversation list and returns to `/chat/`. It is only rendered for active members.
 - `/chat/api/*` is protected on the server. Unauthenticated requests return JSON 401; mutating REST requests require the session CSRF token in `X-CSRF-Token` and a same-origin request.
-- REST APIs support listing and creating conversations, graph snapshots, member add/remove, addable contacts, question creation, voting, closing, and editing/deleting unanswered questions. All mutating routes require CSRF validation.
+- REST APIs support listing and creating conversations, graph snapshots, member add/remove, addable contacts, question creation, voting, closing, and editing/deleting unanswered questions. All mutating routes require CSRF validation. `GET /chat/api/realtime-token` returns a short-lived Supabase JWT, project URL, public anon key, and only the user topic plus an optionally requested conversation topic. It rejects requests for conversations where the caller is not an active member.
 
 ## Persistence and rules
 
@@ -25,16 +25,72 @@ MongoDB writes use unique indexes and atomic upserts for answers. There is no cr
 
 ## Live graph and client
 
-- Socket.IO uses namespace `/chat`; authenticated connections join a per-user room. Every event rechecks current conversation membership. Events are rate-limited to 20 per connection in 10 seconds.
-- Events are fanned out to the active members' per-user rooms, so removed members stop receiving events immediately even if a stale conversation room membership remains.
-- The browser receives full snapshots on initial load/reconnect and updates Cytoscape elements in place for live changes. The graph uses deterministic lane/row positions and a preset layout; questions, options, voter names, counts, outcomes, and former members are also exposed as accessible text.
-- Vercel mode uses REST for question creation, votes, and closing, and polls the graph every 3 seconds and the conversation list every 5 seconds. This provides near-real-time updates without a persistent connection; push delivery requires a Socket.IO-capable host.
+- Supabase Realtime uses private Broadcast topics `chat-user:<base64url-user-id>` and `chat-conversation:<conversation-id>`. The backend publishes only an invalidation kind, never question text, member names, vote contents, or counts. After a broadcast, clients fetch fresh data from Flask, which rechecks session authentication and active membership.
+- Flask signs short-lived (five-minute) HS256 JWTs using `SUPABASE_JWT_SECRET`. Each token has role `authenticated` and a `chat_topics` allow-list. Supabase's `realtime.messages` SELECT RLS policy checks that the current topic is in this claim. Conversation tokens are issued only after a server-side active-membership check. The browser receives only `SUPABASE_ANON_KEY`; the service-role key and JWT signing secret remain server-side.
+- Conversation list pages subscribe only to their private user topic. A conversation page subscribes to that user's topic and the single conversation topic. Clients refresh their token/channels when membership or conversation-list events arrive.
+- The browser receives a full snapshot on initial load and updates Cytoscape elements in place after a broadcast. The graph uses deterministic lane/row positions and a preset layout; questions, options, voter names, counts, outcomes, and former members are also exposed as accessible text.
+- Socket.IO remains an optional self-hosted transport under namespace `/chat`; authenticated connections join per-user rooms, every event rechecks membership, and events are rate-limited to 20 per connection in 10 seconds. Supabase mode does not require Redis or persistent Flask WebSockets.
+- If Supabase is not configured or its client/channel cannot connect, the browser falls back to authenticated REST polling. This fallback is slower than Broadcast.
 - User text is assigned through DOM text nodes and Cytoscape labels; the client does not use `innerHTML`.
-- Cytoscape.js 3.30.4 and Socket.IO client 4.8.1 are pinned CDN assets. They are not vendored in this release; deployments need network access to jsDelivr.
+- Cytoscape.js 3.30.4, Supabase JS 2.49.1, and Socket.IO client 4.8.1 are pinned CDN assets. They are not vendored in this release; deployments need network access to jsDelivr.
 
 ## Deployment
 
-Socket.IO production requires `APP_ENV=production`, `REDIS_URL`, and the gevent Gunicorn worker. Set `SOCKETIO_CORS_ORIGINS` only to comma-separated origins that serve this app; unset means same-origin only. Each Gunicorn process must use one worker; scale with multiple single-worker instances behind a WebSocket-capable proxy/load balancer, sticky sessions, and shared Redis. The Docker image listens on `0.0.0.0:$PORT`; local development remains loopback-only. Vercel automatically selects REST polling mode; `CHAT_REALTIME_MODE=polling` can force this transport elsewhere, and `CHAT_REALTIME_MODE=socketio` selects Socket.IO on a compatible host.
+Supabase mode requires `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and `SUPABASE_JWT_SECRET`. In Supabase Dashboard, open **SQL Editor → New query** and execute this setup. It enables RLS and replaces the named policy if it already exists:
+
+```sql
+alter table realtime.messages enable row level security;
+
+drop policy if exists "Chat members receive authorized broadcasts"
+on realtime.messages;
+
+create policy "Chat members receive authorized broadcasts"
+on realtime.messages
+for select
+to authenticated
+using ((select auth.jwt() -> 'chat_topics') ? realtime.topic());
+```
+
+At page load the client first subscribes to its allowed private topic, then tries to subscribe to a random private topic absent from its signed token. The allowed subscription must succeed and the probe must be rejected; an accepted probe is treated as an RLS failure and the UI falls back to polling with a warning. This checks the effective authorization path, including unexpectedly broad policies. It does not replace reviewing database policy configuration.
+
+Use this read-only audit query to check that RLS is enabled, the expected allow-list policy exists, and see every SELECT policy that could also grant access:
+
+```sql
+with target as (
+	select c.relrowsecurity as rls_enabled
+	from pg_class c
+	join pg_namespace n on n.oid = c.relnamespace
+	where n.nspname = 'realtime' and c.relname = 'messages'
+), policies as (
+	select
+		count(*) filter (
+			where policyname = 'Chat members receive authorized broadcasts'
+				and cmd = 'SELECT'
+				and 'authenticated' = any(roles)
+				and coalesce(qual, '') ilike '%chat_topics%'
+				and coalesce(qual, '') ilike '%realtime.topic%'
+		) as expected_policy_count,
+		coalesce(jsonb_agg(jsonb_build_object(
+			'name', policyname,
+			'roles', roles,
+			'using', qual
+		)), '[]'::jsonb) as select_policies
+	from pg_policies
+	where schemaname = 'realtime'
+		and tablename = 'messages'
+		and cmd = 'SELECT'
+)
+select
+	coalesce(target.rls_enabled, false) as rls_enabled,
+	policies.expected_policy_count > 0 as expected_topic_policy_exists,
+	policies.select_policies
+from policies
+left join target on true;
+```
+
+Expected: `rls_enabled = true` and `expected_topic_policy_exists = true`. Review every item in `select_policies`: PostgreSQL combines permissive policies with OR, so a broader SELECT policy could weaken the topic restriction even when the expected policy is present. Remove any unintended broad policy. The page's unauthorized-topic probe should be denied; acceptance means RLS is disabled or a policy is broader than intended.
+
+Set `CHAT_REALTIME_MODE=supabase`; Vercel selects it automatically. Supabase Broadcast is client WebSocket-to-Supabase, not a persistent connection to the Vercel Flask function. Redis is not required in this mode. If Supabase is absent, the client falls back to REST polling. For a self-hosted Socket.IO deployment, set `CHAT_REALTIME_MODE=socketio`, `APP_ENV=production`, `REDIS_URL`, and the gevent Gunicorn worker. Set `SOCKETIO_CORS_ORIGINS` only to comma-separated origins that serve this app; unset means same-origin only. Each Gunicorn process must use one worker; scale with multiple single-worker instances behind a WebSocket-capable proxy/load balancer, sticky sessions, and shared Redis. The Docker image listens on `0.0.0.0:$PORT`; local development remains loopback-only.
 
 ## Product assumptions and current scope
 

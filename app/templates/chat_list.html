@@ -27,6 +27,7 @@
 <main class="card chat-wrap">
   <div id="chat-config" data-csrf="{{ csrf_token() }}" data-realtime-mode="{{ chat_realtime_mode }}" hidden></div>
   <header class="chat-head"><div><p class="eyebrow">Conversations</p><h1>Branching chat</h1></div><button id="new-conversation" class="button" style="width:auto;margin:0">New conversation</button></header>
+  <p id="realtime-status" role="status" aria-live="polite">Checking Supabase private-channel authorization…</p>
   <p id="list-error" class="error" role="alert"></p>
   <section id="conversation-list" class="conversation-list" aria-live="polite"></section>
   <a class="back-link" href="{{ url_for('main.dashboard') }}">Back to dashboard</a>
@@ -42,5 +43,7 @@
   </form>
 </dialog>
 <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.8.1/dist/socket.io.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.min.js" defer></script>
+<script src="{{ url_for('static', filename='chat-realtime.js') }}" defer></script>
 <script src="{{ url_for('static', filename='chat-list.js') }}" defer></script>
 {% endblock %}

@@ -16,6 +16,7 @@
   let graph;
   let snapshot;
   let socket;
+  let realtimeConnection;
   let pollingTimer;
   let polling = false;
   let selectedOption;
@@ -176,13 +177,6 @@
   }
 
   async function performAction(event, payload) {
-    if (socket?.connected && !polling) {
-      return new Promise((resolve, reject) => {
-        socket.emit(event, payload, response => {
-          try { resolve(handleAck(response)); } catch (err) { reject(err); }
-        });
-      });
-    }
     let path;
     let body = payload;
     if (event === 'create_question') {
@@ -299,7 +293,43 @@
         if (polling) pollingTimer = window.setTimeout(poll, 3000);
       }
     };
-    pollingTimer = window.setTimeout(poll, 3000);
+    pollingTimer = window.setTimeout(poll, 5000);
+  }
+
+  function setupSupabaseRealtime() {
+    if (!window.FlutuChatRealtime?.connect) {
+      startPolling();
+      return;
+    }
+    window.FlutuChatRealtime.connect((topic, payload) => {
+      if (topic === `chat-conversation:${conversationId}`) {
+        eventRefresh();
+        return;
+      }
+      if (payload.kind === 'conversation_removed' && payload.conversation_id === conversationId) {
+        window.location.assign('/chat/');
+        return;
+      }
+      if (realtimeConnection) realtimeConnection.refresh().catch(() => startPolling());
+      eventRefresh();
+    }, (state, detail) => {
+      if (state === 'CONNECTED') {
+        status.dataset.connected = 'true';
+        status.textContent = 'Private channel authorized · Supabase Realtime';
+        status.title = 'Supabase accepted the private channel subscription under its Realtime authorization policy.';
+        if (polling) {
+          polling = false;
+          window.clearTimeout(pollingTimer);
+        }
+      } else if (state === 'AUTHORIZATION_FAILED' || state === 'CHANNEL_ERROR' || state === 'TIMED_OUT' || state === 'CLOSED' || state === 'ERROR') {
+        status.dataset.connected = 'false';
+        status.textContent = 'Supabase private-channel check failed · using polling';
+        status.title = detail?.message || 'Review private-channel settings and the realtime.messages SELECT RLS policy.';
+        setError(`${status.title} Chat is continuing with slower polling.`);
+        startPolling();
+      }
+    }, {conversationId}).then(connection => { realtimeConnection = connection; })
+      .catch(() => startPolling());
   }
 
   function setupSocket() {
@@ -395,6 +425,8 @@
   resync().catch(err => setError(err.message));
   if (typeof window.cytoscape !== 'function') {
     setError('The chat graph could not load. Check the network connection and try again.');
+  } else if (realtimeMode === 'supabase') {
+    setupSupabaseRealtime();
   } else if (realtimeMode === 'polling') {
     startPolling();
   } else if (typeof window.io === 'function') {

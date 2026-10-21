@@ -7,6 +7,7 @@ from flask import current_app, request, session
 from flask_socketio import SocketIO, emit, join_room, leave_room
 
 from app.services import chat as service
+from app.services.supabase_realtime import publish_conversation_event, publish_user_event
 
 
 socketio = SocketIO()
@@ -18,11 +19,11 @@ def init_socketio(app):
     origins = app.config.get("SOCKETIO_CORS_ORIGINS") or None
     if isinstance(origins, str):
         origins = [origin.strip() for origin in origins.split(",") if origin.strip()] or None
-    polling_mode = app.config.get("CHAT_REALTIME_MODE") == "polling"
-    queue = None if polling_mode else (app.config.get("REDIS_URL") or None)
-    production = str(app.config.get("APP_ENV", "")).lower() == "production" and not polling_mode
-    async_mode = "threading" if polling_mode else "gevent"
-    if not polling_mode:
+    external_mode = app.config.get("CHAT_REALTIME_MODE") in {"supabase", "polling"}
+    queue = None if external_mode else (app.config.get("REDIS_URL") or None)
+    production = str(app.config.get("APP_ENV", "")).lower() == "production" and not external_mode
+    async_mode = "threading" if external_mode else "gevent"
+    if not external_mode:
         try:
             import gevent  # noqa: F401
         except ImportError:
@@ -85,10 +86,20 @@ def _conversation_for_question(question_id, user_id):
 
 
 def emit_to_active_members(event, payload, conversation_id, include_users=()):
-    """Fan out only to current member user rooms, never to a stale conversation room."""
+    """Fan out invalidations to Supabase, or full Socket.IO events on legacy hosts."""
     recipient_ids = {member["user_id"] for member in service.get_active_members(conversation_id)}
     recipient_ids.update(include_users)
-    for user_id in recipient_ids:
+    if current_app.config.get("CHAT_REALTIME_MODE") == "supabase":
+        publish_conversation_event(conversation_id, event)
+    else:
+        for user_id in recipient_ids:
+            socketio.emit(event, payload, to=f"user:{user_id}", namespace="/chat")
+
+
+def emit_to_user(event, payload, user_id):
+    if current_app.config.get("CHAT_REALTIME_MODE") == "supabase":
+        publish_user_event(user_id, event, payload.get("id") if isinstance(payload, dict) else None)
+    else:
         socketio.emit(event, payload, to=f"user:{user_id}", namespace="/chat")
 
 

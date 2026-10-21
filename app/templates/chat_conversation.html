@@ -41,5 +41,7 @@
 <dialog id="answer-dialog" class="answer-dialog"><form id="answer-form"><h2 id="answer-title"></h2><div id="answer-options"></div><p id="answer-error" class="error" role="alert"></p><button class="button" type="submit">Submit answer</button><button id="cancel-answer" class="button button-secondary" type="button">Cancel</button></form></dialog>
 <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.30.4/dist/cytoscape.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.8.1/dist/socket.io.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.min.js" defer></script>
+<script src="{{ url_for('static', filename='chat-realtime.js') }}" defer></script>
 <script src="{{ url_for('static', filename='chat-conversation.js') }}" defer></script>
 {% endblock %}

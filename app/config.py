@@ -39,11 +39,15 @@ class Config:
     MONGODB_URI = os.environ.get("MONGODB_URI", "")
     MONGODB_DATABASE = os.environ.get("MONGODB_DATABASE", "flutu")
     MONGODB_DNS_NAMESERVERS = os.environ.get("MONGODB_DNS_NAMESERVERS", "1.1.1.1,8.8.8.8")
+    SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
+    SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY", "")
+    SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+    SUPABASE_JWT_SECRET = os.environ.get("SUPABASE_JWT_SECRET", "")
     REDIS_URL = os.environ.get("REDIS_URL", "")
     SOCKETIO_CORS_ORIGINS = os.environ.get("SOCKETIO_CORS_ORIGINS", "")
     CHAT_REALTIME_MODE = os.environ.get(
         "CHAT_REALTIME_MODE",
-        "polling" if os.environ.get("VERCEL") == "1" else "socketio",
+        "supabase" if os.environ.get("VERCEL") == "1" or os.environ.get("SUPABASE_URL") else "socketio",
     )
     APP_ENV = os.environ.get("APP_ENV", "development")
     SOCKETIO_REQUIRE_REDIS = os.environ.get("SOCKETIO_REQUIRE_REDIS", "true").lower() == "true"
