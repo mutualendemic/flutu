@@ -106,7 +106,7 @@ The implementation decisions for cross-page architecture and each user-facing pa
 - Sharing requires recipient consent and a separate explicit start action by the location owner, in addition to browser geolocation permission. Once enabled on the map page, the app updates location about every 30 seconds on any authenticated app route while the app is visible. The opt-in is stored in the user's MongoDB profile and remains active across route changes; it can be paused from the map page. MongoDB upserts one latest GeoJSON location document per user instead of creating a record for every update. The location is returned only to accepted requesters, hidden when it has not been updated for two minutes, and automatically expires from MongoDB after three minutes without an update; pausing sharing or revoking the final active grant deletes it immediately. Browser geolocation requires HTTPS outside localhost. OpenStreetMap map tiles come from its public tile service and are subject to the OpenStreetMap tile usage policy.
 - **Import from phone** uses the browser Contact Picker API when available; support varies by mobile browser and it requires HTTPS. As a fallback, export contacts from the phone as a `.vcf`/vCard file and use **Import .vcf file**. The page also allows manual entry and search.
 - `/decision` is level 2; `/decision/info` is level 3 and returns to `/decision`.
-- The dashboard provides **Choose a path**, **My contacts**, **Location map**, and **My profile** options.
+- The dashboard provides **Quantum path selector**, **My contacts**, **Location map**, and **My profile** options.
 - Unauthenticated page requests redirect to sign-in. Protected APIs return JSON `401` without performing the requested action.
 
 ## APIs

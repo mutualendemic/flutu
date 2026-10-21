@@ -128,7 +128,7 @@ class RouteTests(unittest.TestCase):
         self.sign_in()
         dashboard = self.client.get("/dashboard")
         self.assertEqual(dashboard.status_code, 200)
-        self.assertIn(b"Choose a path", dashboard.data)
+        self.assertIn(b"Quantum path selector", dashboard.data)
         self.assertIn(b"My contacts", dashboard.data)
         self.assertIn(b"Location map", dashboard.data)
         self.assertIn(b"My profile", dashboard.data)

@@ -4,7 +4,7 @@
 
 - `/dashboard` is a private level-1 page and the root of the authenticated area. Without a valid session, the request returns to sign-in.
 - Displays the session user's name/email and a sign-out action.
-- Links to level-2 pages: **Choose a path** (`/decision`), **My contacts** (`/contacts`), **Location map** (`/map`), and **My profile** (`/profile`). Private-page links are not shown before authentication.
+- Links to level-2 pages: **Quantum path selector** (`/decision`), **My contacts** (`/contacts`), **Location map** (`/map`), and **My profile** (`/profile`). Private-page links are not shown before authentication.
 
 ## Sharing indicator
 
