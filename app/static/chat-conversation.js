@@ -105,14 +105,37 @@
   function renderDetailsQuestion(node) {
     details.replaceChildren();
     const title = el('h2', node.label);
-    const author = el('p', `Asked by ${memberName(node.author_user_id)} · ${node.status}`);
-    details.append(title, author);
+    const member = snapshot?.members?.find(item => item.user_id === node.author_user_id);
+    const authorRow = el('div', undefined, 'question-author');
+    const avatar = el('span', (member?.name || 'Flutu member').trim().split(/\s+/).map(part => part[0] || '').slice(0, 2).join('').toUpperCase(), 'question-author-avatar');
+    avatar.setAttribute('aria-hidden', 'true');
+    const pictureUrl = member?.picture;
+    if (pictureUrl) {
+      try {
+        const parsedUrl = new URL(pictureUrl, window.location.origin);
+        if (parsedUrl.protocol === 'https:') {
+          const image = document.createElement('img');
+          image.className = 'question-author-avatar';
+          image.src = parsedUrl.href;
+          image.alt = `${member?.name || 'Question author'}'s profile photo`;
+          image.referrerPolicy = 'no-referrer';
+          image.addEventListener('error', () => image.replaceWith(avatar), {once: true});
+          authorRow.append(image);
+        }
+      } catch (_) { /* Show initials when a profile photo URL is invalid. */ }
+    }
+    if (!authorRow.children.length) authorRow.append(avatar);
+    const author = el('p', `Asked by ${member?.name || memberName(node.author_user_id)} · ${node.status}`);
+    authorRow.append(author);
+    details.append(title, authorRow);
     if (node.status === 'open') {
       const close = el('button', 'Close question', 'button button-secondary');
       close.type = 'button';
       close.addEventListener('click', async () => {
-        try { await performAction('close_question', {question_id: node.id.slice(1)}); await resync(); }
-        catch (err) { setError(err.message); }
+        await window.FlutuAction.run(close, async () => {
+          try { await performAction('close_question', {question_id: node.id.slice(1)}); await resync(); }
+          catch (err) { setError(err.message); }
+        });
       });
       details.append(close);
     }
@@ -200,7 +223,8 @@
     return result;
   }
 
-  async function emitAck(event, payload) {
+  async function emitAck(event, payload, button) {
+    return window.FlutuAction.run(button, async () => {
     setError('');
     try {
       await performAction(event, payload);
@@ -212,6 +236,7 @@
       }
       await resync();
     } catch (err) { setError(err.message); }
+    });
   }
 
   function createOptionEditors(labels) {
@@ -236,11 +261,28 @@
     list.replaceChildren();
     for (const member of members) {
       const item = el('li', undefined, 'member-chip');
-      const dot = document.createElement('span'); dot.className = 'member-dot'; dot.style.backgroundColor = member.active ? member.color : '#8a8f98'; dot.textContent = (member.name || '?').slice(0, 1).toUpperCase();
-      item.append(dot, el('span', `${member.name}${member.active ? '' : ' (former member)'}`));
+      const initials = (member.name || '?').trim().split(/\s+/).map(part => part[0] || '').slice(0, 2).join('').toUpperCase();
+      const dot = el('span', initials, 'member-avatar');
+      dot.style.backgroundColor = member.active ? member.color : '#8a8f98';
+      if (member.picture) {
+        try {
+          const pictureUrl = new URL(member.picture, window.location.origin);
+          if (pictureUrl.protocol === 'https:') {
+            const image = document.createElement('img');
+            image.className = 'member-avatar';
+            image.src = pictureUrl.href;
+            image.alt = '';
+            image.referrerPolicy = 'no-referrer';
+            image.addEventListener('error', () => image.replaceWith(dot), {once: true});
+            item.append(image);
+          }
+        } catch (_) { /* Use initials when a profile photo URL is invalid. */ }
+      }
+      if (!item.children.length) item.append(dot);
+      item.append(el('span', `${member.name}${member.active ? '' : ' (former member)'}`));
       if (member.active && member.role !== 'owner') {
         const remove = el('button', 'Remove'); remove.type = 'button';
-        remove.addEventListener('click', () => changeMember(member.user_id, 'DELETE'));
+        remove.addEventListener('click', () => changeMemberWithLoading(remove, member.user_id, 'DELETE'));
         item.append(remove);
       }
       list.append(item);
@@ -248,10 +290,15 @@
   }
 
   async function changeMember(userId, method) {
+
     const response = await fetch(`${api}/conversations/${encodeURIComponent(conversationId)}/members/${encodeURIComponent(userId)}`, {method, headers: {'X-CSRF-Token': csrf}});
     const body = response.status === 204 ? {} : await response.json();
     if (!response.ok) { setError(body.error || 'Could not update members.'); return; }
     await resync();
+  }
+
+  async function changeMemberWithLoading(button, userId, method) {
+    await window.FlutuAction.run(button, async () => changeMember(userId, method));
   }
 
   async function loadMemberPicker() {
@@ -395,31 +442,46 @@
     const labels = [...optionsEditor.querySelectorAll('input')].map(input => input.value).concat('');
     createOptionEditors(labels);
   });
-  document.getElementById('send-question').addEventListener('click', () => {
+  document.getElementById('send-question').addEventListener('click', event => {
     const options = [...optionsEditor.querySelectorAll('input')].map(input => input.value);
-    emitAck('create_question', {conversation_id: conversationId, text: document.getElementById('question-text').value, options, ...(followUpOption ? {parent_option_id: followUpOption} : {})});
+    emitAck('create_question', {conversation_id: conversationId, text: document.getElementById('question-text').value, options, ...(followUpOption ? {parent_option_id: followUpOption} : {})}, event.currentTarget);
   });
   document.getElementById('answer-form').addEventListener('submit', event => {
     event.preventDefault();
+    const submitButton = event.submitter || event.currentTarget.querySelector('[type="submit"]');
     const optionId = new FormData(event.currentTarget).get('option_id');
-    performAction('submit_answer', {question_id: answerDialog.dataset.questionId, option_id: optionId})
-      .then(() => { answerDialog.close(); return resync(); })
-      .catch(err => { document.getElementById('answer-error').textContent = err.message; });
+    window.FlutuAction.run(submitButton, async () => {
+      try {
+        await performAction('submit_answer', {question_id: answerDialog.dataset.questionId, option_id: optionId});
+        answerDialog.close();
+        await resync();
+      } catch (err) { document.getElementById('answer-error').textContent = err.message; }
+    });
   });
   document.getElementById('cancel-answer').addEventListener('click', () => answerDialog.close());
-  document.getElementById('members-toggle').addEventListener('click', async () => {
+  document.getElementById('members-toggle').addEventListener('click', async event => {
+    const toggle = event.currentTarget;
     membersPanel.hidden = !membersPanel.hidden;
+    toggle.setAttribute('aria-expanded', String(!membersPanel.hidden));
     if (!membersPanel.hidden) await loadMemberPicker();
   });
   document.getElementById('member-picker').addEventListener('change', async event => {
     if (!event.target.matches('input[type=checkbox]:checked')) return;
-    const response = await fetch(`${api}/conversations/${encodeURIComponent(conversationId)}/members`, {
-      method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf},
-      body: JSON.stringify({user_ids: [event.target.value]}),
-    });
-    const body = await response.json();
-    if (!response.ok) setError(body.error || 'Could not add member.'); else await resync();
-    event.target.checked = false;
+    const checkbox = event.target;
+    checkbox.disabled = true;
+    try {
+      const response = await fetch(`${api}/conversations/${encodeURIComponent(conversationId)}/members`, {
+        method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf},
+        body: JSON.stringify({user_ids: [checkbox.value]}),
+      });
+      const body = await response.json();
+      if (!response.ok) setError(body.error || 'Could not add member.'); else await resync();
+    } catch (err) {
+      setError(err.message || 'Could not add member.');
+    } finally {
+      checkbox.checked = false;
+      checkbox.disabled = false;
+    }
   });
 
   createOptionEditors(['Yes', 'No']);

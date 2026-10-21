@@ -38,6 +38,8 @@
       p, li { color: var(--muted); line-height: 1.65; }
       .button { display: inline-flex; align-items: center; justify-content: center; gap: 10px; width: 100%; margin-top: 14px; padding: 14px 18px; border: 0; border-radius: 12px; background: linear-gradient(135deg, #4f6fff, #6a8dff); color: white; font: inherit; font-weight: 700; text-decoration: none; cursor: pointer; }
       .button:hover { background: #2d4ed0; }
+      .button:disabled, button[aria-busy="true"] { opacity: .58; cursor: wait; }
+      .button[aria-busy="true"] { pointer-events: none; }
       .button-secondary { background: var(--surface-solid); border: 1px solid var(--border); color: var(--text); }
       .button-secondary:hover { background: var(--surface-muted); }
       .back-link { display: inline-block; margin-top: 24px; font-weight: 700; text-decoration: none; }
@@ -106,6 +108,7 @@
   <body>
     {% block content %}{% endblock %}
     {% block scripts %}{% endblock %}
+    <script src="{{ url_for('static', filename='action-loading.js') }}" defer></script>
     {% if session.get('user') %}
       <div id="location-sharing-config"
            data-status-url="{{ url_for('main.api_location_status') }}"

@@ -139,22 +139,21 @@
   search.addEventListener('input', renderContacts);
   document.getElementById('create-form').addEventListener('submit', async event => {
     event.preventDefault();
-    const button = event.submitter;
-    button.disabled = true;
-    try {
-      const member_user_ids = [...picker.querySelectorAll('input:checked')].map(input => input.value);
-      const response = await fetch(`${api}/conversations`, {
-        method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf},
-        body: JSON.stringify({title: document.getElementById('conversation-title').value, member_user_ids}),
-      });
-      const body = await response.json();
-      if (!response.ok) throw new Error(body.error || 'Could not create conversation.');
-      window.location.assign(`/chat/${encodeURIComponent(body.conversation_id)}`);
-    } catch (err) {
-      document.getElementById('create-error').textContent = err.message;
-    } finally {
-      button.disabled = false;
-    }
+    const form = event.currentTarget;
+    await window.FlutuAction.run(event.submitter || form.querySelector('[type="submit"]'), async () => {
+      try {
+        const member_user_ids = [...picker.querySelectorAll('input:checked')].map(input => input.value);
+        const response = await fetch(`${api}/conversations`, {
+          method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf},
+          body: JSON.stringify({title: document.getElementById('conversation-title').value, member_user_ids}),
+        });
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error || 'Could not create conversation.');
+        window.location.assign(`/chat/${encodeURIComponent(body.conversation_id)}`);
+      } catch (err) {
+        document.getElementById('create-error').textContent = err.message;
+      }
+    });
   });
 
   loadConversations().catch(err => { error.textContent = err.message; });

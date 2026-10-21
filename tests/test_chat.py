@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 from app import create_app
 from app.chat.sockets import socketio
-from app.services.chat import validate_question
+from app.services.chat import _serialize_member, validate_question
 
 
 class ChatTests(unittest.TestCase):
@@ -76,6 +76,23 @@ class ChatTests(unittest.TestCase):
             response = self.http.get("/chat/conversation-id")
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'data-realtime-mode="polling"', response.data)
+
+    def test_conversation_members_control_is_an_accessible_toggle(self):
+        self.sign_in()
+        with patch("app.chat.routes.service.is_active_member", return_value=True):
+            response = self.http.get("/chat/conversation-id")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'aria-expanded="false" aria-controls="members-panel"', response.data)
+
+    def test_member_snapshot_preserves_profile_photo_for_author_avatar(self):
+        member = _serialize_member({
+            "user_id": "google-user",
+            "name": "Test User",
+            "picture": "https://example.com/avatar.png",
+            "left_at": None,
+        })
+        self.assertEqual(member["picture"], "https://example.com/avatar.png")
+        self.assertTrue(member["active"])
 
     def test_chat_list_displays_private_channel_authorization_check(self):
         self.sign_in()

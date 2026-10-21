@@ -72,6 +72,7 @@ def _serialize_member(document):
     return {
         "user_id": document["user_id"],
         "name": document.get("name", "Former member"),
+        "picture": document.get("picture", ""),
         "color": document.get("color", "#8A8F98"),
         "role": document.get("role", "member"),
         "active": document.get("left_at") is None,
@@ -126,8 +127,13 @@ def addable_contacts(user_id, conversation_id=None):
 
 
 def _member_snapshot(user_id):
-    user = get_collection("users").find_one({"_id": user_id}, {"name": 1, "email": 1}) or {}
-    return user.get("name") or user.get("email") or "Flutu member"
+    user = get_collection("users").find_one(
+        {"_id": user_id}, {"name": 1, "email": 1, "picture": 1}
+    ) or {}
+    return {
+        "name": user.get("name") or user.get("email") or "Flutu member",
+        "picture": user.get("picture", ""),
+    }
 
 
 def _assign_color(members, conversation_id):
@@ -153,7 +159,7 @@ def _add_member(conversation_id, user_id, role="member"):
         "conversation_id": conversation_id,
         "user_id": user_id,
         "role": role,
-        "name": _member_snapshot(user_id),
+        **_member_snapshot(user_id),
         "color": color,
         "joined_at": now_value,
         "left_at": None,

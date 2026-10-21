@@ -62,6 +62,9 @@
       const count = document.getElementById("contact-count");
       const emptyState = document.getElementById("empty-state");
       const search = document.getElementById("contact-search");
+      const importContactsButton = document.getElementById("import-contacts");
+      const importVcfButton = document.getElementById("import-vcf");
+      const clearContactsButton = document.getElementById("clear-contacts");
       let contacts = [];
 
       async function request(url, options = {}) {
@@ -173,16 +176,16 @@
           remove.textContent = "Remove";
           remove.setAttribute("aria-label", `Remove ${contact.name}`);
           remove.addEventListener("click", async () => {
-            remove.disabled = true;
-            try {
-              await request(`${contactsApi}/${encodeURIComponent(contact.id)}`, { method: "DELETE" });
-              contacts = contacts.filter((saved) => saved.id !== contact.id);
-              status.textContent = "Contact removed.";
-              render();
-            } catch (error) {
-              status.textContent = error.message;
-              remove.disabled = false;
-            }
+            await window.FlutuAction.run(remove, async () => {
+              try {
+                await request(`${contactsApi}/${encodeURIComponent(contact.id)}`, { method: "DELETE" });
+                contacts = contacts.filter((saved) => saved.id !== contact.id);
+                status.textContent = "Contact removed.";
+                render();
+              } catch (error) {
+                status.textContent = error.message;
+              }
+            });
           });
           item.append(details, remove);
           list.append(item);
@@ -196,23 +199,26 @@
 
       document.getElementById("contact-form").addEventListener("submit", async (event) => {
         event.preventDefault();
-        const form = new FormData(event.currentTarget);
-        const contact = { name: form.get("name"), tel: form.get("tel"), email: form.get("email") };
-        if (!contact.tel && !contact.email) {
-          status.textContent = "Add a phone number or email address for this contact.";
-          return;
-        }
-        try {
-          const added = await createContacts([contact]);
-          event.currentTarget.reset();
-          status.textContent = added ? "Contact added." : "That contact is already in your list.";
-        } catch (error) {
-          status.textContent = error.message;
-        }
-        render();
+        const formElement = event.currentTarget;
+        await window.FlutuAction.run(event.submitter || formElement.querySelector('[type="submit"]'), async () => {
+          const form = new FormData(formElement);
+          const contact = { name: form.get("name"), tel: form.get("tel"), email: form.get("email") };
+          if (!contact.tel && !contact.email) {
+            status.textContent = "Add a phone number or email address for this contact.";
+            return;
+          }
+          try {
+            const added = await createContacts([contact]);
+            formElement.reset();
+            status.textContent = added ? "Contact added." : "That contact is already in your list.";
+          } catch (error) {
+            status.textContent = error.message;
+          }
+          render();
+        });
       });
 
-      document.getElementById("import-contacts").addEventListener("click", async () => {
+      importContactsButton.addEventListener("click", async () => window.FlutuAction.run(importContactsButton, async () => {
         if (!window.isSecureContext || !navigator.contacts || typeof navigator.contacts.select !== "function") {
           status.textContent = "Direct phone contact access is unavailable in this browser. Use Import .vcf file instead, or try a supported mobile browser over HTTPS.";
           return;
@@ -226,10 +232,10 @@
             ? "Import cancelled."
             : error.message || "Could not import contacts. Check browser permissions and try again.";
         }
-      });
+      }));
 
       const vcfFile = document.getElementById("vcf-file");
-      document.getElementById("import-vcf").addEventListener("click", () => vcfFile.click());
+      importVcfButton.addEventListener("click", () => vcfFile.click());
       vcfFile.addEventListener("change", async () => {
         const file = vcfFile.files[0];
         if (!file) return;
@@ -238,22 +244,24 @@
           vcfFile.value = "";
           return;
         }
-        try {
-          const parsed = parseVcard(await file.text());
-          if (!parsed.length) {
-            status.textContent = "No usable contacts found. Choose a valid .vcf contact export.";
-            return;
+        await window.FlutuAction.run(importVcfButton, async () => {
+          try {
+            const parsed = parseVcard(await file.text());
+            if (!parsed.length) {
+              status.textContent = "No usable contacts found. Choose a valid .vcf contact export.";
+              return;
+            }
+            const added = await createContacts(parsed.slice(0, 100));
+            status.textContent = `${added} contact${added === 1 ? "" : "s"} imported from file.`;
+          } catch (error) {
+            status.textContent = error.message || "Could not import that .vcf file.";
+          } finally {
+            vcfFile.value = "";
           }
-          const added = await createContacts(parsed.slice(0, 100));
-          status.textContent = `${added} contact${added === 1 ? "" : "s"} imported from file.`;
-        } catch (error) {
-          status.textContent = error.message || "Could not import that .vcf file.";
-        } finally {
-          vcfFile.value = "";
-        }
+        });
       });
 
-      document.getElementById("clear-contacts").addEventListener("click", async () => {
+      clearContactsButton.addEventListener("click", async () => window.FlutuAction.run(clearContactsButton, async () => {
         if (!contacts.length || !window.confirm("Remove all your saved contacts?")) return;
         try {
           await request(contactsApi, { method: "DELETE" });
@@ -263,7 +271,7 @@
         } catch (error) {
           status.textContent = error.message;
         }
-      });
+      }));
 
       search.addEventListener("input", render);
       request(contactsApi)

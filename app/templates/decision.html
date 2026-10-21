@@ -32,21 +32,20 @@
 
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
-      button.disabled = true;
-      answer.textContent = "Getting a result…";
-      delete answer.dataset.state;
-      try {
-        const response = await fetch("{{ url_for('main.api_decision') }}", { method: "POST" });
-        const decision = await response.json();
-        if (!response.ok) throw new Error(decision.error || "Could not get a decision.");
-        answer.textContent = decision.go_right ? "Go right →" : "Go left ←";
-        answer.dataset.state = String(decision.go_right);
-      } catch (error) {
-        answer.textContent = error.message;
-        answer.dataset.state = "error";
-      } finally {
-        button.disabled = false;
-      }
+      await window.FlutuAction.run(button, async () => {
+        answer.textContent = "Getting a result…";
+        delete answer.dataset.state;
+        try {
+          const response = await fetch("{{ url_for('main.api_decision') }}", { method: "POST" });
+          const decision = await response.json();
+          if (!response.ok) throw new Error(decision.error || "Could not get a decision.");
+          answer.textContent = decision.go_right ? "Go right →" : "Go left ←";
+          answer.dataset.state = String(decision.go_right);
+        } catch (error) {
+          answer.textContent = error.message;
+          answer.dataset.state = "error";
+        }
+      });
     });
   </script>
 {% endblock %}

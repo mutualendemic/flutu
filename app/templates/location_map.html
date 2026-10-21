@@ -223,7 +223,7 @@
           button.type = 'button';
           button.textContent = label;
           if (danger) button.style.color = '#b42318';
-          button.addEventListener('click', action);
+          button.addEventListener('click', () => window.FlutuAction.run(button, action));
           actions.append(button);
         });
         li.append(actions);
@@ -466,7 +466,7 @@
       privateLocationTimer = null;
     }
 
-    retryOwnLocationButton.addEventListener('click', updatePrivateLocation);
+    retryOwnLocationButton.addEventListener('click', () => window.FlutuAction.run(retryOwnLocationButton, updatePrivateLocation));
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') updatePrivateLocation();
     });
@@ -512,18 +512,20 @@
 
     document.getElementById('request-form').addEventListener('submit', async event => {
       event.preventDefault();
-      const contactId = document.getElementById('contact-select').value;
-      const notice = document.getElementById('request-message');
-      try {
-        const result = await callApi(api.requests, { method: 'POST', body: JSON.stringify({ contact_id: contactId }) });
-        message(notice, result.created ? 'Request sent. It will be visible when the contact next opens Flutu.' : 'A request is already pending.');
-        await loadOverview();
-      } catch (error) { message(notice, error.message, true); }
+      const form = event.currentTarget;
+      await window.FlutuAction.run(event.submitter || form.querySelector('[type="submit"]'), async () => {
+        const contactId = document.getElementById('contact-select').value;
+        const notice = document.getElementById('request-message');
+        try {
+          const result = await callApi(api.requests, { method: 'POST', body: JSON.stringify({ contact_id: contactId }) });
+          message(notice, result.created ? 'Request sent. It will be visible when the contact next opens Flutu.' : 'A request is already pending.');
+          await loadOverview();
+        } catch (error) { message(notice, error.message, true); }
+      });
     });
 
 
-    toggleSharingButton.addEventListener('click', async () => {
-      toggleSharingButton.disabled = true;
+    toggleSharingButton.addEventListener('click', async () => window.FlutuAction.run(toggleSharingButton, async () => {
       try {
         let position = null;
         if (!sharingEnabled) {
@@ -549,10 +551,9 @@
         await loadOverview();
       } catch (error) {
         message(shareMessage, error.message, true);
-        toggleSharingButton.disabled = sharingCount === 0;
       }
-    });
-    stopAllButton.addEventListener('click', async () => {
+    }, {disabledAfter: () => sharingCount === 0}));
+    stopAllButton.addEventListener('click', async () => window.FlutuAction.run(stopAllButton, async () => {
       if (!window.confirm('Revoke location access for everyone and stop sharing?')) return;
       try {
         await callApi(api.shares, { method: 'DELETE' });
@@ -561,7 +562,7 @@
         message(shareMessage, 'Sharing stopped for everyone.');
         await loadOverview();
       } catch (error) { message(shareMessage, error.message, true); }
-    });
+    }, {disabledAfter: () => sharingCount === 0}));
 
     async function loadContacts() {
       const select = document.getElementById('contact-select');

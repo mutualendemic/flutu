@@ -21,6 +21,9 @@
   .composer-tools .button { width:auto; }
   .member-list { display:flex; flex-wrap:wrap; gap:8px; padding:0; list-style:none; }
   .member-chip { display:flex; align-items:center; gap:7px; padding:6px 10px; border:1px solid var(--border); border-radius:999px; color:var(--text); }
+  .member-avatar, .question-author-avatar { width:34px; height:34px; flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; object-fit:cover; background:var(--surface-solid); color:var(--text); font-size:.8rem; font-weight:800; }
+  .question-author { display:flex; align-items:center; gap:10px; margin:8px 0 12px; }
+  .question-author p { margin:0; }
   .member-chip button { border:0; background:transparent; color:#b42318; font-weight:700; cursor:pointer; }
   .answer-dialog { width:min(100% - 24px,500px); border:1px solid var(--border); border-radius:20px; background:var(--surface); color:var(--text); padding:24px; }
   .answer-dialog::backdrop { background:#10182899; }
@@ -31,7 +34,7 @@
 {% endblock %}
 {% block content %}
 <main class="card conversation-page" data-conversation-id="{{ conversation_id }}" data-csrf="{{ csrf_token() }}" data-realtime-mode="{{ chat_realtime_mode }}">
-  <header class="conversation-top"><div><p class="eyebrow">Branching chat</p><h1 id="conversation-title">Conversation</h1></div><div class="conversation-actions"><span id="connection-status" class="connection" data-connected="false" role="status">Connecting</span><button id="members-toggle" class="button button-secondary" type="button">Members</button></div></header>
+  <header class="conversation-top"><div><p class="eyebrow">Branching chat</p><h1 id="conversation-title">Conversation</h1></div><div class="conversation-actions"><span id="connection-status" class="connection" data-connected="false" role="status">Connecting</span><button id="members-toggle" class="button button-secondary" type="button" aria-expanded="false" aria-controls="members-panel">Members</button></div></header>
   <div id="graph" role="img" aria-label="Live conversation question graph"></div>
   <section id="details" class="detail-panel" aria-live="polite"><h2>Select a question or option</h2><p>Questions and votes appear here as text as well as in the graph.</p></section>
   <section class="composer" aria-labelledby="composer-title"><h2 id="composer-title">Ask a question</h2><label for="question-text">Question</label><textarea id="question-text" maxlength="280" rows="2" placeholder="What should we decide?"></textarea><div id="option-editors"></div><div class="composer-tools"><button id="add-option" class="button button-secondary" type="button">Add option</button><button id="send-question" class="button" type="button">Send question</button></div><p id="chat-error" class="error" role="alert"></p></section>
