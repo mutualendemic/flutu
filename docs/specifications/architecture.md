@@ -9,6 +9,7 @@ This specification describes decisions shared across pages and APIs, as reflecte
 - The local server uses `127.0.0.1:8000`. The production container uses Gunicorn on `0.0.0.0` and the port defined by `PORT`; do not expose local behavior to the network unless explicitly required.
 - Vercel publishes the application through the `api/index.py` adapter and `vercel.json`.
 - The version shown on sign-in uses the build SHA injected through the environment (`FLUTU_BUILD_COMMIT`, `VERCEL_GIT_COMMIT_SHA`, `GITHUB_SHA`, `SOURCE_VERSION`), truncated to 12 characters. Without a build SHA, configuration tries to obtain the local Git commit and uses `unknown` if it cannot.
+- All pages automatically follow the device's `prefers-color-scheme` setting. Shared design tokens in `base.html` provide light and dark palettes, and the browser chrome theme color and Leaflet controls follow the same preference; there is no separate theme toggle or stored override.
 
 ## Session and identity
 

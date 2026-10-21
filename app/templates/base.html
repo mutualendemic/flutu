@@ -3,22 +3,43 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#f3f7ff" />
+    <meta name="theme-color" content="#f3f7ff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0b1220" media="(prefers-color-scheme: dark)" />
     <title>{% block title %}Flutu{% endblock %}</title>
     <link rel="icon" href="{{ url_for('static', filename='logo.svg') }}" type="image/svg+xml" />
     <style>
-      :root { font-family: Arial, Helvetica, sans-serif; color: #14213d; background: #f3f7ff; }
+      :root {
+        color-scheme: light;
+        --page-bg: #f3f7ff;
+        --page-glow: #f9fbff;
+        --page-mid: #eaf3ff;
+        --surface: rgba(255,255,255,.96);
+        --surface-solid: #fff;
+        --surface-muted: #fbfcff;
+        --text: #14213d;
+        --muted: #53627b;
+        --border: #dfe8ff;
+        --input-border: #cfd7e6;
+        --input-bg: #fff;
+        --link: #3655d4;
+        --eyebrow: #4f6fff;
+        --code-bg: #f0f3fa;
+        --shadow: rgba(69,91,157,.16);
+        font-family: Arial, Helvetica, sans-serif;
+        color: var(--text);
+        background: var(--page-bg);
+      }
       * { box-sizing: border-box; }
-      body { min-height: 100vh; margin: 0; padding: 24px; background: radial-gradient(circle at top left, #f9fbff, #eaf3ff 35%, #f3f7ff 78%); }
-      a { color: #3655d4; }
-      .card { width: min(100%, 780px); margin: 0 auto; padding: clamp(24px, 5vw, 40px); border: 1px solid #dfe8ff; border-radius: 26px; background: rgba(255,255,255,.96); box-shadow: 0 20px 55px rgba(69,91,157,.16); }
-      .eyebrow { margin: 0 0 10px; color: #4f6fff; font-size: .8rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+      body { min-height: 100vh; margin: 0; padding: 24px; background: radial-gradient(circle at top left, var(--page-glow), var(--page-mid) 35%, var(--page-bg) 78%); }
+      a { color: var(--link); }
+      .card { width: min(100%, 780px); margin: 0 auto; padding: clamp(24px, 5vw, 40px); border: 1px solid var(--border); border-radius: 26px; background: var(--surface); box-shadow: 0 20px 55px var(--shadow); }
+      .eyebrow { margin: 0 0 10px; color: var(--eyebrow); font-size: .8rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
       h1 { margin: 0 0 12px; font-size: clamp(1.8rem, 5vw, 2.5rem); letter-spacing: -.04em; }
-      p, li { color: #53627b; line-height: 1.65; }
+      p, li { color: var(--muted); line-height: 1.65; }
       .button { display: inline-flex; align-items: center; justify-content: center; gap: 10px; width: 100%; margin-top: 14px; padding: 14px 18px; border: 0; border-radius: 12px; background: linear-gradient(135deg, #4f6fff, #6a8dff); color: white; font: inherit; font-weight: 700; text-decoration: none; cursor: pointer; }
       .button:hover { background: #2d4ed0; }
-      .button-secondary { background: white; border: 1px solid #dfe4ec; color: #24292f; }
-      .button-secondary:hover { background: #f6f8fa; }
+      .button-secondary { background: var(--surface-solid); border: 1px solid var(--border); color: var(--text); }
+      .button-secondary:hover { background: var(--surface-muted); }
       .back-link { display: inline-block; margin-top: 24px; font-weight: 700; text-decoration: none; }
       .back-link:hover { text-decoration: underline; }
       .error { margin: 12px 0; color: #b42318; }
@@ -28,8 +49,58 @@
       .sharing-status.is-sharing::before { background: #12b76a; box-shadow: 0 0 0 3px #d1fadf; }
       .sharing-status.is-paused { border-color: #fedf89; background: #fffaeb; color: #93370d; }
       .sharing-status.is-paused::before { background: #f79009; }
-      code { padding: 2px 5px; border-radius: 5px; background: #f0f3fa; }
+      code { padding: 2px 5px; border-radius: 5px; background: var(--code-bg); }
       {% block styles %}{% endblock %}
+      @media (prefers-color-scheme: dark) {
+        :root {
+          color-scheme: dark;
+          --page-bg: #0b1220;
+          --page-glow: #16233a;
+          --page-mid: #111b2d;
+          --surface: rgba(21,31,50,.97);
+          --surface-solid: #17243a;
+          --surface-muted: #1d2b42;
+          --text: #e6edf7;
+          --muted: #b1bfd3;
+          --border: #304058;
+          --input-border: #40516c;
+          --input-bg: #101a2b;
+          --link: #a8bdff;
+          --eyebrow: #a8bdff;
+          --code-bg: #26344c;
+          --shadow: rgba(0,0,0,.38);
+        }
+        body { background: radial-gradient(circle at top left, var(--page-glow), var(--page-mid) 42%, var(--page-bg) 82%); }
+        .card, .panel, .contact-card, .profile-note, .note, .item { background-color: var(--surface); border-color: var(--border); }
+        .panel, .contact-card, .profile-note, .item { background-color: var(--surface-muted); }
+        .manual-form input, .search, select, input, textarea {
+          border-color: var(--input-border);
+          background-color: var(--input-bg);
+          color: var(--text);
+        }
+        .manual-form label, .count, .subtle, .map-caption, .item-copy span, .notice, .empty, .build-version { color: var(--muted); }
+        input::placeholder, textarea::placeholder { color: #95a5bd; }
+        .button-secondary { background: var(--surface-solid); border-color: var(--border); color: var(--text); }
+        .button-secondary:hover, .item-actions button:hover { background: var(--surface-muted); }
+        .logout { background: #263859; color: #dce6ff; }
+        .avatar { border-color: var(--border); background: #1d2b42; color: #b8c8ff; }
+        .note { color: var(--text); }
+        .empty { border-color: var(--border); }
+        .remove-contact { border-color: #70423f; background: var(--surface-solid); color: #ffaaa3; }
+        .item-actions button { border-color: var(--border); background: var(--surface-solid); color: var(--text); }
+        .sharing-status { border-color: var(--border); background: var(--surface-muted); color: var(--muted); }
+        .sharing-status.is-sharing { border-color: #176b4a; background: #123b30; color: #8ce0b1; }
+        .sharing-status.is-paused { border-color: #765520; background: #423219; color: #ffd27d; }
+        .error, .notice.error, #answer[data-state="error"] { color: #ff9b93; }
+        .notice.success, #answer[data-state="true"] { color: #8ce0b1; }
+        #answer[data-state="false"] { color: #ffc078; }
+        .leaflet-popup-content-wrapper, .leaflet-popup-tip, .leaflet-control-zoom a, .leaflet-control-attribution {
+          background: #17243a;
+          color: var(--text);
+        }
+        .leaflet-control-zoom a { border-color: var(--border); }
+        .leaflet-control-attribution a { color: var(--link); }
+      }
     </style>
   </head>
   <body>

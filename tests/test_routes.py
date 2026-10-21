@@ -133,6 +133,9 @@ class RouteTests(unittest.TestCase):
         self.assertIn(b"Location map", dashboard.data)
         self.assertIn(b"My profile", dashboard.data)
         self.assertIn(b"location-sharing-indicator", dashboard.data)
+        self.assertIn(b"prefers-color-scheme: dark", dashboard.data)
+        self.assertIn(b"color-scheme: dark", dashboard.data)
+        self.assertIn(b"#0b1220", dashboard.data)
         self.assertNotIn(b"Check a number set", dashboard.data)
 
         contacts = self.client.get("/contacts")

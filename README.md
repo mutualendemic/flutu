@@ -2,6 +2,8 @@
 
 Flutu is a small Flask application with Google-only OAuth sign-in, a protected dashboard, a personal contacts list, private OpenStreetMap-based location sharing, and a quantum-random direction demo.
 
+The interface automatically follows the device's light or dark appearance preference, including system browser controls and the map's interface elements.
+
 ## Links
 
 - **Demo:** [https://ux9.eu](https://ux9.eu)
