@@ -158,7 +158,20 @@ def socket_create_question(user, data):
     conversation_id = data.get("conversation_id")
     if not isinstance(conversation_id, str) or not service.is_active_member(conversation_id, user["sub"]):
         return _error("forbidden")
-    return {"ok": False, "error": "branch_mode_locked"}
+    try:
+        question_id = service.create_question(
+            conversation_id,
+            user["sub"],
+            data.get("text"),
+            data.get("options"),
+            data.get("parent_option_id"),
+            data.get("allow_vote_change", True),
+        )
+        payload = service.question_event_payload(conversation_id, question_id)
+        emit_to_active_members("question_created", payload, conversation_id)
+        return {"ok": True, "question_id": question_id}
+    except (ValueError, PermissionError) as error:
+        return _error(str(error))
 
 
 @socketio.on("submit_answer", namespace="/chat")

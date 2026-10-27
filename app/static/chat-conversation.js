@@ -21,6 +21,7 @@
   let polling = false;
   let selectedOption;
   let followUpOption;
+  let canCreateRoot = false;
 
   function el(tag, text, className) {
     const element = document.createElement(tag);
@@ -38,6 +39,7 @@
   function cyNode(data) {
     return {group: 'nodes', data: {...data}, position: position(data)};
   }
+
   function cyEdge(data) {
     return {group: 'edges', data: {...data, id: `${data.kind}:${data.from}:${data.to}`, source: data.from, target: data.to}};
   }
@@ -59,6 +61,7 @@
         {selector: 'node[type="question"][status="closed"]', style: {'background-color': '#f2f4f7', 'border-color': '#98a2b3'}},
         {selector: 'node[type="author_avatar"]', style: {label: 'data(label)', shape: 'ellipse', width: 34, height: 34, 'font-size': 9, 'font-weight': 700, color: '#fff', 'text-valign': 'center', 'text-halign': 'center', 'background-color': '#53627b', 'background-image': 'data(picture)', 'background-fit': 'cover', 'background-clip': 'node', 'border-width': 2, 'border-color': '#ffffff'}},
         {selector: 'node[type="option"]', style: {label: 'data(display)', shape: 'round-rectangle', width: 132, height: 40, 'font-size': 10, color: '#344054', 'background-color': '#fff7e6', 'border-width': 1, 'border-color': '#f79009', 'text-valign': 'center', 'text-halign': 'center'}},
+        {selector: 'node[type="option"][quantum_selected]', style: {'border-width': 3, 'border-color': '#12b76a', 'background-color': '#ecfdf3'}},
         {selector: 'node[type="option"][is_winner]', style: {'border-width': 3, 'border-color': '#12b76a', 'background-color': '#ecfdf3'}},
         {selector: 'node[type="option"][is_tied]', style: {'border-width': 3, 'border-color': '#12b76a'}},
         {selector: 'node[type="end"]', style: {label: 'data(label)', shape: 'ellipse', width: 16, height: 16, 'font-size': 8, color: '#667085', 'background-color': '#98a2b3'}},
@@ -74,6 +77,7 @@
   function applyGraph(data) {
     if (!data || !Array.isArray(data.nodes)) return;
     snapshot = data;
+    canCreateRoot = data.can_create_initial_question === true;
     document.getElementById('conversation-title').textContent = data.title || 'Conversation';
     ensureGraph();
     const graphNodes = data.nodes.flatMap(node => {
@@ -99,7 +103,9 @@
     const nextNodeIds = new Set();
     for (const node of graphNodes) {
       nextNodeIds.add(node.id);
-      node.display = node.type === 'option' ? `${node.label} · ${node.count}${node.count === 1 ? ' vote' : ' votes'}` : node.label;
+      node.display = node.type === 'option'
+        ? `${node.label} · ${node.quantum_selected ? 'selected path' : 'not selected'}`
+        : node.label;
       nodes.set(node.id, node);
       const existing = graph.getElementById(node.id);
       if (existing.length) {
@@ -120,15 +126,24 @@
     }
     graph.edges().forEach(edge => { if (!nextEdgeIds.has(edge.id())) edge.remove(); });
     graph.layout({name: 'preset', fit: false}).run();
+    if (!data.nodes.length) {
+      details.replaceChildren(
+        el('h2', canCreateRoot ? 'Start the conversation' : 'Waiting for the first question'),
+        el('p', canCreateRoot ? 'Create the opening question and provide the answer options. The quantum selector will choose the path.' : 'The conversation creator will add the opening question. After that, every participant can add follow-up questions to the quantum-selected option.'),
+      );
+    }
     const composer = document.querySelector('.composer');
     const banner = document.getElementById('quantum-branch-banner');
-    if (data.branch_mode === 'quantum_random') {
-      if (composer) composer.hidden = true;
-      if (banner) banner.classList.add('visible');
-    } else {
-      if (composer) composer.hidden = false;
-      if (banner) banner.classList.remove('visible');
-    }
+    if (composer) composer.hidden = !(canCreateRoot || followUpOption);
+    if (banner) banner.classList.toggle('visible', data.branch_mode === 'quantum_random');
+    document.getElementById('send-question').textContent = followUpOption ? 'Send follow-up' : 'Create first question';
+    document.getElementById('add-option').hidden = Boolean(followUpOption);
+    optionsEditor.hidden = Boolean(followUpOption);
+    document.getElementById('cancel-question').hidden = !followUpOption;
+    const canManageMembers = data.can_manage_members === true;
+    document.querySelector('label[for="member-search"]').hidden = !canManageMembers;
+    document.getElementById('member-search').hidden = !canManageMembers;
+    document.getElementById('member-picker').hidden = !canManageMembers;
     renderMembers(data.members || []);
   }
 
@@ -170,7 +185,7 @@
     const author = el('p', `Asked by ${member?.name || memberName(node.author_user_id)} · ${node.status}`);
     authorRow.append(author);
     details.append(title, authorRow);
-    if (node.status === 'open') {
+    if (node.status === 'open' && snapshot?.branch_mode !== 'quantum_random') {
       const close = el('button', 'Close question', 'button button-secondary');
       close.type = 'button';
       close.addEventListener('click', async () => {
@@ -205,25 +220,32 @@
     details.append(el('h2', value.label));
     details.append(el('p', `${value.count} ${value.count === 1 ? 'vote' : 'votes'}`));
     const question = nodes.get(`q${value.question_id}`);
-    if (question?.status === 'open') {
+    if (question?.status === 'open' && snapshot?.branch_mode !== 'quantum_random') {
       const answer = el('button', 'Choose this option', 'button');
       answer.type = 'button';
       answer.addEventListener('click', () => openAnswer(question, value));
       details.append(answer);
     }
-    if (snapshot?.branch_mode !== 'quantum_random') {
+    if (snapshot?.branch_mode === 'quantum_random' && value.quantum_selected) {
+      details.append(el('p', 'Chosen by the quantum selector; this is the active path.'));
       const follow = el('button', 'Follow up', 'button button-secondary');
       follow.type = 'button';
       follow.addEventListener('click', () => {
         followUpOption = value.option_id;
         document.getElementById('composer-title').textContent = `Follow up on “${value.label}”`;
+        document.getElementById('question-text').value = '';
+        document.querySelector('.composer').hidden = false;
+        document.getElementById('cancel-question').hidden = false;
+        document.getElementById('send-question').textContent = 'Send follow-up';
+        document.getElementById('add-option').hidden = false;
+        optionsEditor.hidden = false;
         document.getElementById('question-text').focus();
-        window.scrollTo({top: document.querySelector('.composer').offsetTop, behavior: 'smooth'});
+        document.querySelector('.composer').scrollIntoView({behavior: 'smooth', block: 'center'});
       });
       details.append(follow);
+    } else if (snapshot?.branch_mode === 'quantum_random') {
+      details.append(el('p', 'Not selected by the quantum selector; follow-ups can only continue from the selected option.'));
     }
-    const names = value.voter_user_ids.map((id, index) => value.voter_names[index] || memberName(id));
-    details.append(el('p', `Voters: ${names.length ? names.join(', ') : 'No votes yet'}`));
   }
 
   function openAnswer(question, selected) {
@@ -238,7 +260,7 @@
       const radio = document.createElement('input');
       radio.type = 'radio'; radio.name = 'option_id'; radio.value = option.option_id; radio.required = true;
       radio.checked = option.option_id === choice || option.is_my_vote === true;
-      if (snapshot?.branch_mode === 'quantum_random' && option.option_id !== branchSelection) {
+      if (snapshot?.branch_mode === 'quantum_random') {
         radio.disabled = true;
       }
       label.append(radio, document.createTextNode(`${option.label} (${option.count})`));
@@ -285,7 +307,7 @@
       if (event === 'create_question') {
         document.getElementById('question-text').value = '';
         followUpOption = undefined;
-        document.getElementById('composer-title').textContent = 'Ask a question';
+        document.getElementById('composer-title').textContent = 'Start the conversation';
         createOptionEditors(['Yes', 'No']);
       }
       await resync();
@@ -500,6 +522,15 @@
     const options = [...optionsEditor.querySelectorAll('input')].map(input => input.value);
     emitAck('create_question', {conversation_id: conversationId, text: document.getElementById('question-text').value, options, ...(followUpOption ? {parent_option_id: followUpOption} : {})}, event.currentTarget);
   });
+  document.getElementById('cancel-question').addEventListener('click', () => {
+    followUpOption = undefined;
+    document.getElementById('composer-title').textContent = 'Start the conversation';
+    document.getElementById('question-text').value = '';
+    document.querySelector('.composer').hidden = !canCreateRoot;
+    document.getElementById('cancel-question').hidden = true;
+    document.getElementById('add-option').hidden = false;
+    optionsEditor.hidden = false;
+  });
   document.getElementById('answer-form').addEventListener('submit', event => {
     event.preventDefault();
     const submitButton = event.submitter || event.currentTarget.querySelector('[type="submit"]');
@@ -518,7 +549,7 @@
     membersPanel.hidden = !membersPanel.hidden;
     toggle.setAttribute('aria-expanded', String(!membersPanel.hidden));
     toggle.setAttribute('aria-checked', String(!membersPanel.hidden));
-    if (!membersPanel.hidden) await loadMemberPicker();
+    if (!membersPanel.hidden && snapshot?.can_manage_members) await loadMemberPicker();
   });
   document.getElementById('member-picker').addEventListener('change', async event => {
     if (!event.target.matches('input[type=checkbox]:checked')) return;

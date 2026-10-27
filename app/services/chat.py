@@ -257,7 +257,8 @@ def create_question(conversation_id, author_id, text, labels=None, parent_option
     if cid is None:
         raise ValueError("not_found")
     conversations, _, questions, options, _ = _collections()
-    if not conversations.find_one({"_id": cid, "archived_at": None, "deleted_at": None}):
+    conversation = conversations.find_one({"_id": cid, "archived_at": None, "deleted_at": None})
+    if not conversation:
         raise ValueError("not_found")
     parent = None
     if parent_option_id is not None:
@@ -268,7 +269,15 @@ def create_question(conversation_id, author_id, text, labels=None, parent_option
         parent_question = questions.find_one({"_id": parent["question_id"], "conversation_id": cid})
         if not parent_question or _depth(parent_question, options, {}) >= 3:
             raise ValueError("max_depth")
+        selected = _quantum_path_for_question(parent["question_id"])
+        if not selected or selected["_id"] != parent["_id"]:
+            raise ValueError("quantum_path_locked")
         parent_option_id = oid
+    else:
+        if author_id != conversation.get("created_by_user_id"):
+            raise PermissionError("forbidden")
+        if questions.find_one({"conversation_id": cid, "parent_option_id": None}, {"_id": 1}):
+            raise ValueError("root_question_exists")
     timestamp = now()
     doc = {
         "conversation_id": cid, "author_user_id": author_id, "text": text,
@@ -362,7 +371,14 @@ def _quantum_path_for_question(question_id):
     if len(candidates) == 1:
         selected = candidates[0]
     else:
-        selected = candidates[1] if choose_direction() else candidates[0]
+        bits_needed = (len(candidates) - 1).bit_length()
+        while True:
+            index = 0
+            for _ in range(bits_needed):
+                index = (index << 1) | int(choose_direction())
+            if index < len(candidates):
+                selected = candidates[index]
+                break
     questions.update_one(
         {
             "_id": qid,
@@ -545,6 +561,7 @@ def graph_payload(conversation_id, viewer_id=None):
     member_docs = list(members.find({"conversation_id": cid}))
     member_by_id = {item["user_id"]: _serialize_member(item) for item in member_docs}
     question_docs = list(questions.find({"conversation_id": cid}).sort([("created_at", ASCENDING), ("_id", ASCENDING)]))
+    has_root_question = any(not question.get("parent_option_id") for question in question_docs)
     option_docs = list(options.find({"conversation_id": cid}).sort([("position", ASCENDING), ("_id", ASCENDING)]))
     options_by_question = {}
     for option in option_docs:
@@ -631,6 +648,8 @@ def graph_payload(conversation_id, viewer_id=None):
         "conversation_id": str(cid), "title": conversation["title"],
         "members": [_serialize_member(item) for item in member_docs], "nodes": nodes, "edges": edges,
         "branch_mode": "quantum_random",
+        "can_create_initial_question": not has_root_question and conversation.get("created_by_user_id") == viewer_id,
+        "can_manage_members": conversation.get("created_by_user_id") == viewer_id,
     }
 
 

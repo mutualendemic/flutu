@@ -46,8 +46,19 @@
   <header class="conversation-top"><div><p class="eyebrow">Branching chat</p><h1 id="conversation-title">Conversation</h1></div><div class="conversation-actions"><span id="connection-status" class="connection" data-connected="false" role="status">Connecting</span><button id="members-toggle" class="members-toggle" type="button" role="switch" aria-checked="false" aria-expanded="false" aria-controls="members-panel"><span>Members</span><span class="members-switch-track" aria-hidden="true"><span class="members-switch-thumb"></span></span></button></div></header>
   <div id="graph" role="img" aria-label="Live conversation question graph"></div>
   <section id="details" class="detail-panel" aria-live="polite"><h2>Select a question or option</h2><p>Questions and votes appear here as text as well as in the graph.</p></section>
-  <div id="quantum-branch-banner" class="quantum-banner" aria-live="polite">Quantum mode is active: the IBM selector chooses the next branch, and the conversation follows that path only.</div>
-  <section class="composer" aria-labelledby="composer-title"><h2 id="composer-title">Quantum branch</h2><p>New questions are disabled in this view. The branch is chosen automatically and the user follows the selected answer.</p><p id="chat-error" class="error" role="alert"></p></section>
+  <div id="quantum-branch-banner" class="quantum-banner" aria-live="polite">The quantum selector chooses one answer path from each question. Participants can add follow-up questions only to the selected option.</div>
+  <section class="composer" aria-labelledby="composer-title" hidden>
+    <h2 id="composer-title">Start the conversation</h2>
+    <label for="question-text">Question</label>
+    <textarea id="question-text" maxlength="280" rows="2" placeholder="What should we decide?"></textarea>
+    <div id="option-editors"></div>
+    <div class="composer-tools">
+      <button id="add-option" class="button button-secondary" type="button">Add option</button>
+      <button id="send-question" class="button" type="button">Send question</button>
+      <button id="cancel-question" class="button button-secondary" type="button" hidden>Cancel</button>
+    </div>
+    <p id="chat-error" class="error" role="alert"></p>
+  </section>
   <section id="members-panel" class="members-panel" hidden><h2>Members</h2><ul id="member-list" class="member-list"></ul><label for="member-search">Add people from Contacts</label><input id="member-search" type="search" placeholder="Search contacts"><div id="member-picker" class="picker"></div></section>
   <a class="back-link" href="{{ url_for('chat.conversation_list_page') }}">Back to conversations</a>
 </main>

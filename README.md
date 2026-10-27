@@ -25,7 +25,7 @@ The interface automatically follows the device's light or dark appearance prefer
   ./.venv/bin/python -m pip install -r requirements.txt
   ```
 
-2. Copy `.env.example` to `.env` and fill in the Google OAuth client ID, client secret, a unique `FLASK_SECRET_KEY`, `FLUTU_GOOGLE_REDIRECT_URI`, the MongoDB Atlas values `MONGODB_URI` and `MONGODB_DATABASE`, and `IBM_QUANTUM_API_KEY`. Create the IBM API key in the IBM Quantum Platform dashboard; optionally set `IBM_QUANTUM_INSTANCE` to the instance CRN. Keep credentials private and never commit them. If the local runtime has no `/etc/resolv.conf`, `MONGODB_DNS_NAMESERVERS` supplies DNS servers for resolving Atlas `mongodb+srv` addresses; it is ignored whenever system DNS configuration exists.
+2. Copy `.env.example` to `.env` and fill in the Google OAuth client ID, client secret, a unique `FLASK_SECRET_KEY`, `FLUTU_GOOGLE_REDIRECT_URI`, and the MongoDB Atlas values `MONGODB_URI` and `MONGODB_DATABASE`. Set `IBM_QUANTUM_API_KEY` to a key from the IBM Quantum Platform dashboard: it is required for both `/api/decision` and quantum-selected chat branches. `IBM_QUANTUM_INSTANCE` is optional and selects an instance by CRN. Keep credentials private and never commit them. If the local runtime has no `/etc/resolv.conf`, `MONGODB_DNS_NAMESERVERS` supplies DNS servers for resolving Atlas `mongodb+srv` addresses; it is ignored whenever system DNS configuration exists.
    The app also accepts the standard Vercel/Google names (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `SECRET_KEY`) as fallbacks when those are configured instead.
 3. Add the exact redirect URI to the authorized redirect URIs in Google Cloud Console. For local development it is `http://127.0.0.1:8000/auth/google/callback`.
 4. Start the app with `bash start_server.sh`.
@@ -51,11 +51,11 @@ The repository includes a Vercel-compatible Flask export at `api/index.py`. Verc
    - `FLASK_SESSION_COOKIE_SECURE=true`
    - `MONGODB_URI` (Atlas connection string; server-side only)
    - `MONGODB_DATABASE` (for example, `flutu`)
-  - `IBM_QUANTUM_API_KEY` (server-side IBM Quantum API key)
-  - `IBM_QUANTUM_INSTANCE` (optional IBM Quantum instance CRN)
+    - `IBM_QUANTUM_API_KEY` (server-side key required for decisions and quantum chat branches)
+    - `IBM_QUANTUM_INSTANCE` (optional IBM Quantum instance CRN)
    - `SUPABASE_URL` and `SUPABASE_ANON_KEY` (the anon/publishable key is intended for browser use)
    - `SUPABASE_SERVICE_ROLE_KEY` (server-only secret; never expose it to the browser)
-  - `SUPABASE_JWT_SECRET` (the same project's legacy HS256 JWT signing secret; server-only, not the anon key, service-role key, or database password)
+    - `SUPABASE_JWT_SECRET` (the same project's legacy HS256 JWT signing secret; server-only, not the anon key, service-role key, or database password)
    - `CHAT_REALTIME_MODE=supabase`
 
 3. In Supabase Dashboard, open **SQL Editor → New query** and run this setup to enable RLS and add the topic allow-list policy:
@@ -177,7 +177,7 @@ The implementation decisions for cross-page architecture and each user-facing pa
 - **Import from phone** uses the browser Contact Picker API when available; support varies by mobile browser and it requires HTTPS. As a fallback, export contacts from the phone as a `.vcf`/vCard file and use **Import .vcf file**. The page also allows manual entry and search.
 - `/decision` is level 2; `/decision/info` is level 3 and returns to `/decision`.
 - The dashboard provides **Quantum path selector**, **My contacts**, **Location map**, and **My profile** options.
-- `/chat/` is a level-2 page linked from the dashboard. It lists conversations, creates conversations using account-linked Contacts, and links to each member-only graph at `/chat/<conversation_id>`. A conversation returns to its list. REST mutations require a session CSRF token. Socket handlers reuse the Google-authenticated Flask session, verify active membership for every event, and broadcast only to active per-user rooms. Quantum mode persists a random choice between the first two options on each question, restricts votes to that choice, and disables creating or editing questions. Former-member answers remain in graph history.
+- `/chat/` is a level-2 page linked from the dashboard. It lists conversations, creates conversations using account-linked Contacts, and links to each member-only graph at `/chat/<conversation_id>`. A conversation returns to its list. REST mutations require a session CSRF token. Socket handlers reuse the Google-authenticated Flask session, verify active membership for every event, and broadcast only to active per-user rooms. The creator writes one initial question with 2–10 options; IBM Quantum selects and persists a single option. Every active participant can then add a follow-up question to that selected option. Voting and manual question closing/editing are disabled in this quantum branch mode. Former-member answers remain in graph history.
 - Unauthenticated page requests redirect to sign-in. Protected APIs return JSON `401` without performing the requested action.
 
 ## APIs
@@ -188,7 +188,7 @@ Location sharing APIs also require a session and derive identities from it: `GET
 
 Chat APIs are under `/chat/api/`: list/create/delete conversations, graph snapshots, member add/remove, addable contacts, voting, and closing. Question creation and edit/delete endpoints are locked in quantum branch mode. Only a conversation's creator can permanently delete it; deletion removes its members, questions, options, and answers. Supabase Realtime Broadcast sends private invalidation events; Socket.IO remains available for self-hosted deployments. The app also supports REST polling as a fallback. For Socket.IO, use gevent Gunicorn, one worker per process, Redis shared among instances, sticky sessions, and WebSocket proxy upgrade support. Set the container's `PORT`; the Docker image binds to `0.0.0.0` while local development remains on `127.0.0.1`. Supabase JS 2.49.1, Socket.IO client 4.8.1, and Cytoscape 3.30.4 are pinned on jsDelivr. See [docs/specifications/pages/branching-chat.md](docs/specifications/pages/branching-chat.md).
 
-`POST /api/decision` consumes one bit from a MongoDB cache populated by 128-shot one-qubit Hadamard-and-measure jobs on operational IBM Quantum hardware. A new job is submitted only when no cached bits remain, so the first decision of a batch can wait for the hardware queue while later decisions use cached bits. Batches expire after 24 hours. Set `IBM_QUANTUM_API_KEY`; `IBM_QUANTUM_INSTANCE` is optional and selects a specific instance. A hardware result of `1` means right, and `0` means left:
+`POST /api/decision` consumes one bit from a MongoDB cache populated by 128-shot one-qubit Hadamard-and-measure jobs on operational IBM Quantum hardware. Quantum-selected chat branches use the same provider and cache. A new hardware job is submitted only when no cached bits remain, so the first decision or branch selection of a batch can wait for the hardware queue while later choices use cached bits. Batches expire after 24 hours. `IBM_QUANTUM_API_KEY` is required for both features; `IBM_QUANTUM_INSTANCE` is optional and selects a specific instance. For `/api/decision`, a hardware result of `1` means right, and `0` means left:
 
 ```json
 {"go_right": true}
