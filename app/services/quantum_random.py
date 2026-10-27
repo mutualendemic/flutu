@@ -1,6 +1,12 @@
 import os
 
 
+def _direction_from_measurement(bitstrings) -> bool:
+    if not bitstrings or bitstrings[0] not in {"0", "1"}:
+        raise ValueError("IBM Quantum returned an invalid measurement.")
+    return bitstrings[0] == "1"
+
+
 def choose_direction() -> bool:
     """Measure one Hadamard-prepared qubit on IBM Quantum hardware."""
     token = os.environ.get("IBM_QUANTUM_API_KEY")
@@ -29,8 +35,6 @@ def choose_direction() -> bool:
         sampler = SamplerV2(mode=backend)
         result = sampler.run([isa_circuit], shots=1).result()
         bitstrings = result[0].data.meas.get_bitstrings()
-        if not bitstrings or bitstrings[0] not in {"0", "1"}:
-            raise ValueError("IBM Quantum returned an invalid measurement.")
-        return bitstrings[0] == "1"
+        return _direction_from_measurement(bitstrings)
     except Exception as exc:
         raise RuntimeError("IBM Quantum random generation failed.") from exc

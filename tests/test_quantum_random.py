@@ -3,10 +3,14 @@ import sys
 import unittest
 from unittest.mock import Mock, patch
 
-from app.services.quantum_random import choose_direction
+from app.services.quantum_random import _direction_from_measurement, choose_direction
 
 
 class QuantumRandomTests(unittest.TestCase):
+    def test_measurement_bits_map_to_both_directions(self):
+        self.assertFalse(_direction_from_measurement(["0"]))
+        self.assertTrue(_direction_from_measurement(["1"]))
+
     def test_requires_ibm_quantum_api_key(self):
         with patch.dict(os.environ, {}, clear=True):
             with self.assertRaisesRegex(RuntimeError, "credentials are not configured"):
