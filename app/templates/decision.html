@@ -37,8 +37,20 @@
         delete answer.dataset.state;
         try {
           const response = await fetch("{{ url_for('main.api_decision') }}", { method: "POST" });
-          const decision = await response.json();
+          const responseText = await response.text();
+          let decision;
+          try {
+            decision = JSON.parse(responseText);
+          } catch {
+            throw new Error(
+              `The server returned a non-JSON response (HTTP ${response.status}). ` +
+              "Check the Vercel Function logs; the IBM Quantum job may have timed out."
+            );
+          }
           if (!response.ok) throw new Error(decision.error || "Could not get a decision.");
+          if (typeof decision.go_right !== "boolean") {
+            throw new Error("The server returned an invalid decision. Check the Vercel Function logs.");
+          }
           answer.textContent = decision.go_right ? "Go right →" : "Go left ←";
           answer.dataset.state = String(decision.go_right);
         } catch (error) {

@@ -151,6 +151,8 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(decision.status_code, 200)
         self.assertIn(b"/decision/info", decision.data)
         self.assertIn(b"/dashboard", decision.data)
+        self.assertIn(b"const responseText = await response.text()", decision.data)
+        self.assertIn(b"non-JSON response (HTTP", decision.data)
 
         info = self.client.get("/decision/info")
         self.assertEqual(info.status_code, 200)
@@ -215,6 +217,19 @@ class RouteTests(unittest.TestCase):
             response = self.client.post("/api/decision")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json(), {"go_right": True})
+
+    def test_decision_api_returns_json_when_quantum_provider_fails(self):
+        self.sign_in()
+        with patch(
+            "app.main.routes.choose_direction",
+            side_effect=RuntimeError("IBM Quantum job failed"),
+        ):
+            response = self.client.post("/api/decision")
+        self.assertEqual(response.status_code, 502)
+        self.assertEqual(
+            response.get_json(),
+            {"error": "Could not get a new decision right now."},
+        )
 
     def test_contacts_api_scopes_every_operation_to_signed_in_user(self):
         self.sign_in()
