@@ -188,7 +188,7 @@ Location sharing APIs also require a session and derive identities from it: `GET
 
 Chat APIs are under `/chat/api/`: list/create conversations, graph snapshots, member add/remove, addable contacts, question creation, voting, closing, and edit/delete unanswered questions. Supabase Realtime Broadcast sends private invalidation events; Socket.IO remains available for self-hosted deployments. The app also supports REST polling as a fallback. For Socket.IO, use gevent Gunicorn, one worker per process, Redis shared among instances, sticky sessions, and WebSocket proxy upgrade support. Set the container's `PORT`; the Docker image binds to `0.0.0.0` while local development remains on `127.0.0.1`. Supabase JS 2.49.1, Socket.IO client 4.8.1, and Cytoscape 3.30.4 are pinned on jsDelivr. See [docs/specifications/pages/branching-chat.md](docs/specifications/pages/branching-chat.md).
 
-`POST /api/decision` submits a one-qubit Hadamard-and-measure circuit to operational IBM Quantum hardware and returns the chosen direction. Set `IBM_QUANTUM_API_KEY`; `IBM_QUANTUM_INSTANCE` is optional and selects a specific instance. A hardware result of `1` means right, and `0` means left:
+`POST /api/decision` consumes one bit from a MongoDB cache populated by 128-shot one-qubit Hadamard-and-measure jobs on operational IBM Quantum hardware. A new job is submitted only when no cached bits remain, so the first decision of a batch can wait for the hardware queue while later decisions use cached bits. Batches expire after 24 hours. Set `IBM_QUANTUM_API_KEY`; `IBM_QUANTUM_INSTANCE` is optional and selects a specific instance. A hardware result of `1` means right, and `0` means left:
 
 ```json
 {"go_right": true}
