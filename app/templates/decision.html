@@ -14,12 +14,12 @@
   <main class="card decision">
     <p class="eyebrow">A small decision</p>
     <h1>Should I go right or left?</h1>
-    <p>Take a breath and let chance choose. Each time you click, we request a new random permutation. The set is not shown; you only see whether to go right or left.</p>
+    <p>Take a breath and let chance choose. Each time you click, we run a fresh quantum measurement and show whether to go right or left.</p>
     <form id="decision-form">
       <button class="button" id="submit-button" type="submit">Choose for me</button>
     </form>
     <p id="answer" role="status" aria-live="polite"></p>
-    <p class="source">Source of quantum randomness: <a href="https://qrng.anu.edu.au/random-permutations/" target="_blank" rel="noopener noreferrer">Australian National University (ANU) — Quantum Random Number Generator</a>.</p>
+    <p class="source">Quantum hardware: <a href="https://quantum.cloud.ibm.com/docs/en/guides/hello-world" target="_blank" rel="noopener noreferrer">IBM Quantum — Run your first circuit on hardware</a>.</p>
     <p class="source"><a href="{{ url_for('main.quantum_info') }}">Learn more: quantum fluctuations and the many-worlds interpretation</a>.</p>
     <a class="back-link" href="{{ url_for('main.dashboard') }}">← Back to dashboard</a>
   </main>

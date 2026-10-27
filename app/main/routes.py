@@ -1,6 +1,3 @@
-import json
-
-import requests
 from pymongo.errors import PyMongoError
 from flask import Blueprint, current_app, jsonify, render_template, request, session
 
@@ -273,7 +270,7 @@ def quantum_info():
 def api_decision():
     try:
         return jsonify(go_right=choose_direction())
-    except (requests.RequestException, ValueError, json.JSONDecodeError):
+    except RuntimeError:
         current_app.logger.exception("Could not retrieve a quantum-random decision")
         return jsonify(error="Could not get a new decision right now."), 502
 

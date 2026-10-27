@@ -25,7 +25,7 @@ The interface automatically follows the device's light or dark appearance prefer
   ./.venv/bin/python -m pip install -r requirements.txt
   ```
 
-2. Copy `.env.example` to `.env` and fill in the Google OAuth client ID, client secret, a unique `FLASK_SECRET_KEY`, `FLUTU_GOOGLE_REDIRECT_URI`, and the MongoDB Atlas values `MONGODB_URI` and `MONGODB_DATABASE`. Keep the URI quoted in `.env`, and never commit credentials. If the local runtime has no `/etc/resolv.conf`, `MONGODB_DNS_NAMESERVERS` supplies DNS servers for resolving Atlas `mongodb+srv` addresses; it is ignored whenever system DNS configuration exists.
+2. Copy `.env.example` to `.env` and fill in the Google OAuth client ID, client secret, a unique `FLASK_SECRET_KEY`, `FLUTU_GOOGLE_REDIRECT_URI`, the MongoDB Atlas values `MONGODB_URI` and `MONGODB_DATABASE`, and `IBM_QUANTUM_API_KEY`. Create the IBM API key in the IBM Quantum Platform dashboard; optionally set `IBM_QUANTUM_INSTANCE` to the instance CRN. Keep credentials private and never commit them. If the local runtime has no `/etc/resolv.conf`, `MONGODB_DNS_NAMESERVERS` supplies DNS servers for resolving Atlas `mongodb+srv` addresses; it is ignored whenever system DNS configuration exists.
    The app also accepts the standard Vercel/Google names (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `SECRET_KEY`) as fallbacks when those are configured instead.
 3. Add the exact redirect URI to the authorized redirect URIs in Google Cloud Console. For local development it is `http://127.0.0.1:8000/auth/google/callback`.
 4. Start the app with `bash start_server.sh`.
@@ -51,6 +51,8 @@ The repository includes a Vercel-compatible Flask export at `api/index.py`. Verc
    - `FLASK_SESSION_COOKIE_SECURE=true`
    - `MONGODB_URI` (Atlas connection string; server-side only)
    - `MONGODB_DATABASE` (for example, `flutu`)
+  - `IBM_QUANTUM_API_KEY` (server-side IBM Quantum API key)
+  - `IBM_QUANTUM_INSTANCE` (optional IBM Quantum instance CRN)
    - `SUPABASE_URL` and `SUPABASE_ANON_KEY` (the anon/publishable key is intended for browser use)
    - `SUPABASE_SERVICE_ROLE_KEY` (server-only secret; never expose it to the browser)
   - `SUPABASE_JWT_SECRET` (the same project's legacy HS256 JWT signing secret; server-only, not the anon key, service-role key, or database password)
@@ -137,7 +139,7 @@ app/
     location_sharing.py       Consent requests and private location updates
     chat.py                   MongoDB chat documents, validation and graph snapshots
     mongodb.py                Shared MongoDB collection access
-    quantum_random.py         ANU quantum-random integration
+    quantum_random.py         IBM Quantum hardware random measurement
   templates/
     base.html                 Shared Jinja layout
     login.html                Google-only sign-in page
@@ -186,7 +188,7 @@ Location sharing APIs also require a session and derive identities from it: `GET
 
 Chat APIs are under `/chat/api/`: list/create conversations, graph snapshots, member add/remove, addable contacts, question creation, voting, closing, and edit/delete unanswered questions. Supabase Realtime Broadcast sends private invalidation events; Socket.IO remains available for self-hosted deployments. The app also supports REST polling as a fallback. For Socket.IO, use gevent Gunicorn, one worker per process, Redis shared among instances, sticky sessions, and WebSocket proxy upgrade support. Set the container's `PORT`; the Docker image binds to `0.0.0.0` while local development remains on `127.0.0.1`. Supabase JS 2.49.1, Socket.IO client 4.8.1, and Cytoscape 3.30.4 are pinned on jsDelivr. See [docs/specifications/pages/branching-chat.md](docs/specifications/pages/branching-chat.md).
 
-`POST /api/decision` fetches a fresh permutation from the ANU Quantum Random Number Generator and returns the chosen direction:
+`POST /api/decision` submits a one-qubit Hadamard-and-measure circuit to operational IBM Quantum hardware and returns the chosen direction. Set `IBM_QUANTUM_API_KEY`; `IBM_QUANTUM_INSTANCE` is optional and selects a specific instance. A hardware result of `1` means right, and `0` means left:
 
 ```json
 {"go_right": true}

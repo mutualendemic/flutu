@@ -13,11 +13,11 @@
     <p>This decision page turns an external random result into a simple suggestion: right or left. The physics behind quantum random numbers is fascinating, but this site's suggestion is a playful experience—not a measurement of fate or proof that a person splits across universes.</p>
 
     <h2>Where does the choice come from?</h2>
-    <p>When you click “Choose for me,” the server requests a quantum random permutation from the Australian National University (ANU) generator. It receives a permutation of the values 1 and 2, uses the last value to select one of the two directions, and displays only that direction. The set is not shown in the interface.</p>
+    <p>When you click “Choose for me,” the server submits a one-qubit circuit to operational IBM Quantum hardware. A Hadamard gate puts the qubit into an equal superposition, then the circuit measures it once. The measured bit selects right or left. This uses IBM Quantum hardware rather than a local simulator; the result is not persisted.</p>
     <p>The random result is only used to select the app's suggestion. It does not make your decision for you: you remain free to follow the suggestion, choose the other way, or do neither.</p>
 
     <h2>What is a “quantum fluctuation”?</h2>
-    <p>In physics, the term usually describes quantum variations in physical quantities, such as fields, which play a role in theories and experimentally studied phenomena. A random bit produced by a quantum device may depend on a measurement of a quantum system, but this app does not directly measure a fluctuation in your body, mind, or surroundings. It only queries ANU's external service.</p>
+    <p>In physics, the term usually describes quantum variations in physical quantities, such as fields, which play a role in theories and experimentally studied phenomena. This app's random bit comes from measuring a qubit on IBM Quantum hardware; it does not directly measure a fluctuation in your body, mind, or surroundings.</p>
 
     <h2>What about the many-worlds interpretation?</h2>
     <p>The many-worlds interpretation is one interpretation of quantum mechanics. In simplified terms, it describes quantum evolution as branching states that stop interfering with one another through decoherence. It is a theoretical interpretation; there is no consensus that it is the correct description of reality, and its branches are not worlds we can visit or send messages between.</p>
@@ -27,7 +27,7 @@
 
     <h2>Learn more</h2>
     <ul>
-      <li><a href="https://qrng.anu.edu.au/random-permutations/" target="_blank" rel="noopener noreferrer">ANU — Quantum Random Number Generator: random permutations</a></li>
+      <li><a href="https://quantum.cloud.ibm.com/docs/en/guides/hello-world" target="_blank" rel="noopener noreferrer">IBM Quantum — Run your first circuit on hardware</a></li>
       <li><a href="https://plato.stanford.edu/entries/qm-manyworlds/" target="_blank" rel="noopener noreferrer">Stanford Encyclopedia of Philosophy — Many-Worlds Interpretation of Quantum Mechanics</a></li>
     </ul>
     <a class="back-link" href="{{ url_for('main.decision') }}">← Back to the decision</a>

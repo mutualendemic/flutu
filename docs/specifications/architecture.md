@@ -25,7 +25,7 @@ This specification describes decisions shared across pages and APIs, as reflecte
 - Development callback: `http://127.0.0.1:8000/auth/google/callback`. The public callback must use HTTPS and exactly match the URL authorized in Google; the same configuration is used for authorization and OAuth code exchange.
 - MongoDB is accessed on demand through `app/services/mongodb.py`; missing configuration causes functions requiring the database to report unavailability explicitly. Current collections: `contacts`, `users`, `location_shares`, `locations`.
 - Branching chat persists to `chat_conversations`, `chat_members`, `chat_questions`, `chat_options`, and `chat_answers`, with unique MongoDB indexes enforcing membership, option, and answer uniqueness. It uses Flask-SocketIO with authenticated session identity, gevent, and Redis in production. The details and current limitations are in [branching-chat.md](pages/branching-chat.md).
-- The decision service queries ANU's quantum random permutation generator on each request. The application does not persist the result.
+- The decision service submits a one-qubit Hadamard-and-measure circuit to an operational IBM Quantum backend on each request. It uses `IBM_QUANTUM_API_KEY` and optional `IBM_QUANTUM_INSTANCE` environment variables; the application does not persist the result.
 - Maps use Leaflet loaded from the unpkg CDN and tiles from the public OpenStreetMap service. The page includes copyright attribution; comply with the tile usage policy. Browser geolocation requires a secure context (HTTPS, except localhost).
 
 ## Personal data and location
