@@ -84,7 +84,9 @@ def is_active_member(conversation_id, user_id):
     cid = _id(conversation_id)
     if cid is None:
         return False
-    _, members, *_ = _collections()
+    conversations, members, *_ = _collections()
+    if conversations.find_one({"_id": cid, "deleted_at": None}, {"_id": 1}) is None:
+        return False
     return members.find_one({"conversation_id": cid, "user_id": user_id, "left_at": None}, {"_id": 1}) is not None
 
 
@@ -93,7 +95,7 @@ def get_conversation(conversation_id):
     if cid is None:
         return None
     conversations, *_ = _collections()
-    return conversations.find_one({"_id": cid})
+    return conversations.find_one({"_id": cid, "deleted_at": None})
 
 
 def addable_contacts(user_id, conversation_id=None):
@@ -203,7 +205,7 @@ def create_conversation(owner_id, title, member_user_ids=None):
 
 def list_conversations(user_id):
     conversations, members, questions, answers = _collections()[0:3] + (_collections()[4],)
-    rows = conversations.find({"member_user_ids": user_id, "archived_at": None}).sort("last_activity", DESCENDING)
+    rows = conversations.find({"member_user_ids": user_id, "archived_at": None, "deleted_at": None}).sort("last_activity", DESCENDING)
     result = []
     for conversation in rows:
         cid = conversation["_id"]
@@ -215,6 +217,7 @@ def list_conversations(user_id):
                 unanswered += 1
         result.append({
             "id": str(cid), "title": conversation["title"],
+            "is_owner": conversation.get("created_by_user_id") == user_id,
             "last_activity": conversation.get("last_activity"),
             "members": [_serialize_member(item) for item in member_docs],
             "unanswered_count": unanswered,
@@ -253,7 +256,7 @@ def create_question(conversation_id, author_id, text, labels=None, parent_option
     if cid is None:
         raise ValueError("not_found")
     conversations, _, questions, options, _ = _collections()
-    if not conversations.find_one({"_id": cid, "archived_at": None}):
+    if not conversations.find_one({"_id": cid, "archived_at": None, "deleted_at": None}):
         raise ValueError("not_found")
     parent = None
     if parent_option_id is not None:
@@ -415,6 +418,39 @@ def remove_member(conversation_id, actor_id, target_id):
         raise ValueError("not_found")
     get_collection("chat_conversations").update_one({"_id": cid}, {"$pull": {"member_user_ids": target_id}, "$set": {"last_activity": now()}})
     return _serialize_member(updated)
+
+
+def delete_conversation(conversation_id, actor_id):
+    """Permanently remove a conversation and its content; only its creator may do so."""
+    cid = _id(conversation_id)
+    if cid is None:
+        raise ValueError("not_found")
+    conversations, members, questions, options, answers = _collections()
+    conversation = conversations.find_one({"_id": cid})
+    if not conversation:
+        raise ValueError("not_found")
+    if conversation.get("created_by_user_id") != actor_id:
+        raise PermissionError("forbidden")
+
+    # Mark first: all access checks deny this conversation before cascading deletes.
+    if conversation.get("deleted_at") is None:
+        conversation = conversations.find_one_and_update(
+            {"_id": cid, "created_by_user_id": actor_id, "deleted_at": None},
+            {"$set": {"deleted_at": now()}},
+            return_document=ReturnDocument.AFTER,
+        )
+        if conversation is None:
+            raise ValueError("not_found")
+
+    member_ids = list(conversation.get("member_user_ids", []))
+    question_ids = [item["_id"] for item in questions.find({"conversation_id": cid}, {"_id": 1})]
+    if question_ids:
+        answers.delete_many({"question_id": {"$in": question_ids}})
+    options.delete_many({"conversation_id": cid})
+    questions.delete_many({"conversation_id": cid})
+    members.delete_many({"conversation_id": cid})
+    conversations.delete_one({"_id": cid, "deleted_at": {"$ne": None}})
+    return member_ids
 
 
 def edit_question(question_id, author_id, text=None, labels=None):

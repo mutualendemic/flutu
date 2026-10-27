@@ -31,9 +31,11 @@
       return;
     }
     for (const conversation of conversations) {
-      const card = document.createElement('a');
+      const card = document.createElement('article');
       card.className = 'conversation-card';
-      card.href = `/chat/${encodeURIComponent(conversation.id)}`;
+      const link = document.createElement('a');
+      link.className = 'conversation-link';
+      link.href = `/chat/${encodeURIComponent(conversation.id)}`;
       const title = document.createElement('h2');
       title.textContent = conversation.title;
       const meta = document.createElement('p');
@@ -51,9 +53,38 @@
         dot.textContent = initials(member.name);
         dots.append(dot);
       }
-      card.append(title, meta, dots);
+      link.append(title, meta, dots);
+      card.append(link);
+      if (conversation.is_owner) {
+        const deleteButton = document.createElement('button');
+        deleteButton.className = 'button button-danger small-button conversation-delete';
+        deleteButton.type = 'button';
+        deleteButton.textContent = 'Delete';
+        deleteButton.setAttribute('aria-label', `Delete conversation: ${conversation.title}`);
+        deleteButton.addEventListener('click', () => deleteConversation(conversation, deleteButton));
+        card.append(deleteButton);
+      }
       list.append(card);
     }
+  }
+
+  async function deleteConversation(conversation, button) {
+    const confirmed = window.confirm(
+      `Permanently delete “${conversation.title}” for all members? Its questions and answers will also be deleted.`
+    );
+    if (!confirmed) return;
+    await window.FlutuAction.run(button, async () => {
+      try {
+        const response = await fetch(`${api}/conversations/${encodeURIComponent(conversation.id)}`, {
+          method: 'DELETE', headers: {'X-CSRF-Token': csrf},
+        });
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error || 'Could not delete conversation.');
+        await loadConversations();
+      } catch (err) {
+        error.textContent = err.message;
+      }
+    });
   }
 
   async function loadConversations() {

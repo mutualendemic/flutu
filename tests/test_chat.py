@@ -6,7 +6,7 @@ from bson import ObjectId
 
 from app import create_app
 from app.chat.sockets import socketio
-from app.services.chat import _serialize_member, graph_payload, validate_question
+from app.services.chat import _serialize_member, delete_conversation, graph_payload, validate_question
 
 
 class ChatTests(unittest.TestCase):
@@ -72,6 +72,42 @@ class ChatTests(unittest.TestCase):
         response = self.http.post("/chat/api/conversations", json={"title": "No token"})
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.get_json(), {"error": "csrf_failed"})
+
+    def test_conversation_delete_route_requires_authentication_and_csrf(self):
+        response = self.http.delete("/chat/api/conversations/conversation-id")
+        self.assertEqual(response.status_code, 401)
+        self.sign_in()
+        response = self.http.delete("/chat/api/conversations/conversation-id")
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json(), {"error": "csrf_failed"})
+
+    def test_creator_can_delete_conversation_and_notify_all_members(self):
+        self.sign_in()
+        headers = self.csrf_headers()
+        member_ids = ["google-user", "other-user"]
+        with patch("app.chat.routes.service.delete_conversation", return_value=member_ids), patch(
+            "app.chat.routes.emit_to_user"
+        ) as emit:
+            response = self.http.delete(
+                "/chat/api/conversations/conversation-id", headers=headers
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json(), {"deleted": True})
+        self.assertEqual(emit.call_count, 2)
+        emit.assert_any_call("conversation_removed", {"id": "conversation-id"}, "other-user")
+
+    def test_non_creator_cannot_delete_conversation(self):
+        self.sign_in()
+        with patch("app.services.chat._collections") as collections_factory:
+            conversations = Mock()
+            conversations.find_one.return_value = {
+                "_id": ObjectId("65b0e7a3a6c6f166f1c3a001"),
+                "created_by_user_id": "creator-user",
+            }
+            collections_factory.return_value = (conversations, Mock(), Mock(), Mock(), Mock())
+            with self.assertRaises(PermissionError):
+                delete_conversation("65b0e7a3a6c6f166f1c3a001", "google-user")
+        conversations.find_one_and_update.assert_not_called()
 
     def test_polling_conversation_page_exposes_its_transport(self):
         self.sign_in()
@@ -149,6 +185,9 @@ class ChatTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'id="realtime-status"', response.data)
         self.assertIn(b"Checking Supabase private-channel authorization", response.data)
+        script = self.http.get("/static/chat-list.js")
+        self.assertIn(b"conversation-delete", script.data)
+        script.close()
 
     def test_realtime_token_requires_authentication_and_supabase_config(self):
         response = self.http.get("/chat/api/realtime-token")

@@ -159,6 +159,20 @@ def api_get_conversation(conversation_id):
         return _api_error("chat_unavailable", 503)
 
 
+@chat_bp.delete("/api/conversations/<conversation_id>")
+def api_delete_conversation(conversation_id):
+    try:
+        member_ids = service.delete_conversation(conversation_id, _user_id())
+        for user_id in member_ids:
+            emit_to_user("conversation_removed", {"id": conversation_id}, user_id)
+        return jsonify(deleted=True)
+    except (ValueError, PermissionError) as error:
+        return _api_error(str(error), _status_for_error(error))
+    except (PyMongoError, RuntimeError):
+        current_app.logger.exception("Could not delete chat conversation")
+        return _api_error("chat_unavailable", 503)
+
+
 @chat_bp.post("/api/conversations/<conversation_id>/questions")
 def api_create_question(conversation_id):
     if not service.is_active_member(conversation_id, _user_id()):
