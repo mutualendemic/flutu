@@ -6,6 +6,7 @@ from pymongo import ASCENDING, DESCENDING, ReturnDocument
 from pymongo.errors import DuplicateKeyError
 
 from app.services.mongodb import get_collection
+from app.services.quantum_random import choose_direction
 
 
 DEFAULT_OPTIONS = ["Yes", "No"]
@@ -342,6 +343,41 @@ def _auto_close_if_complete(question_id):
     return _close(question) if active_count and answered_count >= active_count else None
 
 
+def _quantum_path_for_question(question_id):
+    qid = _id(question_id)
+    if qid is None:
+        return None
+    _, _, questions, options, _ = _collections()
+    question = questions.find_one({"_id": qid})
+    if not question:
+        return None
+    candidates = list(options.find({"question_id": qid}).sort("position", ASCENDING))
+    if not candidates:
+        return None
+    candidate_ids = [option["_id"] for option in candidates]
+    selected_id = question.get("quantum_selected_option_id")
+    existing = next((option for option in candidates if option["_id"] == selected_id), None)
+    if existing:
+        return existing
+    if len(candidates) == 1:
+        selected = candidates[0]
+    else:
+        selected = candidates[1] if choose_direction() else candidates[0]
+    questions.update_one(
+        {
+            "_id": qid,
+            "$or": [
+                {"quantum_selected_option_id": {"$exists": False}},
+                {"quantum_selected_option_id": {"$nin": candidate_ids}},
+            ],
+        },
+        {"$set": {"quantum_selected_option_id": selected["_id"]}},
+    )
+    saved = questions.find_one({"_id": qid}, {"quantum_selected_option_id": 1}) or {}
+    saved_id = saved.get("quantum_selected_option_id")
+    return next((option for option in candidates if option["_id"] == saved_id), selected)
+
+
 def submit_answer(question_id, user_id, option_id):
     qid, oid = _id(question_id), _id(option_id)
     if qid is None or oid is None:
@@ -353,6 +389,9 @@ def submit_answer(question_id, user_id, option_id):
         raise ValueError("invalid_option")
     if question["status"] != "open":
         raise ValueError("closed_question")
+    quantum_choice = _quantum_path_for_question(question_id)
+    if quantum_choice and str(quantum_choice["_id"]) != str(oid):
+        raise ValueError("quantum_path_locked")
     existing = answers.find_one({"question_id": qid, "user_id": user_id})
     if existing and existing["option_id"] == oid:
         return {"changed": False, "previous_option_id": str(oid), "closed": False}
@@ -514,6 +553,11 @@ def graph_payload(conversation_id, viewer_id=None):
     answers_by_option = {}
     for answer in answer_docs:
         answers_by_option.setdefault(answer["option_id"], []).append(answer)
+    quantum_choices = {}
+    for question in question_docs:
+        question_options = options_by_question.get(question["_id"], [])
+        if question_options:
+            quantum_choices[question["_id"]] = _quantum_path_for_question(question["_id"]) or question_options[0]
     depth_cache = {}
     qmeta, nodes, edges = {}, [], []
     cursor_row = 0
@@ -524,6 +568,7 @@ def graph_payload(conversation_id, viewer_id=None):
         row = cursor_row
         qmeta[question["_id"]] = {"lane": lane, "row": row, "depth": depth}
         qid = str(question["_id"])
+        selected_option = quantum_choices.get(question["_id"])
         nodes.append({
             "id": f"q{qid}", "type": "question", "label": question["text"],
             "status": question["status"], "author_user_id": question["author_user_id"],
@@ -531,15 +576,17 @@ def graph_payload(conversation_id, viewer_id=None):
             "author_picture": member_by_id.get(question["author_user_id"], {}).get("picture", ""),
             "lane": lane, "row": row, "winning_option_id": str(question["winning_option_id"]) if question.get("winning_option_id") else None,
             "created_at": question["created_at"].isoformat(), "allow_vote_change": question.get("allow_vote_change", True),
+            "quantum_selected_option_id": str(selected_option["_id"]) if selected_option else None,
         })
         if parent:
             edges.append({"from": f"o{parent['_id']}", "to": f"q{qid}", "kind": "follow_up"})
         question_options = options_by_question.get(question["_id"], [])
         for index, option in enumerate(question_options):
             option_answers = answers_by_option.get(option["_id"], [])
-            option_lane = lane + 1
-            option_row = row + index + 1
+            option_lane = lane + index + 1
+            option_row = row
             oid = str(option["_id"])
+            quantum_selected = bool(selected_option and selected_option["_id"] == option["_id"])
             nodes.append({
                 "id": f"o{oid}", "type": "option", "label": option["label"],
                 "question_id": str(question["_id"]), "option_id": oid,
@@ -549,6 +596,7 @@ def graph_payload(conversation_id, viewer_id=None):
                 "is_winner": bool(question.get("winning_option_id") == option["_id"]),
                 "is_my_vote": any(answer["user_id"] == viewer_id for answer in option_answers),
                 "is_tied": question.get("status") == "closed" and not question.get("winning_option_id") and len(question_options) > 1 and len(option_answers) == max((len(answers_by_option.get(item["_id"], [])) for item in question_options), default=0),
+                "quantum_selected": quantum_selected,
             })
             edges.append({"from": f"q{qid}", "to": f"o{oid}", "kind": "branch"})
         cursor_row = row + len(question_options) + 2
@@ -582,6 +630,7 @@ def graph_payload(conversation_id, viewer_id=None):
     return {
         "conversation_id": str(cid), "title": conversation["title"],
         "members": [_serialize_member(item) for item in member_docs], "nodes": nodes, "edges": edges,
+        "branch_mode": "quantum_random",
     }
 
 

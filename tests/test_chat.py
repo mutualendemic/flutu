@@ -238,19 +238,111 @@ class ChatTests(unittest.TestCase):
     def test_rest_question_creation_is_authenticated_and_csrf_protected(self):
         self.sign_in()
         headers = self.csrf_headers()
-        payload = {"question": {"id": "qq1"}, "options": [], "edges": []}
-        with patch("app.chat.routes.service.is_active_member", return_value=True), patch(
-            "app.chat.routes.service.create_question", return_value="q1"
-        ) as create, patch("app.chat.routes.service.question_event_payload", return_value=payload), patch(
-            "app.chat.routes.emit_to_active_members"
-        ):
+        with patch("app.chat.routes.service.is_active_member", return_value=True):
             response = self.http.post(
                 "/chat/api/conversations/conversation-id/questions",
                 json={"text": "A question?"}, headers=headers,
             )
-        self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.get_json(), {"question_id": "q1"})
-        create.assert_called_once_with("conversation-id", "google-user", "A question?", None, None, True)
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.get_json(), {"error": "branch_mode_locked"})
+
+    def test_quantum_branch_mode_blocks_new_question_creation(self):
+        self.sign_in()
+        headers = self.csrf_headers()
+        with patch("app.chat.routes.service.is_active_member", return_value=True):
+            response = self.http.post(
+                "/chat/api/conversations/conversation-id/questions",
+                json={"text": "What next?"},
+                headers=headers,
+            )
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.get_json(), {"error": "branch_mode_locked"})
+
+    def test_graph_payload_marks_quantum_random_branch_selection(self):
+        conversation_id = ObjectId("65b0e7a3a6c6f166f1c3a001")
+        question_id = ObjectId("65b0e7a3a6c6f166f1c3a002")
+        option_id_a = ObjectId("65b0e7a3a6c6f166f1c3a003")
+        option_id_b = ObjectId("65b0e7a3a6c6f166f1c3a004")
+        conversation = {"_id": conversation_id, "title": "Quantum decision", "created_by_user_id": "google-user"}
+        question = {
+            "_id": question_id,
+            "conversation_id": conversation_id,
+            "author_user_id": "google-user",
+            "text": "Choose a door",
+            "status": "open",
+            "parent_option_id": None,
+            "winning_option_id": None,
+            "created_at": datetime.now(timezone.utc),
+        }
+        options = [
+            {"_id": option_id_a, "question_id": question_id, "conversation_id": conversation_id, "label": "Left", "position": 0},
+            {"_id": option_id_b, "question_id": question_id, "conversation_id": conversation_id, "label": "Right", "position": 1},
+        ]
+        members = [{"user_id": "google-user", "name": "Test User", "picture": "https://example.com/a.png", "left_at": None}]
+
+        members_collection = Mock()
+        members_collection.find.return_value = members
+        questions_collection = Mock()
+        questions_collection.find.return_value.sort.return_value = [question]
+        questions_collection.find_one.return_value = question
+        questions_collection.update_one.side_effect = lambda _query, update: question.update(update.get("$set", {}))
+        options_collection = Mock()
+        options_collection.find.return_value.sort.return_value = options
+        answers_collection = Mock()
+        answers_collection.find.return_value = []
+
+        with patch("app.services.chat.get_conversation", return_value=conversation), patch(
+            "app.services.chat._collections",
+            return_value=(Mock(), members_collection, questions_collection, options_collection, answers_collection),
+        ), patch("app.services.chat.choose_direction", return_value=True):
+            graph = graph_payload(str(conversation_id), "google-user")
+
+        self.assertEqual(graph["branch_mode"], "quantum_random")
+        selected = next(node for node in graph["nodes"] if node["type"] == "option" and node["option_id"] == str(option_id_b))
+        self.assertTrue(selected["quantum_selected"])
+
+    def test_graph_payload_keeps_quantum_branch_selection_stable(self):
+        conversation_id = ObjectId("65b0e7a3a6c6f166f1c3a011")
+        question_id = ObjectId("65b0e7a3a6c6f166f1c3a012")
+        option_ids = [ObjectId("65b0e7a3a6c6f166f1c3a013"), ObjectId("65b0e7a3a6c6f166f1c3a014")]
+        conversation = {"_id": conversation_id, "title": "Quantum decision"}
+        question = {
+            "_id": question_id,
+            "conversation_id": conversation_id,
+            "author_user_id": "google-user",
+            "text": "Choose a direction",
+            "status": "open",
+            "parent_option_id": None,
+            "winning_option_id": None,
+            "created_at": datetime.now(timezone.utc),
+        }
+        options = [
+            {"_id": option_id, "question_id": question_id, "conversation_id": conversation_id, "label": label, "position": index}
+            for index, (option_id, label) in enumerate(zip(option_ids, ("Left", "Right")))
+        ]
+        members = Mock()
+        members.find.return_value = []
+        questions = Mock()
+        questions.find.return_value.sort.return_value = [question]
+        questions.find_one.return_value = question
+        questions.update_one.side_effect = lambda _query, update: question.update(update.get("$set", {}))
+        option_collection = Mock()
+        option_collection.find.return_value.sort.return_value = options
+        answers = Mock()
+        answers.find.return_value = []
+
+        with patch("app.services.chat.get_conversation", return_value=conversation), patch(
+            "app.services.chat._collections",
+            return_value=(Mock(), members, questions, option_collection, answers),
+        ), patch("app.services.chat.choose_direction", side_effect=[True, False]) as choose:
+            first = graph_payload(str(conversation_id), "google-user")
+            second = graph_payload(str(conversation_id), "google-user")
+
+        first_selected = next(node["option_id"] for node in first["nodes"] if node["type"] == "option" and node["quantum_selected"])
+        second_selected = next(node["option_id"] for node in second["nodes"] if node["type"] == "option" and node["quantum_selected"])
+        self.assertEqual(first_selected, str(option_ids[1]))
+        self.assertEqual(second_selected, first_selected)
+        choose.assert_called_once()
 
     def test_rest_answer_and_close_actions_require_active_membership(self):
         self.sign_in()
@@ -305,22 +397,14 @@ class ChatTests(unittest.TestCase):
     def test_socket_question_creation_broadcasts_after_service_write(self):
         self.sign_in()
         client = socketio.test_client(self.app, namespace="/chat", flask_test_client=self.http)
-        payload = {"question": {"id": "q123", "type": "question"}, "options": [], "edges": []}
-        with patch("app.chat.sockets.service.is_active_member", return_value=True), patch(
-            "app.chat.sockets.service.create_question", return_value="123"
-        ) as create, patch("app.chat.sockets.service.question_event_payload", return_value=payload), patch(
-            "app.chat.sockets.service.get_active_members", return_value=[{"user_id": "google-user"}]
-        ):
+        with patch("app.chat.sockets.service.is_active_member", return_value=True):
             result = client.emit(
                 "create_question",
                 {"conversation_id": "conversation-id", "text": "A question?"},
                 namespace="/chat",
                 callback=True,
             )
-        self.assertEqual(result, {"ok": True, "question_id": "123"})
-        create.assert_called_once()
-        received = client.get_received("/chat")
-        self.assertTrue(any(item["name"] == "question_created" for item in received))
+        self.assertEqual(result, {"ok": False, "error": "branch_mode_locked"})
         client.disconnect(namespace="/chat")
 
     def test_socket_limits_events_to_twenty_per_ten_seconds(self):

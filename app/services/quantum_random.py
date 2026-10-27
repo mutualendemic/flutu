@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from pymongo import ASCENDING, ReturnDocument
 
@@ -18,7 +18,10 @@ def _direction_from_measurement(bitstrings) -> bool:
 
 def _consume_bit(collection):
     batch = collection.find_one_and_update(
-        {"next_index": {"$lt": BATCH_SIZE}},
+        {
+            "next_index": {"$lt": BATCH_SIZE},
+            "created_at": {"$gte": datetime.now(timezone.utc) - timedelta(seconds=BATCH_TTL_SECONDS)},
+        },
         {"$inc": {"next_index": 1}},
         sort=[("created_at", ASCENDING)],
         return_document=ReturnDocument.BEFORE,

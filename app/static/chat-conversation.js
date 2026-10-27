@@ -31,8 +31,8 @@
 
   function setError(message) { error.textContent = message || ''; }
   function position(data) {
-    const x = 90 + Number(data.lane || 0) * 145;
-    const y = 55 + Number(data.row || 0) * 58;
+    const x = 120 + Number(data.lane || 0) * 180;
+    const y = 120 + Number(data.row || 0) * 90;
     return data.type === 'author_avatar' ? {x: x - 66, y: y} : {x, y};
   }
   function cyNode(data) {
@@ -49,6 +49,11 @@
       elements: [],
       layout: {name: 'preset', fit: true, padding: 28},
       minZoom: 0.35, maxZoom: 2.5, wheelSensitivity: 0.18,
+      boxSelectionEnabled: false,
+      autounselectify: true,
+      userPanningEnabled: false,
+      panningEnabled: true,
+      zoomingEnabled: true,
       style: [
         {selector: 'node[type="question"]', style: {label: 'data(label)', shape: 'round-rectangle', width: 145, height: 46, 'text-wrap': 'wrap', 'text-max-width': 132, 'font-size': 11, color: '#14213d', 'background-color': '#ffffff', 'border-width': 2, 'border-color': '#f79009', 'text-valign': 'center', 'text-halign': 'center'}},
         {selector: 'node[type="question"][status="closed"]', style: {'background-color': '#f2f4f7', 'border-color': '#98a2b3'}},
@@ -102,7 +107,10 @@
         existing.animate({position: position(node)}, {duration: 250});
       } else graph.add(cyNode(node));
     }
-    graph.nodes().forEach(node => { if (!nextNodeIds.has(node.id())) node.remove(); });
+    graph.nodes().forEach(node => {
+      if (!nextNodeIds.has(node.id())) node.remove();
+      node.lock();
+    });
     const nextEdgeIds = new Set();
     for (const edge of data.edges || []) {
       const id = `${edge.kind}:${edge.from}:${edge.to}`;
@@ -112,6 +120,15 @@
     }
     graph.edges().forEach(edge => { if (!nextEdgeIds.has(edge.id())) edge.remove(); });
     graph.layout({name: 'preset', fit: false}).run();
+    const composer = document.querySelector('.composer');
+    const banner = document.getElementById('quantum-branch-banner');
+    if (data.branch_mode === 'quantum_random') {
+      if (composer) composer.hidden = true;
+      if (banner) banner.classList.add('visible');
+    } else {
+      if (composer) composer.hidden = false;
+      if (banner) banner.classList.remove('visible');
+    }
     renderMembers(data.members || []);
   }
 
@@ -194,15 +211,17 @@
       answer.addEventListener('click', () => openAnswer(question, value));
       details.append(answer);
     }
-    const follow = el('button', 'Follow up', 'button button-secondary');
-    follow.type = 'button';
-    follow.addEventListener('click', () => {
-      followUpOption = value.option_id;
-      document.getElementById('composer-title').textContent = `Follow up on “${value.label}”`;
-      document.getElementById('question-text').focus();
-      window.scrollTo({top: document.querySelector('.composer').offsetTop, behavior: 'smooth'});
-    });
-    details.append(follow);
+    if (snapshot?.branch_mode !== 'quantum_random') {
+      const follow = el('button', 'Follow up', 'button button-secondary');
+      follow.type = 'button';
+      follow.addEventListener('click', () => {
+        followUpOption = value.option_id;
+        document.getElementById('composer-title').textContent = `Follow up on “${value.label}”`;
+        document.getElementById('question-text').focus();
+        window.scrollTo({top: document.querySelector('.composer').offsetTop, behavior: 'smooth'});
+      });
+      details.append(follow);
+    }
     const names = value.voter_user_ids.map((id, index) => value.voter_names[index] || memberName(id));
     details.append(el('p', `Voters: ${names.length ? names.join(', ') : 'No votes yet'}`));
   }
@@ -212,11 +231,16 @@
     answerDialog.dataset.questionId = question.id.slice(1);
     const options = document.getElementById('answer-options');
     options.replaceChildren();
+    const branchSelection = snapshot?.branch_mode === 'quantum_random' ? question.quantum_selected_option_id : null;
+    const choice = branchSelection || selected.option_id;
     for (const option of (snapshot.nodes || []).filter(item => item.type === 'option' && item.question_id === question.id.slice(1))) {
       const label = el('label', undefined, 'answer-option');
       const radio = document.createElement('input');
       radio.type = 'radio'; radio.name = 'option_id'; radio.value = option.option_id; radio.required = true;
-      radio.checked = option.option_id === selected.option_id || option.is_my_vote === true;
+      radio.checked = option.option_id === choice || option.is_my_vote === true;
+      if (snapshot?.branch_mode === 'quantum_random' && option.option_id !== branchSelection) {
+        radio.disabled = true;
+      }
       label.append(radio, document.createTextNode(`${option.label} (${option.count})`));
       options.append(label);
     }

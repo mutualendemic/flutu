@@ -25,6 +25,8 @@
   .option-editor button { border:1px solid var(--border); border-radius:9px; background:var(--surface-solid); color:var(--text); padding:7px 12px; }
   .composer-tools { display:flex; gap:10px; flex-wrap:wrap; }
   .composer-tools .button { width:auto; }
+  .quantum-banner { display:none; margin:12px 0 0; padding:12px 14px; border:1px solid rgba(247,144,9,.35); border-radius:12px; background:rgba(247,144,9,.08); color:var(--text); }
+  .quantum-banner.visible { display:block; }
   .member-list { display:flex; flex-wrap:wrap; gap:8px; padding:0; list-style:none; }
   .member-chip { display:flex; align-items:center; gap:7px; padding:6px 10px; border:1px solid var(--border); border-radius:999px; color:var(--text); }
   .member-avatar, .question-author-avatar { width:34px; height:34px; flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; object-fit:cover; background:var(--surface-solid); color:var(--text); font-size:.8rem; font-weight:800; }
@@ -44,7 +46,8 @@
   <header class="conversation-top"><div><p class="eyebrow">Branching chat</p><h1 id="conversation-title">Conversation</h1></div><div class="conversation-actions"><span id="connection-status" class="connection" data-connected="false" role="status">Connecting</span><button id="members-toggle" class="members-toggle" type="button" role="switch" aria-checked="false" aria-expanded="false" aria-controls="members-panel"><span>Members</span><span class="members-switch-track" aria-hidden="true"><span class="members-switch-thumb"></span></span></button></div></header>
   <div id="graph" role="img" aria-label="Live conversation question graph"></div>
   <section id="details" class="detail-panel" aria-live="polite"><h2>Select a question or option</h2><p>Questions and votes appear here as text as well as in the graph.</p></section>
-  <section class="composer" aria-labelledby="composer-title"><h2 id="composer-title">Ask a question</h2><label for="question-text">Question</label><textarea id="question-text" maxlength="280" rows="2" placeholder="What should we decide?"></textarea><div id="option-editors"></div><div class="composer-tools"><button id="add-option" class="button button-secondary" type="button">Add option</button><button id="send-question" class="button" type="button">Send question</button></div><p id="chat-error" class="error" role="alert"></p></section>
+  <div id="quantum-branch-banner" class="quantum-banner" aria-live="polite">Quantum mode is active: the IBM selector chooses the next branch, and the conversation follows that path only.</div>
+  <section class="composer" aria-labelledby="composer-title"><h2 id="composer-title">Quantum branch</h2><p>New questions are disabled in this view. The branch is chosen automatically and the user follows the selected answer.</p><p id="chat-error" class="error" role="alert"></p></section>
   <section id="members-panel" class="members-panel" hidden><h2>Members</h2><ul id="member-list" class="member-list"></ul><label for="member-search">Add people from Contacts</label><input id="member-search" type="search" placeholder="Search contacts"><div id="member-picker" class="picker"></div></section>
   <a class="back-link" href="{{ url_for('chat.conversation_list_page') }}">Back to conversations</a>
 </main>
