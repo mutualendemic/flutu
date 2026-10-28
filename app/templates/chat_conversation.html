@@ -15,7 +15,12 @@
   .connection { display:inline-flex; align-items:center; gap:7px; color:var(--muted); font-size:.85rem; }
   .connection::before { content:""; width:9px; height:9px; border-radius:50%; background:#f79009; }
   .connection[data-connected="true"]::before { background:#12b76a; }
-  #graph { width:100%; height:min(68vh,680px); min-height:440px; margin:18px 0; border:1px solid var(--border); border-radius:16px; background:var(--surface-muted); overflow:hidden; }
+  #graph { width:100%; height:min(68vh,680px); min-height:440px; margin:0; border:1px solid var(--border); border-radius:16px; background:var(--surface-muted); overflow:hidden; }
+  .graph-stage { position:relative; margin:18px 0; }
+  .graph-empty-state { position:absolute; inset:1px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; border-radius:15px; background:var(--surface-muted); color:var(--muted); text-align:center; pointer-events:none; transition:opacity .25s ease; }
+  .graph-empty-state img { width:min(34vw,150px); height:auto; filter:drop-shadow(0 10px 24px rgba(16,24,40,.14)); }
+  .graph-empty-state p { margin:0; max-width:32ch; font-size:.95rem; }
+  .graph-stage.has-questions .graph-empty-state { opacity:0; visibility:hidden; }
   .graph-controls { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:14px 0 -8px; }
   .graph-controls .button { width:auto; margin:0; padding:8px 12px; }
   .graph-help { margin:0 0 8px; color:var(--muted); font-size:.9rem; }
@@ -49,7 +54,13 @@
     <button id="graph-zoom-in" class="button button-secondary" type="button" aria-label="Zoom in">+</button>
     <p class="graph-help">The flow is arranged automatically. Boxes cannot be moved; zoom and pan to inspect the full graph.</p>
   </div>
-  <div id="graph" role="img" aria-label="Live branching flow: each question is followed by its options and the selected path leads to participant follow-ups"></div>
+  <div class="graph-stage" id="graph-stage">
+    <div id="graph" role="img" aria-label="Live branching flow: each question is followed by its options and the selected path leads to participant follow-ups"></div>
+    <div id="graph-empty-state" class="graph-empty-state" role="status" aria-live="polite">
+      <img src="{{ url_for('static', filename='logo.svg') }}" alt="Flutu">
+      <p>Conversation ready. The first question and its options will appear here.</p>
+    </div>
+  </div>
   <section id="details" class="detail-panel" aria-live="polite"><h2>Select a question or option</h2><p>Question cards identify their author. Green marks the option chosen by the quantum selector; follow-up links show which option led to each new question.</p></section>
   <div id="quantum-branch-banner" class="quantum-banner" aria-live="polite">The quantum selector chooses one answer path from each question. Participants can add follow-up questions only to the selected option.</div>
   <section class="composer" aria-labelledby="composer-title" hidden>

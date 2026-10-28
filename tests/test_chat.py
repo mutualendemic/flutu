@@ -177,6 +177,9 @@ class ChatTests(unittest.TestCase):
         self.assertIn(b'id="send-question"', response.data)
         self.assertIn(b'id="graph-fit"', response.data)
         self.assertIn(b'id="graph-zoom-in"', response.data)
+        self.assertIn(b'id="graph-empty-state"', response.data)
+        self.assertIn(b'id="graph-empty-state"', response.data)
+        self.assertIn(b'src="/static/logo.svg"', response.data)
 
     def test_member_snapshot_preserves_profile_photo_for_author_avatar(self):
         member = _serialize_member({

@@ -81,6 +81,7 @@
     if (!data || !Array.isArray(data.nodes)) return;
     snapshot = data;
     canCreateRoot = data.can_create_initial_question === true;
+    document.getElementById('graph-stage').classList.toggle('has-questions', data.nodes.length > 0);
     document.getElementById('conversation-title').textContent = data.title || 'Conversation';
     ensureGraph();
     const graphNodes = data.nodes.flatMap(node => {
