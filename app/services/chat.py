@@ -348,6 +348,20 @@ def _auto_close_if_complete(question_id):
     return _close(question) if active_count and answered_count >= active_count else None
 
 
+def _quantum_option_index(option_count):
+    if not isinstance(option_count, int) or isinstance(option_count, bool) or option_count < 1:
+        raise ValueError("invalid_option_count")
+    if option_count == 1:
+        return 0
+    bits_needed = (option_count - 1).bit_length()
+    while True:
+        index = 0
+        for _ in range(bits_needed):
+            index = (index << 1) | int(choose_direction())
+        if index < option_count:
+            return index
+
+
 def _quantum_path_for_question(question_id):
     qid = _id(question_id)
     if qid is None:
@@ -364,17 +378,7 @@ def _quantum_path_for_question(question_id):
     existing = next((option for option in candidates if option["_id"] == selected_id), None)
     if existing:
         return existing
-    if len(candidates) == 1:
-        selected = candidates[0]
-    else:
-        bits_needed = (len(candidates) - 1).bit_length()
-        while True:
-            index = 0
-            for _ in range(bits_needed):
-                index = (index << 1) | int(choose_direction())
-            if index < len(candidates):
-                selected = candidates[index]
-                break
+    selected = candidates[_quantum_option_index(len(candidates))]
     questions.update_one(
         {
             "_id": qid,
@@ -566,7 +570,9 @@ def graph_payload(conversation_id, viewer_id=None):
     for question in question_docs:
         question_options = options_by_question.get(question["_id"], [])
         if question_options:
-            quantum_choices[question["_id"]] = _quantum_path_for_question(question["_id"]) or question_options[0]
+            selected = _quantum_path_for_question(question["_id"])
+            if selected is not None:
+                quantum_choices[question["_id"]] = selected
     depth_cache = {}
     nodes, edges = [], []
     cursor_row = 0

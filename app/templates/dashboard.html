@@ -9,6 +9,10 @@
   .badge { display: inline-block; padding: 8px 12px; border-radius: 999px; background: #e8f8f1; color: #0f7c5d; font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
   .actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-top: 24px; }
   .actions .button { margin-top: 0; }
+  .push-settings { margin-top:22px; padding:16px; border:1px solid var(--border); border-radius:14px; background:var(--surface-muted); }
+  .push-settings h2 { margin:0 0 6px; font-size:1.05rem; }
+  .push-settings p { margin:6px 0 12px; }
+  .push-settings .button { width:auto; margin:0; }
   @media (max-width: 520px) { .dashboard { margin-top: 0; } .topbar { align-items: flex-start; } }
 {% endblock %}
 {% block content %}
@@ -28,5 +32,12 @@
       <a class="button button-secondary" href="{{ url_for('main.location_map') }}">Location map</a>
       <a class="button button-secondary" href="{{ url_for('main.profile') }}">My profile</a>
     </nav>
+    <section id="push-notifications" class="push-settings" data-csrf="{{ push_csrf_token }}" aria-labelledby="push-title">
+      <h2 id="push-title">Friend notifications</h2>
+      <p>Get notified about location-sharing requests, new conversation members, and questions from your conversations.</p>
+      <button id="push-toggle" class="button button-secondary" type="button" data-enabled="false">Enable notifications</button>
+      <p id="push-status" role="status" aria-live="polite">Checking this device…</p>
+    </section>
   </main>
+  <script src="{{ url_for('static', filename='push-notifications.js') }}" defer></script>
 {% endblock %}

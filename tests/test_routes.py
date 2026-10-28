@@ -124,6 +124,70 @@ class RouteTests(unittest.TestCase):
         sharing = self.client.post("/api/location/sharing", json={"enabled": True})
         self.assertEqual(sharing.status_code, 401)
 
+    def test_push_service_worker_is_served_from_root_with_scope_headers(self):
+        response = self.client.get("/sw.js")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("javascript", response.content_type)
+        self.assertEqual(response.headers["Service-Worker-Allowed"], "/")
+        self.assertIn("no-cache", response.headers["Cache-Control"])
+        response.close()
+
+    def test_push_public_key_only_exposes_public_vapid_key(self):
+        self.app.config.update(
+            VAPID_PUBLIC_KEY="public-key",
+            VAPID_PRIVATE_KEY="private-key",
+            VAPID_CONTACT="mailto:ops@example.com",
+        )
+        response = self.client.get("/api/push/vapid-public-key")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json(), {"key": "public-key"})
+        self.assertNotIn("private-key", response.get_data(as_text=True))
+
+        self.app.config["VAPID_PRIVATE_KEY"] = ""
+        self.assertEqual(self.client.get("/api/push/vapid-public-key").status_code, 503)
+
+    def test_push_subscribe_requires_authentication_and_csrf(self):
+        subscription = {
+            "endpoint": "https://fcm.googleapis.com/fcm/send/token",
+            "keys": {"p256dh": "p" * 32, "auth": "a" * 16},
+        }
+        self.assertEqual(self.client.post("/api/push/subscribe", json=subscription).status_code, 401)
+        self.sign_in()
+        denied = self.client.post("/api/push/subscribe", json=subscription)
+        self.assertEqual(denied.status_code, 400)
+        self.assertEqual(denied.get_json(), {"error": "csrf_failed"})
+
+    def test_push_subscribe_and_unsubscribe_use_session_owner_and_csrf(self):
+        self.sign_in()
+        with self.client.session_transaction() as browser_session:
+            browser_session["_push_csrf_token"] = "push-csrf"
+        headers = {"X-CSRF-Token": "push-csrf", "Origin": "http://localhost"}
+        subscription = {
+            "endpoint": "https://fcm.googleapis.com/fcm/send/token",
+            "keys": {"p256dh": "p" * 32, "auth": "a" * 16},
+        }
+        with patch("app.main.routes.save_subscription") as save:
+            subscribed = self.client.post("/api/push/subscribe", json=subscription, headers=headers)
+        self.assertEqual(subscribed.status_code, 201)
+        save.assert_called_once_with("google-user", subscription)
+
+        with patch("app.main.routes.remove_subscription", return_value=True) as remove:
+            unsubscribed = self.client.post(
+                "/api/push/unsubscribe", json={"endpoint": subscription["endpoint"]}, headers=headers
+            )
+        self.assertEqual(unsubscribed.status_code, 200)
+        remove.assert_called_once_with("google-user", subscription["endpoint"])
+
+    def test_dashboard_exposes_push_opt_in_and_csrf_token(self):
+        self.sign_in()
+        response = self.client.get("/dashboard")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'id="push-notifications"', response.data)
+        self.assertIn(b'id="push-toggle"', response.data)
+        self.assertIn(b"push-notifications.js", response.data)
+        with self.client.session_transaction() as browser_session:
+            self.assertTrue(browser_session.get("_push_csrf_token"))
+
     def test_authenticated_dashboard_and_child_navigation(self):
         self.sign_in()
         dashboard = self.client.get("/dashboard")
@@ -271,7 +335,9 @@ class RouteTests(unittest.TestCase):
         saved_request = {"id": "request-1", "status": "pending"}
         with patch("app.main.routes.list_contacts", return_value=[contact]), patch(
             "app.main.routes.find_user_by_email", return_value=recipient
-        ) as find_mock, patch("app.main.routes.request_location", return_value=(saved_request, True)) as request_mock:
+        ) as find_mock, patch("app.main.routes.request_location", return_value=(saved_request, True)) as request_mock, patch(
+            "app.main.routes.notify_users"
+        ) as notify:
             response = self.client.post("/api/location/requests", json={"contact_id": "contact-1"})
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.get_json(), {"request": saved_request, "created": True})
@@ -285,6 +351,22 @@ class RouteTests(unittest.TestCase):
             },
             recipient,
         )
+        notify.assert_called_once()
+        self.assertEqual(notify.call_args.args[1], ["other-google-user"])
+        self.assertEqual(notify.call_args.kwargs["url"], "/map")
+
+    def test_duplicate_location_request_does_not_send_push(self):
+        self.sign_in()
+        contact = {"id": "contact-1", "name": "Alex", "tel": "", "email": "alex@example.com"}
+        recipient = {"id": "other-google-user", "name": "Alex", "email": "alex@example.com"}
+        with patch("app.main.routes.list_contacts", return_value=[contact]), patch(
+            "app.main.routes.find_user_by_email", return_value=recipient
+        ), patch("app.main.routes.request_location", return_value=({"id": "request", "status": "pending"}, False)), patch(
+            "app.main.routes.notify_users"
+        ) as notify:
+            response = self.client.post("/api/location/requests", json={"contact_id": "contact-1"})
+        self.assertEqual(response.status_code, 200)
+        notify.assert_not_called()
 
     def test_location_request_rejects_contact_not_owned_by_user(self):
         self.sign_in()
@@ -314,11 +396,25 @@ class RouteTests(unittest.TestCase):
 
     def test_location_request_response_is_scoped_to_signed_in_user(self):
         self.sign_in()
-        accepted = {"id": "request-1", "status": "accepted"}
-        with patch("app.main.routes.respond_to_request", return_value=accepted) as respond_mock:
+        accepted = {"id": "request-1", "status": "accepted", "requester_id": "requester"}
+        with patch("app.main.routes.respond_to_request", return_value=accepted) as respond_mock, patch(
+            "app.main.routes.notify_users"
+        ) as notify:
             response = self.client.post("/api/location/requests/request-1/respond", json={"action": "accept"})
         self.assertEqual(response.status_code, 200)
         respond_mock.assert_called_once_with("google-user", "request-1", "accept")
+        notify.assert_called_once()
+        self.assertEqual(notify.call_args.args[1], ["requester"])
+
+    def test_cancelled_location_request_does_not_notify(self):
+        self.sign_in()
+        cancelled = {"id": "request-1", "status": "cancelled", "requester_id": "google-user"}
+        with patch("app.main.routes.respond_to_request", return_value=cancelled), patch(
+            "app.main.routes.notify_users"
+        ) as notify:
+            response = self.client.post("/api/location/requests/request-1/respond", json={"action": "cancel"})
+        self.assertEqual(response.status_code, 200)
+        notify.assert_not_called()
 
     def test_location_sharing_can_be_revoked_individually_or_all(self):
         self.sign_in()

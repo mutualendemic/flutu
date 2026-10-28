@@ -1,5 +1,8 @@
 from pymongo.errors import PyMongoError
-from flask import Blueprint, current_app, jsonify, render_template, request, session
+import hmac
+import secrets
+
+from flask import Blueprint, current_app, jsonify, render_template, request, send_from_directory, session
 
 from app.auth.decorators import login_required
 from app.services.quantum_random import choose_direction
@@ -15,6 +18,8 @@ from app.services.location_sharing import (
     register_user,
     set_sharing_enabled,
 )
+from app.services.push_notifications import remove_subscription, save_subscription
+from app.services.push_notifications import notify_users
 
 
 main_bp = Blueprint("main", __name__)
@@ -23,7 +28,74 @@ main_bp = Blueprint("main", __name__)
 @main_bp.get("/dashboard")
 @login_required
 def dashboard():
-    return render_template("dashboard.html", user=session["user"])
+    token = session.get("_push_csrf_token")
+    if not token:
+        token = secrets.token_urlsafe(32)
+        session["_push_csrf_token"] = token
+    return render_template("dashboard.html", user=session["user"], push_csrf_token=token)
+
+
+def _valid_push_csrf():
+    expected = session.get("_push_csrf_token", "")
+    supplied = request.headers.get("X-CSRF-Token", "")
+    if not expected or not supplied or not hmac.compare_digest(expected, supplied):
+        return False
+    origin = request.headers.get("Origin")
+    if origin:
+        return origin == request.host_url.rstrip("/")
+    referer = request.headers.get("Referer")
+    return bool(referer and referer.startswith(request.host_url))
+
+
+@main_bp.get("/sw.js")
+def push_service_worker():
+    response = send_from_directory(current_app.static_folder, "sw.js", mimetype="application/javascript")
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Service-Worker-Allowed"] = "/"
+    return response
+
+
+@main_bp.get("/api/push/vapid-public-key")
+def api_push_vapid_public_key():
+    key = current_app.config.get("VAPID_PUBLIC_KEY")
+    if not all(current_app.config.get(name) for name in ("VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY", "VAPID_CONTACT")):
+        return jsonify(error="push_not_configured"), 503
+    return jsonify(key=key)
+
+
+@main_bp.post("/api/push/subscribe")
+@login_required
+def api_push_subscribe():
+    if not _valid_push_csrf():
+        return jsonify(error="csrf_failed"), 400
+    payload = request.get_json(silent=True)
+    try:
+        save_subscription(session["user"]["sub"], payload)
+        return jsonify(subscribed=True), 201
+    except ValueError:
+        return jsonify(error="invalid_subscription"), 400
+    except OverflowError:
+        return jsonify(error="subscription_limit"), 429
+    except (PyMongoError, RuntimeError):
+        current_app.logger.exception("Could not save Web Push subscription")
+        return jsonify(error="push_unavailable"), 503
+
+
+@main_bp.post("/api/push/unsubscribe")
+@login_required
+def api_push_unsubscribe():
+    if not _valid_push_csrf():
+        return jsonify(error="csrf_failed"), 400
+    payload = request.get_json(silent=True)
+    endpoint = payload.get("endpoint") if isinstance(payload, dict) else None
+    try:
+        removed = remove_subscription(session["user"]["sub"], endpoint)
+        return jsonify(unsubscribed=removed)
+    except ValueError:
+        return jsonify(error="invalid_subscription"), 400
+    except (PyMongoError, RuntimeError):
+        current_app.logger.exception("Could not remove Web Push subscription")
+        return jsonify(error="push_unavailable"), 503
 
 
 @main_bp.get("/contacts")
@@ -183,6 +255,14 @@ def api_request_location():
         saved, created = request_location(session["user"], recipient)
         if saved["status"] == "accepted":
             return jsonify(error="Location sharing is already authorized."), 409
+        if created:
+            notify_users(
+                current_app._get_current_object(),
+                [recipient["id"]],
+                title="Location-sharing request",
+                body="A friend asked to share location with you.",
+                url="/map",
+            )
         return jsonify(request=saved, created=created), (201 if created else 200)
     except (PyMongoError, RuntimeError):
         current_app.logger.exception("Could not create a location-sharing request")
@@ -200,6 +280,14 @@ def api_respond_location_request(request_id):
         result = respond_to_request(session["user"]["sub"], request_id, action)
         if not result:
             return jsonify(error="Request not found or no longer available."), 404
+        if action in {"accept", "decline"}:
+            notify_users(
+                current_app._get_current_object(),
+                [result["requester_id"]],
+                title="Location-sharing request updated",
+                body="A friend responded to your location-sharing request.",
+                url="/map",
+            )
         return jsonify(request=result)
     except (PyMongoError, RuntimeError):
         current_app.logger.exception("Could not update a location-sharing request")

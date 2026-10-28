@@ -2,7 +2,7 @@
 
 Flutu is a small Flask application with Google-only OAuth sign-in, a protected dashboard, a personal contacts list, private OpenStreetMap-based location sharing, and a quantum-random direction demo.
 
-The interface automatically follows the device's light or dark appearance preference, including system browser controls and the map's interface elements. Authenticated users can also create live branching conversations with contacts who have Flutu accounts.
+The interface automatically follows the device's light or dark appearance preference, including system browser controls and the map's interface elements. Authenticated users can also create live branching conversations with contacts who have Flutu accounts and opt in to Web Push notifications for friend requests and collaborative chat activity.
 
 ## Links
 
@@ -35,7 +35,37 @@ Chat uses Supabase Realtime Broadcast by default when Supabase is configured; Mo
 
 Google OAuth is the only sign-in method; there is no local email/password login. For local development, `FLASK_SESSION_COOKIE_SECURE=false` allows cookies over HTTP. Set it to `true` when serving over HTTPS. Never use the development fallback session key in a deployed environment.
 
+### Web Push setup
+
+Web Push uses the existing MongoDB database for subscriptions and does not require a separate Postgres service. Install the project requirements, then generate a VAPID key pair once in a trusted local Python environment. Keep the same keys across deploys: rotating them invalidates existing browser subscriptions. Do not commit the private key or paste it into frontend code.
+
+```python
+import base64
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives import serialization
+
+private_key = ec.generate_private_key(ec.SECP256R1())
+private_bytes = private_key.private_numbers().private_value.to_bytes(32, "big")
+public_bytes = private_key.public_key().public_bytes(
+  serialization.Encoding.X962,
+  serialization.PublicFormat.UncompressedPoint,
+)
+encode = lambda value: base64.urlsafe_b64encode(value).rstrip(b"=").decode("ascii")
+print("VAPID_PUBLIC_KEY=" + encode(public_bytes))
+print("VAPID_PRIVATE_KEY=" + encode(private_bytes))
+```
+
+Copy the output securely into local `.env` and the Vercel environment settings for every environment that should send pushes:
+
+- `VAPID_PUBLIC_KEY` — public application-server key returned to the dashboard browser.
+- `VAPID_PRIVATE_KEY` — server-only secret; never expose or commit it.
+- `VAPID_CONTACT` — valid VAPID contact URI, for example `mailto:ops@example.com`.
+
+Set the same values in Vercel Project Settings → Environment Variables, redeploy, and keep `FLASK_SESSION_COOKIE_SECURE=true`. The application serves the root-scoped worker at `/sw.js`; no `public/` directory, filesystem persistence, or extra database URL is needed. Push permission is requested only when the signed-in user presses **Enable notifications** on the dashboard. The user can disable a device there. Notifications are best-effort and only reach browsers that opted in. Android Chrome supports Web Push; on iOS, the site must be added to the Home Screen and installed as a web app. No generic public broadcast/send endpoint is provided.
+
 The sign-in page displays the running version as a short Git commit hash. Deployments should provide `FLUTU_BUILD_COMMIT` (or the platform's `VERCEL_GIT_COMMIT_SHA`, `GITHUB_SHA`, or `SOURCE_VERSION`); local development reads the current Git commit when available.
+
+For new Web Push event integrations, follow the shared eligibility and delivery contract in `docs/specifications/architecture.md`: send only for meaningful new friend requests/invitations or actions requesting friend/group input, resolve recipients from server-side persisted relationships, exclude the actor, and never push on polling/heartbeats/repeated no-op updates. Update the architecture and relevant page specification and add eligibility/recipient/failure tests with every new trigger.
 
 ## Vercel deployment
 
@@ -51,6 +81,9 @@ The repository includes a Vercel-compatible Flask export at `api/index.py`. Verc
    - `FLASK_SESSION_COOKIE_SECURE=true`
    - `MONGODB_URI` (Atlas connection string; server-side only)
    - `MONGODB_DATABASE` (for example, `flutu`)
+  - `VAPID_PUBLIC_KEY` (public key used by browser subscription)
+  - `VAPID_PRIVATE_KEY` (server-only secret; never expose to the browser)
+  - `VAPID_CONTACT` (for example, `mailto:ops@example.com`)
     - `IBM_QUANTUM_API_KEY` (server-side key required for decisions and quantum chat branches)
     - `IBM_QUANTUM_INSTANCE` (optional IBM Quantum instance CRN)
    - `SUPABASE_URL` and `SUPABASE_ANON_KEY` (the anon/publishable key is intended for browser use)
@@ -172,12 +205,12 @@ The implementation decisions for cross-page architecture and each user-facing pa
 - `/profile` is a level-2 page linked from the dashboard. It shows the signed-in Google account and explains that the profile photo is used as the user's map marker, with initials as a fallback. The profile page remains available; it no longer contains marker selection controls.
 - On the map, distance to a person you share your location with is calculated locally only when you have a recent own position and that person has separately shared their location with you. Otherwise the distance is unavailable; Flutu does not infer or request their location without their consent.
 - The map reports whether an unavailable distance is due to your device position being stale or the other person not sharing their current position with you. Distance is also included in remote marker popups. Map markers use the Google profile photo, falling back to initials if unavailable.
-- The Google profile directory used to match sharing requests is refreshed on sign-in and stored in MongoDB. A contact must have signed in to Flutu at least once to receive a request. Requests are in-app and appear when the recipient next opens the map page; there are no push notifications.
+- The Google profile directory used to match sharing requests is refreshed on sign-in and stored in MongoDB. A contact must have signed in to Flutu at least once to receive a request. A newly created location-sharing request sends an opted-in recipient a generic Web Push linking to the map; acceptance or refusal notifies the requester. Duplicate requests and requester-initiated cancellation do not send pushes.
 - Sharing requires recipient consent and a separate explicit start action by the location owner, in addition to browser geolocation permission. Once enabled on the map page, the app updates location about every 30 seconds on any authenticated app route while the app is visible. The opt-in is stored in the user's MongoDB profile and remains active across route changes; it can be paused from the map page. MongoDB upserts one latest GeoJSON location document per user instead of creating a record for every update. The location is returned only to accepted requesters, hidden when it has not been updated for two minutes, and automatically expires from MongoDB after three minutes without an update; pausing sharing or revoking the final active grant deletes it immediately. Browser geolocation requires HTTPS outside localhost. OpenStreetMap map tiles come from its public tile service and are subject to the OpenStreetMap tile usage policy.
 - **Import from phone** uses the browser Contact Picker API when available; support varies by mobile browser and it requires HTTPS. As a fallback, export contacts from the phone as a `.vcf`/vCard file and use **Import .vcf file**. The page also allows manual entry and search.
 - `/decision` is level 2; `/decision/info` is level 3 and returns to `/decision`.
 - The dashboard provides **Quantum path selector**, **My contacts**, **Location map**, and **My profile** options.
-- `/chat/` is a level-2 page linked from the dashboard. It lists conversations, creates conversations using account-linked Contacts, and links to each member-only graph at `/chat/<conversation_id>`. A conversation returns to its list. REST mutations require a session CSRF token. Socket handlers reuse the Google-authenticated Flask session, verify active membership for every event, and broadcast only to active per-user rooms. The creator writes one initial question with 2–10 options; IBM Quantum selects and persists a single option. Every active participant can then add a follow-up question with its own options to that selected option. The graph alternates question/author and vertically stacked option columns; it marks the selected path and follow-up connections, keeps nodes fixed, and provides fit/zoom/pan controls.
+- `/chat/` is a level-2 page linked from the dashboard. It lists conversations, creates conversations using account-linked Contacts, and links to each member-only graph at `/chat/<conversation_id>`. A conversation returns to its list. REST mutations require a session CSRF token. Socket handlers reuse the Google-authenticated Flask session, verify active membership for every event, and broadcast only to active per-user rooms. Newly added conversation members receive an opted-in generic push. The creator writes one initial question with 2–10 options; IBM Quantum selects and persists a single option. Every active participant can then add a follow-up question with its own options to that selected option; other active members receive an opted-in generic push for a new question/follow-up, excluding its author. The graph alternates question/author and vertically stacked option columns; it marks the selected path and follow-up connections, keeps nodes fixed, and provides fit/zoom/pan controls.
 - Unauthenticated page requests redirect to sign-in. Protected APIs return JSON `401` without performing the requested action.
 
 ## APIs
@@ -185,6 +218,8 @@ The implementation decisions for cross-page architecture and each user-facing pa
 `GET /api/contacts`, `POST /api/contacts`, and `DELETE /api/contacts` manage the signed-in user's contacts. `DELETE /api/contacts/<id>` removes an individual contact. Every route requires authentication and scopes data to the Google account in the session.
 
 Location sharing APIs also require a session and derive identities from it: `GET /api/location/status` returns the caller's opt-in, active-recipient count, and profile photo; `POST /api/location/sharing` enables or pauses updates; `GET /api/location/overview` returns pending requests, active grants, and locations shared with the caller; `POST /api/location/requests` requests a saved contact's location; `POST /api/location/requests/<id>/respond` accepts, declines, or cancels a pending request; `POST /api/location/updates` upserts the signed-in user's latest coordinates only if the owner opted in and an active grant exists; `DELETE /api/location/shares/<id>` revokes one grant; and `DELETE /api/location/shares` revokes all grants. Coordinates are validated server-side, and a location is disclosed only when an accepted request connects its owner and the viewer. Map markers use the Google profile photo (or initials if unavailable); there is no marker-selection API.
+
+Web Push APIs: `GET /api/push/vapid-public-key` returns only the public key; authenticated `POST /api/push/subscribe` and `/api/push/unsubscribe` register or remove the current browser endpoint for the signed-in Google account. Mutations require the dashboard's session CSRF token and same-origin requests. Subscription endpoints are limited to HTTPS push-service hosts. Delivery is event-driven and best-effort; see the architecture specification for eligible triggers, recipient rules, exclusions, and security behavior.
 
 Chat APIs are under `/chat/api/`: list/create/delete conversations, graph snapshots, member add/remove, addable contacts, and quantum-path question creation. Voting and manual question closing are disabled. Question editing/deletion endpoints are locked in quantum branch mode. Only a conversation's creator can permanently delete it; deletion removes its members, questions, options, and answer records. Supabase Realtime Broadcast sends private invalidation events; Socket.IO remains available for self-hosted deployments. The app also supports REST polling as a fallback. For Socket.IO, use gevent Gunicorn, one worker per process, Redis shared among instances, sticky sessions, and WebSocket proxy upgrade support. Set the container's `PORT`; the Docker image binds to `0.0.0.0` while local development remains on `127.0.0.1`. Supabase JS 2.49.1, Socket.IO client 4.8.1, and Cytoscape 3.30.4 are pinned on jsDelivr. See [docs/specifications/pages/branching-chat.md](docs/specifications/pages/branching-chat.md).
 

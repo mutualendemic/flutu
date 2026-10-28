@@ -8,6 +8,7 @@ from app.auth.decorators import login_required
 from app.chat import chat_bp
 from app.chat.sockets import emit_to_active_members, emit_to_user
 from app.services import chat as service
+from app.services.push_notifications import notify_users
 from app.services.supabase_realtime import (
     TOKEN_TTL_SECONDS,
     conversation_topic,
@@ -138,6 +139,14 @@ def api_create_conversation():
         event = {"id": conversation_id, "title": conversation["title"]}
         for uid in member_ids:
             emit_to_user("conversation_added", event, uid)
+        notify_users(
+            current_app._get_current_object(),
+            member_ids,
+            title="New conversation",
+            body="A friend added you to a conversation.",
+            url=f"/chat/{conversation_id}",
+            exclude_ids={_user_id()},
+        )
         return jsonify(conversation_id=conversation_id), 201
     except (ValueError, PermissionError) as error:
         return _api_error(str(error), _status_for_error(error))
@@ -191,6 +200,15 @@ def api_create_question(conversation_id):
         )
         event = service.question_event_payload(conversation_id, question_id)
         emit_to_active_members("question_created", event, conversation_id)
+        recipient_ids = [member["user_id"] for member in service.get_active_members(conversation_id)]
+        notify_users(
+            current_app._get_current_object(),
+            recipient_ids,
+            title="New question in a conversation",
+            body="A friend added a question that needs your attention.",
+            url=f"/chat/{conversation_id}",
+            exclude_ids={_user_id()},
+        )
         return jsonify(question_id=question_id), 201
     except (ValueError, PermissionError) as error:
         return _api_error(str(error), _status_for_error(error))
@@ -229,6 +247,14 @@ def api_add_members(conversation_id):
             event = {"id": conversation_id, "title": (service.get_conversation(conversation_id) or {}).get("title", "")}
             emit_to_user("conversation_added", event, member["user_id"])
             emit_to_active_members("member_added", member, conversation_id)
+        if added:
+            notify_users(
+                current_app._get_current_object(),
+                [member["user_id"] for member in added],
+                title="New conversation",
+                body="A friend added you to a conversation.",
+                url=f"/chat/{conversation_id}",
+            )
         return jsonify(members=added)
     except (ValueError, PermissionError) as error:
         return _api_error(str(error), _status_for_error(error))

@@ -7,6 +7,7 @@ from flask import current_app, request, session
 from flask_socketio import SocketIO, emit, join_room, leave_room
 
 from app.services import chat as service
+from app.services.push_notifications import notify_users
 from app.services.supabase_realtime import publish_conversation_event, publish_user_event
 
 
@@ -169,6 +170,15 @@ def socket_create_question(user, data):
         )
         payload = service.question_event_payload(conversation_id, question_id)
         emit_to_active_members("question_created", payload, conversation_id)
+        recipients = [member["user_id"] for member in service.get_active_members(conversation_id)]
+        notify_users(
+            current_app._get_current_object(),
+            recipients,
+            title="New question in a conversation",
+            body="A friend added a question that needs your attention.",
+            url=f"/chat/{conversation_id}",
+            exclude_ids={user["sub"]},
+        )
         return {"ok": True, "question_id": question_id}
     except (ValueError, PermissionError) as error:
         return _error(str(error))

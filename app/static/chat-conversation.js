@@ -68,9 +68,9 @@
         {selector: 'node[type="question"][status="closed"]', style: {'background-color': '#f2f4f7', 'border-color': '#98a2b3'}},
         {selector: 'node[type="author_avatar"]', style: {label: 'data(label)', shape: 'ellipse', width: 34, height: 34, 'font-size': 9, 'font-weight': 700, color: '#fff', 'text-valign': 'center', 'text-halign': 'center', 'background-color': '#53627b', 'background-image': 'data(picture)', 'background-fit': 'cover', 'background-clip': 'node', 'border-width': 2, 'border-color': '#ffffff'}},
         {selector: 'node[type="option"]', style: {label: 'data(display)', shape: 'round-rectangle', width: 220, height: 48, 'text-wrap': 'wrap', 'text-max-width': 200, 'font-size': 11, color: '#344054', 'background-color': '#fff7e6', 'border-width': 1, 'border-color': '#f79009', 'text-valign': 'center', 'text-halign': 'center'}},
-        {selector: 'node[type="option"][quantum_selected]', style: {'border-width': 3, 'border-color': '#12b76a', 'background-color': '#ecfdf3'}},
+        {selector: 'node[type="option"][?quantum_selected]', style: {'border-width': 5, 'border-color': '#067647', 'background-color': '#a6f4c5', color: '#054f31', 'font-weight': 800}},
         {selector: 'edge[kind="branch"]', style: {width: 2, 'line-color': '#98a2b3', 'target-arrow-shape': 'triangle', 'target-arrow-color': '#98a2b3', 'curve-style': 'bezier'}},
-        {selector: 'edge[kind="branch"][quantum_selected]', style: {width: 4, 'line-color': '#12b76a', 'target-arrow-color': '#12b76a'}},
+        {selector: 'edge[kind="branch"][?quantum_selected]', style: {width: 5, 'line-color': '#067647', 'target-arrow-color': '#067647'}},
         {selector: 'edge[kind="follow_up"]', style: {label: 'data(label)', 'font-size': 10, 'text-background-color': '#ffffff', 'text-background-opacity': 1, 'text-background-padding': 3, width: 3, 'line-color': '#7f77dd', 'target-arrow-shape': 'triangle', 'target-arrow-color': '#7f77dd', 'curve-style': 'bezier'}},
       ],
     });

@@ -6,7 +6,7 @@ from bson import ObjectId
 
 from app import create_app
 from app.chat.sockets import socketio
-from app.services.chat import _serialize_member, create_question, delete_conversation, graph_payload, validate_question
+from app.services.chat import _quantum_option_index, _serialize_member, create_question, delete_conversation, graph_payload, validate_question
 
 
 class ChatTests(unittest.TestCase):
@@ -54,6 +54,23 @@ class ChatTests(unittest.TestCase):
             with self.subTest(expected=expected, options=options):
                 with self.assertRaisesRegex(ValueError, expected):
                     validate_question(text, options)
+
+    def test_quantum_option_index_can_select_each_position_for_option_counts(self):
+        for option_count in range(2, 11):
+            bit_count = (option_count - 1).bit_length()
+            for expected_index in range(option_count):
+                bits = [bool(expected_index & (1 << shift)) for shift in range(bit_count - 1, -1, -1)]
+                with self.subTest(option_count=option_count, expected_index=expected_index), patch(
+                    "app.services.chat.choose_direction", side_effect=bits
+                ) as choose:
+                    self.assertEqual(_quantum_option_index(option_count), expected_index)
+                    self.assertEqual(choose.call_count, bit_count)
+
+    def test_quantum_option_index_rejects_out_of_range_bit_patterns_without_bias(self):
+        # With three choices, bit pattern 11 is rejected; 10 then selects index 2.
+        with patch("app.services.chat.choose_direction", side_effect=[True, True, True, False]) as choose:
+            self.assertEqual(_quantum_option_index(3), 2)
+        self.assertEqual(choose.call_count, 4)
 
     def test_only_creator_can_create_the_initial_question(self):
         conversation_id = ObjectId("65b0e7a3a6c6f166f1c3a021")
@@ -146,6 +163,56 @@ class ChatTests(unittest.TestCase):
         self.assertEqual(emit.call_count, 2)
         emit.assert_any_call("conversation_removed", {"id": "conversation-id"}, "other-user")
 
+    def test_new_conversation_push_excludes_creator(self):
+        self.sign_in()
+        conversation = {"title": "Plan", "member_user_ids": ["google-user", "friend"]}
+        with patch("app.chat.routes.service.create_conversation", return_value="conversation-id"), patch(
+            "app.chat.routes.service.get_conversation", return_value=conversation
+        ), patch("app.chat.routes.emit_to_user"), patch("app.chat.routes.notify_users") as notify:
+            response = self.http.post(
+                "/chat/api/conversations",
+                json={"title": "Plan", "member_user_ids": ["friend"]},
+                headers=self.csrf_headers(),
+            )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(notify.call_args.args[1], ["google-user", "friend"])
+        self.assertEqual(notify.call_args.kwargs["exclude_ids"], {"google-user"})
+
+    def test_adding_members_pushes_only_ids_returned_as_new_members(self):
+        self.sign_in()
+        added = [{"user_id": "new-friend", "name": "New Friend"}]
+        with patch("app.chat.routes.service.add_members", return_value=added), patch(
+            "app.chat.routes.service.get_conversation", return_value={"title": "Plan"}
+        ), patch("app.chat.routes.emit_to_user"), patch("app.chat.routes.emit_to_active_members"), patch(
+            "app.chat.routes.notify_users"
+        ) as notify:
+            response = self.http.post(
+                "/chat/api/conversations/conversation-id/members",
+                json={"user_ids": ["new-friend"]},
+                headers=self.csrf_headers(),
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(notify.call_args.args[1], ["new-friend"])
+
+    def test_socket_created_question_pushes_to_other_members(self):
+        self.sign_in()
+        client = socketio.test_client(self.app, namespace="/chat", flask_test_client=self.http)
+        with patch("app.chat.sockets.service.is_active_member", return_value=True), patch(
+            "app.chat.sockets.service.create_question", return_value="question-id"
+        ), patch("app.chat.sockets.service.question_event_payload", return_value={}), patch(
+            "app.chat.sockets.service.get_active_members", return_value=[{"user_id": "google-user"}, {"user_id": "friend"}]
+        ), patch("app.chat.sockets.emit_to_active_members"), patch("app.chat.sockets.notify_users") as notify:
+            result = client.emit(
+                "create_question",
+                {"conversation_id": "conversation-id", "text": "A question?", "options": ["A", "B"]},
+                namespace="/chat",
+                callback=True,
+            )
+        self.assertTrue(result["ok"])
+        self.assertEqual(notify.call_args.args[1], ["google-user", "friend"])
+        self.assertEqual(notify.call_args.kwargs["exclude_ids"], {"google-user"})
+        client.disconnect(namespace="/chat")
+
     def test_non_creator_cannot_delete_conversation(self):
         self.sign_in()
         with patch("app.services.chat._collections") as collections_factory:
@@ -180,6 +247,10 @@ class ChatTests(unittest.TestCase):
         self.assertIn(b'id="graph-empty-state"', response.data)
         self.assertIn(b'id="graph-empty-state"', response.data)
         self.assertIn(b'src="/static/logo.svg"', response.data)
+        script = self.http.get("/static/chat-conversation.js")
+        self.assertIn(b'node[type="option"][?quantum_selected]', script.data)
+        self.assertIn(b'edge[kind="branch"][?quantum_selected]', script.data)
+        script.close()
 
     def test_member_snapshot_preserves_profile_photo_for_author_avatar(self):
         member = _serialize_member({
@@ -300,13 +371,18 @@ class ChatTests(unittest.TestCase):
             "app.chat.routes.service.create_question", return_value="q1"
         ) as create, patch("app.chat.routes.service.question_event_payload", return_value={"question": {}, "options": [], "edges": []}), patch(
             "app.chat.routes.emit_to_active_members"
-        ):
+        ), patch("app.chat.routes.service.get_active_members", return_value=[{"user_id": "google-user"}, {"user_id": "friend"}]), patch(
+            "app.chat.routes.notify_users"
+        ) as notify:
             response = self.http.post(
                 "/chat/api/conversations/conversation-id/questions",
                 json={"text": "A question?", "options": ["One", "Two", "Three"]}, headers=headers,
             )
         self.assertEqual(response.status_code, 201)
         create.assert_called_once_with("conversation-id", "google-user", "A question?", ["One", "Two", "Three"], None, True)
+        notify.assert_called_once()
+        self.assertEqual(notify.call_args.args[1], ["google-user", "friend"])
+        self.assertEqual(notify.call_args.kwargs["exclude_ids"], {"google-user"})
 
     def test_non_creator_cannot_create_initial_question(self):
         self.sign_in()
@@ -369,11 +445,47 @@ class ChatTests(unittest.TestCase):
         option_nodes = [node for node in graph["nodes"] if node["type"] == "option"]
         self.assertEqual({node["lane"] for node in option_nodes}, {1})
         self.assertEqual(len({node["row"] for node in option_nodes}), 2)
+        self.assertEqual([node["option_id"] for node in option_nodes], [str(option_id_a), str(option_id_b)])
+        self.assertLess(option_nodes[0]["row"], option_nodes[1]["row"])
         self.assertTrue(all("count" not in node and "voter_names" not in node for node in option_nodes))
         selected = next(node for node in option_nodes if node["option_id"] == str(option_id_b))
         self.assertTrue(selected["quantum_selected"])
         selected_edge = next(edge for edge in graph["edges"] if edge["to"] == selected["id"])
         self.assertTrue(selected_edge["quantum_selected"])
+
+    def test_graph_does_not_mark_first_option_when_no_quantum_selection_exists(self):
+        conversation_id = ObjectId("65b0e7a3a6c6f166f1c3a051")
+        question_id = ObjectId("65b0e7a3a6c6f166f1c3a052")
+        option_ids = [ObjectId("65b0e7a3a6c6f166f1c3a053"), ObjectId("65b0e7a3a6c6f166f1c3a054")]
+        conversation = {"_id": conversation_id, "title": "Selection unavailable", "created_by_user_id": "owner"}
+        question = {
+            "_id": question_id, "conversation_id": conversation_id, "author_user_id": "owner",
+            "text": "Choose", "status": "open", "parent_option_id": None,
+            "winning_option_id": None, "created_at": datetime.now(timezone.utc),
+        }
+        option_docs = [
+            {"_id": option_id, "question_id": question_id, "conversation_id": conversation_id, "label": str(index), "position": index}
+            for index, option_id in enumerate(option_ids)
+        ]
+        members = Mock()
+        members.find.return_value = []
+        questions = Mock()
+        questions.find.return_value.sort.return_value = [question]
+        options = Mock()
+        options.find.return_value.sort.return_value = option_docs
+        options.find_one.return_value = None
+
+        with patch("app.services.chat.get_conversation", return_value=conversation), patch(
+            "app.services.chat._collections", return_value=(Mock(), members, questions, options, Mock())
+        ), patch("app.services.chat._depth", return_value=0), patch(
+            "app.services.chat._quantum_path_for_question", return_value=None
+        ):
+            graph = graph_payload(str(conversation_id), "owner")
+
+        question_node = next(node for node in graph["nodes"] if node["type"] == "question")
+        option_nodes = [node for node in graph["nodes"] if node["type"] == "option"]
+        self.assertIsNone(question_node["quantum_selected_option_id"])
+        self.assertEqual([node["quantum_selected"] for node in option_nodes], [False, False])
 
     def test_graph_payload_keeps_quantum_branch_selection_stable(self):
         conversation_id = ObjectId("65b0e7a3a6c6f166f1c3a011")
@@ -516,7 +628,9 @@ class ChatTests(unittest.TestCase):
             "app.chat.sockets.service.create_question", return_value="q1"
         ) as create, patch("app.chat.sockets.service.question_event_payload", return_value={"question": {}, "options": [], "edges": []}), patch(
             "app.chat.sockets.emit_to_active_members"
-        ) as emit:
+        ) as emit, patch("app.chat.sockets.service.get_active_members", return_value=[{"user_id": "google-user"}]), patch(
+            "app.chat.sockets.notify_users"
+        ):
             result = client.emit(
                 "create_question",
                 {"conversation_id": "conversation-id", "text": "A question?", "options": ["Yes", "No"]},

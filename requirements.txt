@@ -8,3 +8,4 @@ Flask-SocketIO>=5.5,<6
 gevent>=24.11
 gevent-websocket>=0.10.1
 redis>=5,<7
+pywebpush>=2.0,<3

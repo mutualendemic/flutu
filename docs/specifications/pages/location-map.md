@@ -12,8 +12,8 @@
 ## Flow and consent
 
 1. The sender selects a saved contact. The server confirms that the contact belongs to the authenticated account and resolves its account using the normalized email in the Flutu directory.
-2. If that account has signed in with Google, the server creates a `pending` request identified by Google account IDs (`sub`). Requests are in-app; no email or push notification is sent.
-3. The recipient decides whether to accept or decline. Accepting adds the requester to the recipient's contact list if that email is not already present.
+2. If that account has signed in with Google, the server creates a `pending` request identified by Google account IDs (`sub`). A newly created request sends the recipient an opted-in generic Web Push linking to `/map`; duplicate requests do not send another push.
+3. The recipient decides whether to accept or decline. Accepting adds the requester to the recipient's contact list if that email is not already present. An accepted or declined transition sends an opted-in generic push to the original requester; requester-initiated cancellation does not.
 4. The location owner separately decides whether to enable updates. Without at least one accepted incoming request, the button is disabled; the interface explains that a contact must request the location first. On enable, the page requests the position immediately in the direct context of the user action to trigger the browser's native permission prompt (there is no separate Flutu authorization page); only after obtaining a position does it save opt-in and send the first point. If the browser already has a saved decision, it does not show another prompt and follows that decision. Opt-in is persisted in the profile and can be paused on the page. Messages distinguish a non-HTTPS context, denied permission, unavailable GPS, and timeout.
 5. On the map, the device's own location is obtained immediately and then about every 30 seconds to display only the own marker; a hidden-page event suspends reads, and returning to the foreground requests a new read. These private reads are not saved on the server. If sharing is enabled and there is at least one accepted recipient, `location-sharing.js` also sends updates (about every 30 seconds) from any visible authenticated route. A closed page sends no updates.
 
@@ -24,6 +24,7 @@
 - Revoking an individual grant leaves other accepted grants active. Removing the last grant disables opt-in and removes the point.
 - Private API routes: `GET /api/location/overview`, `GET /api/location/status`, `POST /api/location/sharing`, `POST /api/location/requests`, `POST /api/location/requests/<id>/respond`, `POST /api/location/updates`, `DELETE /api/location/shares`, `DELETE /api/location/shares/<id>`. Validation, scope, and rules are in the [architecture specification](../architecture.md).
 - Location is sensitive. Use depends on explicit consent, browser GPS permission, and an HTTPS context outside localhost. GPS errors from the global updater appear on the map page and in the dashboard sharing indicator. Do not use these data as a track/history.
+- Push messages do not include coordinates or contact email/name. They are sent only for a newly persisted request or an actual accept/decline transition, never for duplicate requests, cancellations, GPS updates, or polling. Delivery is best-effort and does not replace the authenticated map overview.
 
 ## Related files
 
