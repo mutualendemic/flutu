@@ -70,6 +70,9 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Bring your people and plans together", response.data)
         self.assertIn(b"Private location sharing", response.data)
+        self.assertIn(b'id="landing-particles"', response.data)
+        self.assertIn(b"landing-effect.js", response.data)
+        self.assertNotIn(b"<iframe", response.data)
         self.assertIn(b"ux9.eu", response.data)
         self.assertIn(b'lang="en-GB"', response.data)
 
@@ -115,6 +118,7 @@ class RouteTests(unittest.TestCase):
         landing = self.client.get("/")
         self.assertIn(b'lang="pt-PT"', landing.data)
         self.assertIn("Junte as suas pessoas".encode(), landing.data)
+        self.assertIn("Animação de partículas flutuantes".encode(), landing.data)
         self.sign_in()
         with self.client.session_transaction() as browser_session:
             self.assertEqual(browser_session["locale"], "pt_PT")

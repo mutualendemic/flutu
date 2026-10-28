@@ -12,6 +12,9 @@ msgstr "Idioma do site"
 msgid "A private space for making plans"
 msgstr "Um espaço privado para fazer planos"
 
+msgid "Floating particle animation"
+msgstr "Animação de partículas flutuantes"
+
 msgid "A calmer way to coordinate"
 msgstr "Uma forma mais tranquila de coordenar"
 
