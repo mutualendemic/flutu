@@ -714,6 +714,12 @@ msgstr "Convidar por email"
 msgid "Invite by text"
 msgstr "Convidar por SMS"
 
+msgid "Invite {name} by email"
+msgstr "Convidar {name} por email"
+
+msgid "Invite {name} by text message"
+msgstr "Convidar {name} por SMS"
+
 msgid "A small decision"
 msgstr "Uma pequena decisão"
 

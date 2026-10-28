@@ -13,16 +13,27 @@
   .count { color: #687791; font-size: .9rem; }
   .search { margin: 14px 0; }
   .contact-list { display: grid; gap: 10px; padding: 0; list-style: none; }
-  .contact-card { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 15px; border: 1px solid #e2e9f5; border-radius: 14px; background: #fbfcff; }
+  .contact-card { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-width: 0; padding: 15px; border: 1px solid #e2e9f5; border-radius: 14px; background: #fbfcff; }
+  .contact-details { min-width: 0; overflow-wrap: anywhere; }
   .contact-card-actions { display: flex; flex: 0 0 auto; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
   .contact-card h3 { margin: 0 0 5px; font-size: 1rem; }
   .contact-card p { margin: 2px 0; font-size: .9rem; overflow-wrap: anywhere; }
-  .remove-contact { flex: 0 0 auto; padding: 8px 10px; border: 1px solid #f0d6d3; border-radius: 9px; background: white; color: #a2342c; font: inherit; cursor: pointer; }
+  .remove-contact { display: inline-flex; align-items: center; justify-content: center; gap: 7px; flex: 0 0 auto; padding: 8px 10px; border: 1px solid #f0d6d3; border-radius: 9px; background: white; color: #a2342c; font: inherit; cursor: pointer; }
   .invite-contact { padding: 8px 10px; border: 1px solid #d5deef; border-radius: 9px; background: white; color: #3655d4; font: inherit; font-weight: 700; text-decoration: none; }
+  .invite-contact { display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
   .invite-contact:hover { background: #f0f4ff; }
+  .contact-action-icon { width: 18px; height: 18px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
   .notice { min-height: 24px; margin: 8px 0; color: #53627b; font-size: .9rem; }
   .empty { padding: 22px 12px; border: 1px dashed #cbd6e8; border-radius: 14px; text-align: center; }
-  @media (max-width: 520px) { .manual-form { grid-template-columns: 1fr; } .manual-form button { grid-column: auto; } .contacts { margin-top: 0; } }
+  @media (max-width: 520px) {
+    .manual-form { grid-template-columns: 1fr; }
+    .manual-form button { grid-column: auto; }
+    .contacts { margin-top: 0; }
+    .contact-card { align-items: stretch; flex-direction: column; gap: 12px; }
+    .contact-card-actions { width: 100%; justify-content: flex-start; }
+    .invite-contact, .remove-contact { width: 40px; height: 40px; padding: 0; }
+    .action-label { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+  }
 {% endblock %}
 {% block content %}
   <main class="card contacts">
@@ -146,11 +157,27 @@
           .replace("{url}", () => inviteUrl);
       }
 
-      function invitationLink(label, href) {
+      function actionIcon(pathData) {
+        const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        icon.classList.add("contact-action-icon");
+        icon.setAttribute("viewBox", "0 0 24 24");
+        icon.setAttribute("aria-hidden", "true");
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("d", pathData);
+        icon.append(path);
+        return icon;
+      }
+
+      function invitationLink(label, ariaLabel, href, iconPath) {
         const link = document.createElement("a");
         link.className = "invite-contact";
-        link.textContent = label;
+        link.setAttribute("aria-label", ariaLabel);
+        link.title = ariaLabel;
         link.href = href;
+        const text = document.createElement("span");
+        text.className = "action-label";
+        text.textContent = label;
+        link.append(actionIcon(iconPath), text);
         return link;
       }
 
@@ -176,6 +203,7 @@
           const item = document.createElement("li");
           item.className = "contact-card";
           const details = document.createElement("div");
+          details.className = "contact-details";
           const name = document.createElement("h3");
           name.textContent = contact.name;
           details.append(name);
@@ -194,16 +222,32 @@
           const message = invitationMessage(contact);
           if (contact.email) {
             const emailParameters = new URLSearchParams({ subject: t("Join me on ux9.eu"), body: message });
-            actions.append(invitationLink(t("Invite by email"), `mailto:${encodeURIComponent(contact.email)}?${emailParameters}`));
+            actions.append(invitationLink(
+              t("Invite by email"),
+              t("Invite {name} by email").replace("{name}", () => contact.name),
+              `mailto:${encodeURIComponent(contact.email)}?${emailParameters}`,
+              "M4 6h16v12H4z M4 7l8 6 8-6",
+            ));
           }
           if (contact.tel) {
-            actions.append(invitationLink(t("Invite by text"), `sms:${encodeURIComponent(contact.tel)}?body=${encodeURIComponent(message)}`));
+            actions.append(invitationLink(
+              t("Invite by text"),
+              t("Invite {name} by text message").replace("{name}", () => contact.name),
+              `sms:${encodeURIComponent(contact.tel)}?body=${encodeURIComponent(message)}`,
+              "M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6a7.5 7.5 0 1 1 17-3.5Z M8 11h.01 M12 11h.01 M16 11h.01",
+            ));
           }
           const remove = document.createElement("button");
           remove.className = "remove-contact";
           remove.type = "button";
-          remove.textContent = t("Remove");
-          remove.setAttribute("aria-label", t("Remove {name}").replace("{name}", contact.name));
+          const removeLabel = t("Remove {name}").replace("{name}", () => contact.name);
+          remove.setAttribute("aria-label", removeLabel);
+          remove.title = removeLabel;
+          remove.append(actionIcon("M4 7h16 M10 11v6 M14 11v6 M5 7l1 14h12l1-14 M9 7V4h6v3"));
+          const removeText = document.createElement("span");
+          removeText.className = "action-label";
+          removeText.textContent = t("Remove");
+          remove.append(removeText);
           remove.addEventListener("click", async () => {
             await window.FlutuAction.run(remove, async () => {
               try {

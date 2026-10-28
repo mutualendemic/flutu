@@ -142,6 +142,8 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(messages["invalid_payload"], "Os dados do pedido são inválidos.")
         self.assertEqual(messages["Invite by email"], "Convidar por email")
         self.assertEqual(messages["Invite by text"], "Convidar por SMS")
+        self.assertEqual(messages["Invite {name} by email"], "Convidar {name} por email")
+        self.assertEqual(messages["Invite {name} by text message"], "Convidar {name} por SMS")
 
     def test_authenticated_root_redirects_to_dashboard(self):
         self.sign_in()
@@ -259,6 +261,9 @@ class RouteTests(unittest.TestCase):
         self.assertIn(b'const inviteUrl = "http://localhost/auth/login"', contacts.data)
         self.assertIn(b"Invite by email", contacts.data)
         self.assertIn(b"Invite by text", contacts.data)
+        self.assertIn(b"contact-card-actions { width: 100%; justify-content: flex-start; }", contacts.data)
+        self.assertIn(b"classList.add(\"contact-action-icon\")", contacts.data)
+        self.assertIn(b"aria-label", contacts.data)
         self.assertIn(b"mailto:${encodeURIComponent(contact.email)}", contacts.data)
         self.assertIn(b"sms:${encodeURIComponent(contact.tel)}", contacts.data)
 

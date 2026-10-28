@@ -180,6 +180,8 @@ JS_MESSAGE_IDS = (
     "Join me on ux9.eu",
     "Invite by email",
     "Invite by text",
+    "Invite {name} by email",
+    "Invite {name} by text message",
     "The server returned a non-JSON response (HTTP {status}). Check the Vercel Function logs; the IBM Quantum job may have timed out.",
     "Could not get a decision.",
     "The server returned an invalid decision. Check the Vercel Function logs.",
