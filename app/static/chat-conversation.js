@@ -9,7 +9,6 @@
   const details = document.getElementById('details');
   const error = document.getElementById('chat-error');
   const optionsEditor = document.getElementById('option-editors');
-  const answerDialog = document.getElementById('answer-dialog');
   const membersPanel = document.getElementById('members-panel');
   const nodes = new Map();
   const edges = new Map();
@@ -19,9 +18,9 @@
   let realtimeConnection;
   let pollingTimer;
   let polling = false;
-  let selectedOption;
   let followUpOption;
   let canCreateRoot = false;
+  let initialGraphFitDone = false;
 
   function el(tag, text, className) {
     const element = document.createElement(tag);
@@ -32,9 +31,17 @@
 
   function setError(message) { error.textContent = message || ''; }
   function position(data) {
-    const x = 120 + Number(data.lane || 0) * 180;
-    const y = 120 + Number(data.row || 0) * 90;
-    return data.type === 'author_avatar' ? {x: x - 66, y: y} : {x, y};
+    const x = 150 + Number(data.lane || 0) * 360;
+    const y = 80 + Number(data.row || 0) * 112;
+    return data.type === 'author_avatar' ? {x: x - 155, y} : {x, y};
+  }
+  function fitGraph() {
+    if (graph && graph.nodes().length) graph.fit(graph.nodes(), 40);
+  }
+  function zoomGraph(factor) {
+    if (!graph) return;
+    const level = Math.min(3.5, Math.max(0.05, graph.zoom() * factor));
+    graph.zoom({level, renderedPosition: {x: graphElement.clientWidth / 2, y: graphElement.clientHeight / 2}});
   }
   function cyNode(data) {
     return {group: 'nodes', data: {...data}, position: position(data)};
@@ -50,25 +57,21 @@
       container: graphElement,
       elements: [],
       layout: {name: 'preset', fit: true, padding: 28},
-      minZoom: 0.35, maxZoom: 2.5, wheelSensitivity: 0.18,
+      minZoom: 0.05, maxZoom: 3.5, wheelSensitivity: 0.18,
       boxSelectionEnabled: false,
       autounselectify: true,
-      userPanningEnabled: false,
+      userPanningEnabled: true,
       panningEnabled: true,
       zoomingEnabled: true,
       style: [
-        {selector: 'node[type="question"]', style: {label: 'data(label)', shape: 'round-rectangle', width: 145, height: 46, 'text-wrap': 'wrap', 'text-max-width': 132, 'font-size': 11, color: '#14213d', 'background-color': '#ffffff', 'border-width': 2, 'border-color': '#f79009', 'text-valign': 'center', 'text-halign': 'center'}},
+        {selector: 'node[type="question"]', style: {label: 'data(display)', shape: 'round-rectangle', width: 230, height: 70, 'text-wrap': 'wrap', 'text-max-width': 210, 'font-size': 12, color: '#14213d', 'background-color': '#ffffff', 'border-width': 2, 'border-color': '#f79009', 'text-valign': 'center', 'text-halign': 'center'}},
         {selector: 'node[type="question"][status="closed"]', style: {'background-color': '#f2f4f7', 'border-color': '#98a2b3'}},
         {selector: 'node[type="author_avatar"]', style: {label: 'data(label)', shape: 'ellipse', width: 34, height: 34, 'font-size': 9, 'font-weight': 700, color: '#fff', 'text-valign': 'center', 'text-halign': 'center', 'background-color': '#53627b', 'background-image': 'data(picture)', 'background-fit': 'cover', 'background-clip': 'node', 'border-width': 2, 'border-color': '#ffffff'}},
-        {selector: 'node[type="option"]', style: {label: 'data(display)', shape: 'round-rectangle', width: 132, height: 40, 'font-size': 10, color: '#344054', 'background-color': '#fff7e6', 'border-width': 1, 'border-color': '#f79009', 'text-valign': 'center', 'text-halign': 'center'}},
+        {selector: 'node[type="option"]', style: {label: 'data(display)', shape: 'round-rectangle', width: 220, height: 48, 'text-wrap': 'wrap', 'text-max-width': 200, 'font-size': 11, color: '#344054', 'background-color': '#fff7e6', 'border-width': 1, 'border-color': '#f79009', 'text-valign': 'center', 'text-halign': 'center'}},
         {selector: 'node[type="option"][quantum_selected]', style: {'border-width': 3, 'border-color': '#12b76a', 'background-color': '#ecfdf3'}},
-        {selector: 'node[type="option"][is_winner]', style: {'border-width': 3, 'border-color': '#12b76a', 'background-color': '#ecfdf3'}},
-        {selector: 'node[type="option"][is_tied]', style: {'border-width': 3, 'border-color': '#12b76a'}},
-        {selector: 'node[type="end"]', style: {label: 'data(label)', shape: 'ellipse', width: 16, height: 16, 'font-size': 8, color: '#667085', 'background-color': '#98a2b3'}},
-        {selector: 'edge[kind="main_thread"]', style: {width: 2, 'line-color': '#98a2b3', 'target-arrow-shape': 'triangle', 'target-arrow-color': '#98a2b3', 'curve-style': 'bezier'}},
-        {selector: 'edge[kind="branch"]', style: {width: 2, 'line-color': '#f79009', 'target-arrow-shape': 'triangle', 'target-arrow-color': '#f79009', 'curve-style': 'taxi'}},
-        {selector: 'edge[kind="follow_up"]', style: {width: 2, 'line-color': '#7f77dd', 'target-arrow-shape': 'triangle', 'target-arrow-color': '#7f77dd', 'curve-style': 'taxi'}},
-        {selector: 'edge[kind="merge"]', style: {width: 2, 'line-color': '#667085', 'target-arrow-shape': 'triangle', 'target-arrow-color': '#667085', 'line-style': 'dashed', 'curve-style': 'taxi'}},
+        {selector: 'edge[kind="branch"]', style: {width: 2, 'line-color': '#98a2b3', 'target-arrow-shape': 'triangle', 'target-arrow-color': '#98a2b3', 'curve-style': 'bezier'}},
+        {selector: 'edge[kind="branch"][quantum_selected]', style: {width: 4, 'line-color': '#12b76a', 'target-arrow-color': '#12b76a'}},
+        {selector: 'edge[kind="follow_up"]', style: {label: 'data(label)', 'font-size': 10, 'text-background-color': '#ffffff', 'text-background-opacity': 1, 'text-background-padding': 3, width: 3, 'line-color': '#7f77dd', 'target-arrow-shape': 'triangle', 'target-arrow-color': '#7f77dd', 'curve-style': 'bezier'}},
       ],
     });
     graph.on('tap', 'node', event => selectNode(event.target.data()));
@@ -103,14 +106,15 @@
     const nextNodeIds = new Set();
     for (const node of graphNodes) {
       nextNodeIds.add(node.id);
-      node.display = node.type === 'option'
-        ? `${node.label} · ${node.quantum_selected ? 'selected path' : 'not selected'}`
-        : node.label;
+      if (node.type === 'option') {
+        node.display = `${node.label} · ${node.quantum_selected ? 'QUANTUM CHOICE' : 'not selected'}`;
+      } else if (node.type === 'question') {
+        node.display = `${node.label}\nBy ${node.author_name || memberName(node.author_user_id)}`;
+      }
       nodes.set(node.id, node);
       const existing = graph.getElementById(node.id);
       if (existing.length) {
         existing.data(node);
-        existing.animate({position: position(node)}, {duration: 250});
       } else graph.add(cyNode(node));
     }
     graph.nodes().forEach(node => {
@@ -126,6 +130,10 @@
     }
     graph.edges().forEach(edge => { if (!nextEdgeIds.has(edge.id())) edge.remove(); });
     graph.layout({name: 'preset', fit: false}).run();
+    if (!initialGraphFitDone && graph.nodes().length) {
+      initialGraphFitDone = true;
+      window.requestAnimationFrame(fitGraph);
+    }
     if (!data.nodes.length) {
       details.replaceChildren(
         el('h2', canCreateRoot ? 'Start the conversation' : 'Waiting for the first question'),
@@ -185,21 +193,9 @@
     const author = el('p', `Asked by ${member?.name || memberName(node.author_user_id)} · ${node.status}`);
     authorRow.append(author);
     details.append(title, authorRow);
-    if (node.status === 'open' && snapshot?.branch_mode !== 'quantum_random') {
-      const close = el('button', 'Close question', 'button button-secondary');
-      close.type = 'button';
-      close.addEventListener('click', async () => {
-        await window.FlutuAction.run(close, async () => {
-          try { await performAction('close_question', {question_id: node.id.slice(1)}); await resync(); }
-          catch (err) { setError(err.message); }
-        });
-      });
-      details.append(close);
-    }
     const opts = (snapshot.nodes || []).filter(item => item.type === 'option' && item.question_id === node.id.slice(1));
     for (const option of opts) {
-      const names = option.voter_user_ids.map((id, index) => option.voter_names[index] || memberName(id));
-      details.append(el('p', `${option.label}: ${option.count} ${option.count === 1 ? 'vote' : 'votes'}${names.length ? ` — ${names.join(', ')}` : ''}`));
+      details.append(el('p', `${option.quantum_selected ? 'Quantum-selected path: ' : 'Other option: '}${option.label}`));
     }
   }
 
@@ -215,17 +211,9 @@
       return;
     }
     if (value.type !== 'option') return;
-    selectedOption = value;
     details.replaceChildren();
     details.append(el('h2', value.label));
-    details.append(el('p', `${value.count} ${value.count === 1 ? 'vote' : 'votes'}`));
     const question = nodes.get(`q${value.question_id}`);
-    if (question?.status === 'open' && snapshot?.branch_mode !== 'quantum_random') {
-      const answer = el('button', 'Choose this option', 'button');
-      answer.type = 'button';
-      answer.addEventListener('click', () => openAnswer(question, value));
-      details.append(answer);
-    }
     if (snapshot?.branch_mode === 'quantum_random' && value.quantum_selected) {
       details.append(el('p', 'Chosen by the quantum selector; this is the active path.'));
       const follow = el('button', 'Follow up', 'button button-secondary');
@@ -248,28 +236,6 @@
     }
   }
 
-  function openAnswer(question, selected) {
-    document.getElementById('answer-title').textContent = question.label;
-    answerDialog.dataset.questionId = question.id.slice(1);
-    const options = document.getElementById('answer-options');
-    options.replaceChildren();
-    const branchSelection = snapshot?.branch_mode === 'quantum_random' ? question.quantum_selected_option_id : null;
-    const choice = branchSelection || selected.option_id;
-    for (const option of (snapshot.nodes || []).filter(item => item.type === 'option' && item.question_id === question.id.slice(1))) {
-      const label = el('label', undefined, 'answer-option');
-      const radio = document.createElement('input');
-      radio.type = 'radio'; radio.name = 'option_id'; radio.value = option.option_id; radio.required = true;
-      radio.checked = option.option_id === choice || option.is_my_vote === true;
-      if (snapshot?.branch_mode === 'quantum_random') {
-        radio.disabled = true;
-      }
-      label.append(radio, document.createTextNode(`${option.label} (${option.count})`));
-      options.append(label);
-    }
-    document.getElementById('answer-error').textContent = '';
-    answerDialog.showModal();
-  }
-
   function handleAck(response) {
     if (!response?.ok) throw new Error(response?.error || 'The action could not be completed.');
     return response;
@@ -282,10 +248,6 @@
       path = `${api}/conversations/${encodeURIComponent(payload.conversation_id)}/questions`;
       body = {...payload};
       delete body.conversation_id;
-    } else if (event === 'submit_answer') {
-      path = `${api}/questions/${encodeURIComponent(payload.question_id)}/answers`;
-    } else if (event === 'close_question') {
-      path = `${api}/questions/${encodeURIComponent(payload.question_id)}/close`;
     } else {
       throw new Error('Unsupported chat action.');
     }
@@ -331,6 +293,10 @@
       row.append(input, remove); optionsEditor.append(row);
     });
   }
+
+  document.getElementById('graph-fit').addEventListener('click', fitGraph);
+  document.getElementById('graph-zoom-in').addEventListener('click', () => zoomGraph(1.25));
+  document.getElementById('graph-zoom-out').addEventListener('click', () => zoomGraph(0.8));
 
   function renderMembers(members) {
     const list = document.getElementById('member-list');
@@ -482,30 +448,6 @@
       if (snapshot) applyGraph({...snapshot, nodes: [...newNodes.values()], edges: [...newEdges.values()]});
       else eventRefresh();
     });
-    socket.on('answer_recorded', payload => {
-      const questionId = String(payload.question_id);
-      const changed = nodes.get(`o${payload.option_id}`);
-      if (changed) {
-        changed.voter_user_ids = changed.voter_user_ids.filter(id => id !== payload.user_id).concat(payload.user_id);
-        if (!changed.voter_names.includes(memberName(payload.user_id))) changed.voter_names.push(memberName(payload.user_id));
-      }
-      if (payload.previous_option_id && payload.previous_option_id !== payload.option_id) {
-        const previous = nodes.get(`o${payload.previous_option_id}`);
-        if (previous) {
-          previous.voter_user_ids = previous.voter_user_ids.filter(id => id !== payload.user_id);
-          previous.voter_names = previous.voter_names.filter(name => name !== memberName(payload.user_id));
-        }
-      }
-      const updateNodes = (snapshot?.nodes || []).map(node => {
-        if (node.type !== 'option' || node.question_id !== questionId) return node;
-        const target = nodes.get(node.id) || node;
-        target.count = payload.counts[node.option_id] ?? target.count;
-        return target;
-      });
-      if (snapshot) applyGraph({...snapshot, nodes: updateNodes});
-      if (payload.closed) eventRefresh();
-    });
-    socket.on('question_closed', eventRefresh);
     socket.on('question_updated', eventRefresh);
     socket.on('question_deleted', eventRefresh);
     socket.on('member_added', eventRefresh);
@@ -531,19 +473,6 @@
     document.getElementById('add-option').hidden = false;
     optionsEditor.hidden = false;
   });
-  document.getElementById('answer-form').addEventListener('submit', event => {
-    event.preventDefault();
-    const submitButton = event.submitter || event.currentTarget.querySelector('[type="submit"]');
-    const optionId = new FormData(event.currentTarget).get('option_id');
-    window.FlutuAction.run(submitButton, async () => {
-      try {
-        await performAction('submit_answer', {question_id: answerDialog.dataset.questionId, option_id: optionId});
-        answerDialog.close();
-        await resync();
-      } catch (err) { document.getElementById('answer-error').textContent = err.message; }
-    });
-  });
-  document.getElementById('cancel-answer').addEventListener('click', () => answerDialog.close());
   document.getElementById('members-toggle').addEventListener('click', async event => {
     const toggle = event.currentTarget;
     membersPanel.hidden = !membersPanel.hidden;

@@ -175,6 +175,8 @@ class ChatTests(unittest.TestCase):
         self.assertIn(b'id="question-text"', response.data)
         self.assertIn(b'id="option-editors"', response.data)
         self.assertIn(b'id="send-question"', response.data)
+        self.assertIn(b'id="graph-fit"', response.data)
+        self.assertIn(b'id="graph-zoom-in"', response.data)
 
     def test_member_snapshot_preserves_profile_photo_for_author_avatar(self):
         member = _serialize_member({
@@ -359,8 +361,16 @@ class ChatTests(unittest.TestCase):
         self.assertEqual(graph["branch_mode"], "quantum_random")
         self.assertFalse(graph["can_create_initial_question"])
         self.assertTrue(graph["can_manage_members"])
-        selected = next(node for node in graph["nodes"] if node["type"] == "option" and node["option_id"] == str(option_id_b))
+        question_node = next(node for node in graph["nodes"] if node["type"] == "question")
+        self.assertEqual(question_node["lane"], 0)
+        option_nodes = [node for node in graph["nodes"] if node["type"] == "option"]
+        self.assertEqual({node["lane"] for node in option_nodes}, {1})
+        self.assertEqual(len({node["row"] for node in option_nodes}), 2)
+        self.assertTrue(all("count" not in node and "voter_names" not in node for node in option_nodes))
+        selected = next(node for node in option_nodes if node["option_id"] == str(option_id_b))
         self.assertTrue(selected["quantum_selected"])
+        selected_edge = next(edge for edge in graph["edges"] if edge["to"] == selected["id"])
+        self.assertTrue(selected_edge["quantum_selected"])
 
     def test_graph_payload_keeps_quantum_branch_selection_stable(self):
         conversation_id = ObjectId("65b0e7a3a6c6f166f1c3a011")
@@ -405,36 +415,77 @@ class ChatTests(unittest.TestCase):
         self.assertEqual(second_selected, first_selected)
         choose.assert_called_once()
 
-    def test_rest_answer_and_close_actions_require_active_membership(self):
+    def test_graph_places_followup_question_after_selected_option_column(self):
+        conversation_id = ObjectId("65b0e7a3a6c6f166f1c3a041")
+        root_id = ObjectId("65b0e7a3a6c6f166f1c3a042")
+        child_id = ObjectId("65b0e7a3a6c6f166f1c3a043")
+        selected_id = ObjectId("65b0e7a3a6c6f166f1c3a044")
+        other_id = ObjectId("65b0e7a3a6c6f166f1c3a045")
+        child_option_id = ObjectId("65b0e7a3a6c6f166f1c3a046")
+        child_other_id = ObjectId("65b0e7a3a6c6f166f1c3a047")
+        root = {
+            "_id": root_id, "conversation_id": conversation_id, "author_user_id": "owner",
+            "text": "First question", "status": "open", "parent_option_id": None,
+            "created_at": datetime.now(timezone.utc),
+        }
+        child = {
+            "_id": child_id, "conversation_id": conversation_id, "author_user_id": "participant",
+            "text": "Follow-up question", "status": "open", "parent_option_id": selected_id,
+            "created_at": datetime.now(timezone.utc),
+        }
+        options = [
+            {"_id": selected_id, "question_id": root_id, "conversation_id": conversation_id, "label": "Chosen", "position": 0},
+            {"_id": other_id, "question_id": root_id, "conversation_id": conversation_id, "label": "Other", "position": 1},
+            {"_id": child_option_id, "question_id": child_id, "conversation_id": conversation_id, "label": "Next A", "position": 0},
+            {"_id": child_other_id, "question_id": child_id, "conversation_id": conversation_id, "label": "Next B", "position": 1},
+        ]
+        members = Mock()
+        members.find.return_value = [
+            {"user_id": "owner", "name": "Owner", "left_at": None},
+            {"user_id": "participant", "name": "Participant", "left_at": None},
+        ]
+        questions = Mock()
+        questions.find.return_value.sort.return_value = [root, child]
+        option_collection = Mock()
+        option_collection.find.return_value.sort.return_value = options
+        option_collection.find_one.return_value = options[0]
+        with patch("app.services.chat.get_conversation", return_value={"_id": conversation_id, "title": "Flow", "created_by_user_id": "owner"}), patch(
+            "app.services.chat._collections", return_value=(Mock(), members, questions, option_collection, Mock())
+        ), patch("app.services.chat._depth", side_effect=lambda question, *_args: 0 if question["_id"] == root_id else 1), patch(
+            "app.services.chat._quantum_path_for_question", side_effect=lambda qid: options[0] if qid == root_id else options[2]
+        ):
+            graph = graph_payload(str(conversation_id), "participant")
+
+        root_node = next(node for node in graph["nodes"] if node["id"] == f"q{root_id}")
+        child_node = next(node for node in graph["nodes"] if node["id"] == f"q{child_id}")
+        option_node = next(node for node in graph["nodes"] if node["id"] == f"o{selected_id}")
+        self.assertEqual((root_node["lane"], option_node["lane"], child_node["lane"]), (0, 1, 2))
+        self.assertTrue(any(edge["from"] == option_node["id"] and edge["to"] == child_node["id"] and edge["kind"] == "follow_up" for edge in graph["edges"]))
+
+    def test_rest_answer_and_close_actions_are_disabled_in_quantum_mode(self):
         self.sign_in()
         headers = self.csrf_headers()
         question = {"conversation_id": "conversation-id"}
         with patch("app.chat.routes.service.question_by_id", return_value=question), patch(
             "app.chat.routes.service.is_active_member", return_value=True
-        ), patch("app.chat.routes.service.submit_answer", return_value={
-            "changed": True, "previous_option_id": None, "closed": False,
-        }) as submit, patch("app.chat.routes.service.answer_counts", return_value={"option-id": 1}), patch(
-            "app.chat.routes.emit_to_active_members"
-        ):
+        ), patch("app.chat.routes.service.submit_answer") as submit:
             response = self.http.post(
                 "/chat/api/questions/question-id/answers",
                 json={"option_id": "option-id"}, headers=headers,
             )
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.get_json()["ok"])
-        submit.assert_called_once_with("question-id", "google-user", "option-id")
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.get_json(), {"error": "branch_mode_locked"})
+        submit.assert_not_called()
 
-        graph = {"nodes": [{"id": "qquestion-id", "winning_option_id": None}], "edges": []}
         with patch("app.chat.routes.service.question_by_id", return_value=question), patch(
             "app.chat.routes.service.is_active_member", return_value=True
-        ), patch("app.chat.routes.service.close_question"), patch(
-            "app.chat.routes.service.graph_payload", return_value=graph
-        ), patch("app.chat.routes.emit_to_active_members"):
+        ), patch("app.chat.routes.service.close_question") as close:
             response = self.http.post(
                 "/chat/api/questions/question-id/close", json={}, headers=headers,
             )
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.get_json()["ok"])
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.get_json(), {"error": "branch_mode_locked"})
+        close.assert_not_called()
 
     def test_socket_rejects_unauthenticated_connection(self):
         client = socketio.test_client(self.app, namespace="/chat", flask_test_client=self.http)

@@ -204,36 +204,9 @@ def api_submit_answer(question_id):
     question = service.question_by_id(question_id)
     if not question:
         return _api_error("not_found", 404)
-    conversation_id = str(question["conversation_id"])
-    if not service.is_active_member(conversation_id, _user_id()):
+    if not service.is_active_member(str(question["conversation_id"]), _user_id()):
         return _api_error("forbidden", 403)
-    payload = request.get_json(silent=True)
-    option_id = payload.get("option_id") if isinstance(payload, dict) else None
-    try:
-        result = service.submit_answer(question_id, _user_id(), option_id)
-        if result["changed"]:
-            event = {
-                "question_id": str(question_id),
-                "option_id": str(option_id),
-                "previous_option_id": result["previous_option_id"],
-                "user_id": _user_id(),
-                "counts": service.answer_counts(question_id),
-            }
-            emit_to_active_members("answer_recorded", event, conversation_id)
-            if result["closed"]:
-                graph = service.graph_payload(conversation_id)
-                question_node = next((node for node in graph["nodes"] if node["id"] == f"q{question_id}"), {})
-                emit_to_active_members("question_closed", {
-                    "question_id": str(question_id),
-                    "winning_option_id": question_node.get("winning_option_id"),
-                    "merge_edges": [edge for edge in graph["edges"] if edge["kind"] == "merge"],
-                }, conversation_id)
-        return jsonify(ok=True, **result)
-    except (ValueError, PermissionError) as error:
-        return _api_error(str(error), _status_for_error(error))
-    except (PyMongoError, RuntimeError):
-        current_app.logger.exception("Could not record chat answer")
-        return _api_error("chat_unavailable", 503)
+    return _api_error("branch_mode_locked", 403)
 
 
 @chat_bp.post("/api/questions/<question_id>/close")
@@ -241,32 +214,9 @@ def api_close_question(question_id):
     question = service.question_by_id(question_id)
     if not question:
         return _api_error("not_found", 404)
-    conversation_id = str(question["conversation_id"])
-    if not service.is_active_member(conversation_id, _user_id()):
+    if not service.is_active_member(str(question["conversation_id"]), _user_id()):
         return _api_error("forbidden", 403)
-    payload = request.get_json(silent=True)
-    if payload is None:
-        payload = {}
-    if not isinstance(payload, dict):
-        return _api_error("invalid_payload")
-    try:
-        closed = service.close_question(question_id, _user_id(), payload.get("winning_option_id"))
-        if not closed:
-            return _api_error("already_closed", 409)
-        graph = service.graph_payload(conversation_id)
-        question_node = next((node for node in graph["nodes"] if node["id"] == f"q{question_id}"), {})
-        event = {
-            "question_id": str(question_id),
-            "winning_option_id": question_node.get("winning_option_id"),
-            "merge_edges": [edge for edge in graph["edges"] if edge["kind"] == "merge"],
-        }
-        emit_to_active_members("question_closed", event, conversation_id)
-        return jsonify(ok=True, **event)
-    except (ValueError, PermissionError) as error:
-        return _api_error(str(error), _status_for_error(error))
-    except (PyMongoError, RuntimeError):
-        current_app.logger.exception("Could not close chat question")
-        return _api_error("chat_unavailable", 503)
+    return _api_error("branch_mode_locked", 403)
 
 
 @chat_bp.post("/api/conversations/<conversation_id>/members")

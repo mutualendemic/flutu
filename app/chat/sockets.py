@@ -177,41 +177,16 @@ def socket_create_question(user, data):
 @socketio.on("submit_answer", namespace="/chat")
 @_authorized
 def socket_submit_answer(user, data):
-    question, conversation_id = _conversation_for_question(data.get("question_id"), user["sub"])
+    question, _ = _conversation_for_question(data.get("question_id"), user["sub"])
     if not question:
         return _error("forbidden")
-    try:
-        result = service.submit_answer(data.get("question_id"), user["sub"], data.get("option_id"))
-        if result["changed"]:
-            payload = {
-                "question_id": str(data["question_id"]),
-                "option_id": str(data["option_id"]),
-                "previous_option_id": result["previous_option_id"],
-                "user_id": user["sub"],
-                "counts": service.answer_counts(data["question_id"]),
-            }
-            emit_to_active_members("answer_recorded", payload, conversation_id)
-            if result["closed"]:
-                emit_to_active_members("question_closed", _closed_payload(conversation_id, str(data["question_id"])), conversation_id)
-        return {"ok": True, **result}
-    except ValueError as error:
-        return _error(str(error))
+    return _error("branch_mode_locked")
 
 
 @socketio.on("close_question", namespace="/chat")
 @_authorized
 def socket_close_question(user, data):
-    question, conversation_id = _conversation_for_question(data.get("question_id"), user["sub"])
+    question, _ = _conversation_for_question(data.get("question_id"), user["sub"])
     if not question:
         return _error("forbidden")
-    try:
-        closed = service.close_question(data.get("question_id"), user["sub"], data.get("winning_option_id"))
-        if not closed:
-            return _error("already_closed")
-        payload = _closed_payload(conversation_id, str(data["question_id"]))
-        emit_to_active_members("question_closed", payload, conversation_id)
-        return {"ok": True, **payload}
-    except PermissionError:
-        return _error("forbidden")
-    except ValueError as error:
-        return _error(str(error))
+    return _error("branch_mode_locked")

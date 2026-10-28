@@ -205,23 +205,19 @@ def create_conversation(owner_id, title, member_user_ids=None):
 
 
 def list_conversations(user_id):
-    conversations, members, questions, answers = _collections()[0:3] + (_collections()[4],)
+    conversations, members, questions, *_ = _collections()
     rows = conversations.find({"member_user_ids": user_id, "archived_at": None, "deleted_at": None}).sort("last_activity", DESCENDING)
     result = []
     for conversation in rows:
         cid = conversation["_id"]
         member_docs = list(members.find({"conversation_id": cid}))
-        open_questions = list(questions.find({"conversation_id": cid, "status": "open"}, {"_id": 1}))
-        unanswered = 0
-        for question in open_questions:
-            if not answers.find_one({"question_id": question["_id"], "user_id": user_id}, {"_id": 1}):
-                unanswered += 1
+        question_count = questions.count_documents({"conversation_id": cid})
         result.append({
             "id": str(cid), "title": conversation["title"],
             "is_owner": conversation.get("created_by_user_id") == user_id,
             "last_activity": conversation.get("last_activity"),
             "members": [_serialize_member(item) for item in member_docs],
-            "unanswered_count": unanswered,
+            "question_count": question_count,
         })
     return result
 
@@ -557,7 +553,7 @@ def graph_payload(conversation_id, viewer_id=None):
     conversation = get_conversation(cid) if cid else None
     if not conversation:
         raise ValueError("not_found")
-    _, members, questions, options, answers = _collections()
+    _, members, questions, options, _ = _collections()
     member_docs = list(members.find({"conversation_id": cid}))
     member_by_id = {item["user_id"]: _serialize_member(item) for item in member_docs}
     question_docs = list(questions.find({"conversation_id": cid}).sort([("created_at", ASCENDING), ("_id", ASCENDING)]))
@@ -566,24 +562,20 @@ def graph_payload(conversation_id, viewer_id=None):
     options_by_question = {}
     for option in option_docs:
         options_by_question.setdefault(option["question_id"], []).append(option)
-    answer_docs = list(answers.find({"question_id": {"$in": [q["_id"] for q in question_docs]}})) if question_docs else []
-    answers_by_option = {}
-    for answer in answer_docs:
-        answers_by_option.setdefault(answer["option_id"], []).append(answer)
     quantum_choices = {}
     for question in question_docs:
         question_options = options_by_question.get(question["_id"], [])
         if question_options:
             quantum_choices[question["_id"]] = _quantum_path_for_question(question["_id"]) or question_options[0]
     depth_cache = {}
-    qmeta, nodes, edges = {}, [], []
+    nodes, edges = [], []
     cursor_row = 0
     for question in question_docs:
         depth = _depth(question, options, depth_cache)
         parent = options.find_one({"_id": question.get("parent_option_id")}) if question.get("parent_option_id") else None
-        lane = depth if not parent else qmeta.get(parent["question_id"], {}).get("lane", 0) + 1
-        row = cursor_row
-        qmeta[question["_id"]] = {"lane": lane, "row": row, "depth": depth}
+        lane = depth * 2
+        question_options = options_by_question.get(question["_id"], [])
+        row = cursor_row + max(0, (len(question_options) - 1) / 2)
         qid = str(question["_id"])
         selected_option = quantum_choices.get(question["_id"])
         nodes.append({
@@ -596,54 +588,20 @@ def graph_payload(conversation_id, viewer_id=None):
             "quantum_selected_option_id": str(selected_option["_id"]) if selected_option else None,
         })
         if parent:
-            edges.append({"from": f"o{parent['_id']}", "to": f"q{qid}", "kind": "follow_up"})
-        question_options = options_by_question.get(question["_id"], [])
+            edges.append({"from": f"o{parent['_id']}", "to": f"q{qid}", "kind": "follow_up", "label": "Follow-up"})
         for index, option in enumerate(question_options):
-            option_answers = answers_by_option.get(option["_id"], [])
-            option_lane = lane + index + 1
-            option_row = row
+            option_lane = lane + 1
+            option_row = cursor_row + index
             oid = str(option["_id"])
             quantum_selected = bool(selected_option and selected_option["_id"] == option["_id"])
             nodes.append({
                 "id": f"o{oid}", "type": "option", "label": option["label"],
                 "question_id": str(question["_id"]), "option_id": oid,
-                "lane": option_lane, "row": option_row, "count": len(option_answers),
-                "voter_user_ids": [answer["user_id"] for answer in option_answers],
-                "voter_names": [member_by_id.get(answer["user_id"], {"name": "Former member"})["name"] for answer in option_answers],
-                "is_winner": bool(question.get("winning_option_id") == option["_id"]),
-                "is_my_vote": any(answer["user_id"] == viewer_id for answer in option_answers),
-                "is_tied": question.get("status") == "closed" and not question.get("winning_option_id") and len(question_options) > 1 and len(option_answers) == max((len(answers_by_option.get(item["_id"], [])) for item in question_options), default=0),
+                "lane": option_lane, "row": option_row,
                 "quantum_selected": quantum_selected,
             })
-            edges.append({"from": f"q{qid}", "to": f"o{oid}", "kind": "branch"})
-        cursor_row = row + len(question_options) + 2
-    # Main-thread continuity and close/merge edges are deterministic across clients.
-    main_questions = [q for q in question_docs if not q.get("parent_option_id")]
-    for index, question in enumerate(main_questions[:-1]):
-        edges.append({"from": f"q{question['_id']}", "to": f"q{main_questions[index + 1]['_id']}", "kind": "main_thread"})
-    for question in question_docs:
-        if question.get("status") != "closed":
-            continue
-        opts = options_by_question.get(question["_id"], [])
-        if not opts:
-            continue
-        next_question = None
-        if question.get("parent_option_id"):
-            parent_option = options.find_one({"_id": question["parent_option_id"]})
-            siblings = [q for q in question_docs if q.get("parent_option_id") == question.get("parent_option_id") and q["created_at"] > question["created_at"]]
-            if siblings:
-                next_question = siblings[0]
-            elif parent_option:
-                parent_question = next((q for q in question_docs if q["_id"] == parent_option["question_id"]), None)
-                next_question = next((q for q in main_questions if parent_question and q["created_at"] > parent_question["created_at"]), None)
-        else:
-            next_question = next((q for q in main_questions if q["created_at"] > question["created_at"]), None)
-        if next_question:
-            edges.append({"from": f"o{opts[-1]['_id']}", "to": f"q{next_question['_id']}", "kind": "merge"})
-        else:
-            marker_id = f"end{question['_id']}"
-            nodes.append({"id": marker_id, "type": "end", "label": "End", "lane": qmeta[question["_id"]]["lane"], "row": qmeta[question["_id"]]["row"] + len(opts) + 1})
-            edges.append({"from": f"o{opts[-1]['_id']}", "to": marker_id, "kind": "merge"})
+            edges.append({"from": f"q{qid}", "to": f"o{oid}", "kind": "branch", "quantum_selected": quantum_selected})
+        cursor_row += max(len(question_options), 1) + 2
     return {
         "conversation_id": str(cid), "title": conversation["title"],
         "members": [_serialize_member(item) for item in member_docs], "nodes": nodes, "edges": edges,

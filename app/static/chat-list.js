@@ -41,7 +41,8 @@
       const meta = document.createElement('p');
       meta.className = 'chat-meta';
       const activeCount = conversation.members.filter(member => member.active).length;
-      meta.textContent = `${activeCount} ${activeCount === 1 ? 'member' : 'members'} · ${conversation.unanswered_count} unanswered ${conversation.unanswered_count === 1 ? 'question' : 'questions'}`;
+      const questionCount = conversation.question_count ?? 0;
+      meta.textContent = `${activeCount} ${activeCount === 1 ? 'member' : 'members'} · ${questionCount} ${questionCount === 1 ? 'question' : 'questions'}`;
       const dots = document.createElement('div');
       dots.className = 'member-dots';
       dots.setAttribute('aria-label', conversation.members.map(member => member.name).join(', '));
