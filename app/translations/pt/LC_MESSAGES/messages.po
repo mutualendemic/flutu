@@ -819,6 +819,114 @@ msgstr "Adicionar pessoas dos contactos"
 msgid "Back to dashboard"
 msgstr "Voltar ao painel"
 
+msgid "Could not verify that Supabase blocks unauthorized private topics. Check the realtime.messages SELECT RLS policy."
+msgstr "Não foi possível confirmar que o Supabase bloqueia tópicos privados não autorizados. Verifique a política SELECT RLS de realtime.messages."
+
+msgid "Private channel authorization timed out. Check that private Realtime channels are enabled and the realtime.messages SELECT RLS policy is installed."
+msgstr "O tempo de autorização do canal privado terminou. Confirme se os canais Realtime privados estão ativos e se a política SELECT RLS de realtime.messages está instalada."
+
+msgid "Supabase Realtime client did not load."
+msgstr "Não foi possível carregar o cliente Supabase Realtime."
+
+msgid "Supabase accepted an unauthorized private test topic. Realtime RLS is disabled or another SELECT policy is too broad."
+msgstr "O Supabase aceitou um tópico de teste privado não autorizado. A RLS do Realtime está desativada ou existe outra política SELECT demasiado abrangente."
+
+msgid "Supabase could not confirm denial of an unauthorized private topic. Check private-channel settings and the realtime.messages SELECT RLS policy."
+msgstr "O Supabase não conseguiu confirmar a rejeição de um tópico privado não autorizado. Verifique as definições dos canais privados e a política SELECT RLS de realtime.messages."
+
+msgid "Supabase private-channel subscription failed. Check the project configuration and private-channel access policy."
+msgstr "A subscrição do canal privado do Supabase falhou. Verifique a configuração do projeto e a política de acesso aos canais privados."
+
+msgid "IBM Quantum — Run your first circuit on hardware"
+msgstr "IBM Quantum — Execute o seu primeiro circuito no hardware"
+
+msgid "Stanford Encyclopedia of Philosophy — Many-Worlds Interpretation of Quantum Mechanics"
+msgstr "Enciclopédia de Filosofia de Stanford — Interpretação dos Muitos Mundos da Mecânica Quântica"
+
+msgid "The notification subscription is invalid."
+msgstr "A subscrição de notificações é inválida."
+
+msgid "The notification subscription limit has been reached."
+msgstr "Foi atingido o limite de subscrições de notificações."
+
+msgid "The request could not be verified. Refresh the page and try again."
+msgstr "Não foi possível verificar o pedido. Atualize a página e tente novamente."
+
+msgid "The request data is invalid."
+msgstr "Os dados do pedido são inválidos."
+
+msgid "The text is invalid."
+msgstr "O texto não é válido."
+
+msgid "Provide between two and six options."
+msgstr "Indique entre duas e seis opções."
+
+msgid "One or more options are invalid."
+msgstr "Uma ou mais opções não são válidas."
+
+msgid "The conversation title is invalid."
+msgstr "O título da conversa não é válido."
+
+msgid "One or more selected members are invalid."
+msgstr "Um ou mais membros selecionados não são válidos."
+
+msgid "The requested item could not be found."
+msgstr "Não foi possível encontrar o elemento pedido."
+
+msgid "You do not have permission to do that."
+msgstr "Não tem autorização para realizar essa ação."
+
+msgid "Conversation members must be people in your contacts."
+msgstr "Os membros da conversa têm de constar nos seus contactos."
+
+msgid "The conversation mode cannot be changed after it starts."
+msgstr "Não é possível alterar o modo da conversa depois de esta começar."
+
+msgid "This question is already closed."
+msgstr "Esta pergunta já está encerrada."
+
+msgid "This question already has answers and cannot be changed."
+msgstr "Esta pergunta já tem respostas e não pode ser alterada."
+
+msgid "Your answer can no longer be changed."
+msgstr "Já não pode alterar a sua resposta."
+
+msgid "The selected option must be tied for the lead."
+msgstr "A opção selecionada tem de estar empatada na liderança."
+
+msgid "The quantum-selected path cannot be changed."
+msgstr "Não é possível alterar o caminho escolhido pelo seletor quântico."
+
+msgid "The opening question already exists."
+msgstr "A pergunta inicial já existe."
+
+msgid "Chat is temporarily unavailable."
+msgstr "A conversa está temporariamente indisponível."
+
+msgid "Live chat updates are not configured."
+msgstr "As atualizações em tempo real da conversa não estão configuradas."
+
+msgid "The location data is invalid."
+msgstr "Os dados da localização não são válidos."
+
+msgid "You are not authorized to share your location with this person."
+msgstr "Não tem autorização para partilhar a sua localização com esta pessoa."
+
+msgid "The location-sharing request could not be found."
+msgstr "Não foi possível encontrar o pedido de partilha da localização."
+
+msgid "This action is not supported."
+msgstr "Esta ação não é suportada."
+
+msgid "The contact details are invalid."
+msgstr "Os dados do contacto não são válidos."
+
+msgid "The contact could not be found."
+msgstr "Não foi possível encontrar o contacto."
+
+msgid "The contact limit has been reached."
+msgstr "Foi atingido o limite de contactos."
+
 msgid "Branching chat"
 msgstr "Conversa ramificada"
 
@@ -872,3 +980,126 @@ msgstr "Criar a primeira pergunta"
 
 msgid "Question"
 msgstr "Pergunta"
+
+msgid "Members"
+msgstr "Membros"
+
+msgid "Checking private channel access with Supabase…"
+msgstr "A verificar o acesso ao canal privado com o Supabase…"
+
+msgid "The request could not be completed."
+msgstr "Não foi possível concluir o pedido."
+
+msgid "Getting your location timed out. Check your device Location setting."
+msgstr "O tempo para obter a sua localização terminou. Verifique a definição de localização do dispositivo."
+
+msgid "Accept an incoming request below before sharing your location."
+msgstr "Aceite um pedido recebido abaixo antes de partilhar a sua localização."
+
+msgid "Notification settings are unavailable."
+msgstr "As definições de notificações não estão disponíveis."
+
+msgid "push_not_configured"
+msgstr "As notificações push não estão configuradas."
+
+msgid "invalid_subscription"
+msgstr "A subscrição de notificações é inválida."
+
+msgid "subscription_limit"
+msgstr "Foi atingido o limite de subscrições de notificações."
+
+msgid "push_unavailable"
+msgstr "As notificações push estão temporariamente indisponíveis."
+
+msgid "csrf_failed"
+msgstr "Não foi possível verificar o pedido. Atualize a página e tente novamente."
+
+msgid "Authentication required."
+msgstr "Autenticação necessária."
+
+msgid "invalid_payload"
+msgstr "Os dados do pedido são inválidos."
+
+msgid "invalid_text"
+msgstr "O texto não é válido."
+
+msgid "invalid_option_count"
+msgstr "Indique entre duas e seis opções."
+
+msgid "invalid_option"
+msgstr "Uma ou mais opções não são válidas."
+
+msgid "invalid_title"
+msgstr "O título da conversa não é válido."
+
+msgid "invalid_member_ids"
+msgstr "Um ou mais membros selecionados não são válidos."
+
+msgid "not_found"
+msgstr "Não foi possível encontrar o elemento pedido."
+
+msgid "forbidden"
+msgstr "Não tem autorização para realizar essa ação."
+
+msgid "members_must_be_contacts"
+msgstr "Os membros da conversa têm de constar nos seus contactos."
+
+msgid "branch_mode_locked"
+msgstr "Não é possível alterar o modo da conversa depois de esta começar."
+
+msgid "already_closed"
+msgstr "Esta pergunta já está encerrada."
+
+msgid "question_has_answers"
+msgstr "Esta pergunta já tem respostas e não pode ser alterada."
+
+msgid "closed_question"
+msgstr "Esta pergunta está encerrada."
+
+msgid "vote_change_disabled"
+msgstr "Já não pode alterar a sua resposta."
+
+msgid "winner_must_be_tied"
+msgstr "A opção selecionada tem de estar empatada na liderança."
+
+msgid "quantum_path_locked"
+msgstr "Não é possível alterar o caminho escolhido pelo seletor quântico."
+
+msgid "root_question_exists"
+msgstr "A pergunta inicial já existe."
+
+msgid "chat_unavailable"
+msgstr "A conversa está temporariamente indisponível."
+
+msgid "realtime_not_configured"
+msgstr "As atualizações em tempo real da conversa não estão configuradas."
+
+msgid "location_unavailable"
+msgstr "A partilha da localização está temporariamente indisponível."
+
+msgid "invalid_location"
+msgstr "Os dados da localização não são válidos."
+
+msgid "sharing_not_authorized"
+msgstr "Não tem autorização para partilhar a sua localização com esta pessoa."
+
+msgid "request_not_found"
+msgstr "Não foi possível encontrar o pedido de partilha da localização."
+
+msgid "request_already_pending"
+msgstr "Já existe um pedido de partilha da localização pendente."
+
+msgid "unsupported_action"
+msgstr "Esta ação não é suportada."
+
+msgid "invalid_contact"
+msgstr "Os dados do contacto não são válidos."
+
+msgid "contact_not_found"
+msgstr "Não foi possível encontrar o contacto."
+
+msgid "contact_limit"
+msgstr "Foi atingido o limite de contactos."
+
+msgid "Could not get your device location."
+msgstr "Não foi possível obter a localização do dispositivo."
