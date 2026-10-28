@@ -702,6 +702,18 @@ msgstr "Todos os contactos foram removidos."
 msgid "Contacts could not be loaded. Try refreshing the page."
 msgstr "Não foi possível carregar os contactos. Tente atualizar a página."
 
+msgid "Hi {name}, I use ux9.eu to make plans with friends. Sign in with Google and join me: {url}"
+msgstr "Olá {name}, utilizo a ux9.eu para combinar planos com amigos. Inicie sessão com o Google e junte-se a mim: {url}"
+
+msgid "Join me on ux9.eu"
+msgstr "Junte-se a mim na ux9.eu"
+
+msgid "Invite by email"
+msgstr "Convidar por email"
+
+msgid "Invite by text"
+msgstr "Convidar por SMS"
+
 msgid "A small decision"
 msgstr "Uma pequena decisão"
 

@@ -14,9 +14,12 @@
   .search { margin: 14px 0; }
   .contact-list { display: grid; gap: 10px; padding: 0; list-style: none; }
   .contact-card { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 15px; border: 1px solid #e2e9f5; border-radius: 14px; background: #fbfcff; }
+  .contact-card-actions { display: flex; flex: 0 0 auto; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
   .contact-card h3 { margin: 0 0 5px; font-size: 1rem; }
   .contact-card p { margin: 2px 0; font-size: .9rem; overflow-wrap: anywhere; }
   .remove-contact { flex: 0 0 auto; padding: 8px 10px; border: 1px solid #f0d6d3; border-radius: 9px; background: white; color: #a2342c; font: inherit; cursor: pointer; }
+  .invite-contact { padding: 8px 10px; border: 1px solid #d5deef; border-radius: 9px; background: white; color: #3655d4; font: inherit; font-weight: 700; text-decoration: none; }
+  .invite-contact:hover { background: #f0f4ff; }
   .notice { min-height: 24px; margin: 8px 0; color: #53627b; font-size: .9rem; }
   .empty { padding: 22px 12px; border: 1px dashed #cbd6e8; border-radius: 14px; text-align: center; }
   @media (max-width: 520px) { .manual-form { grid-template-columns: 1fr; } .manual-form button { grid-column: auto; } .contacts { margin-top: 0; } }
@@ -57,6 +60,7 @@
   <script>
     (() => {
       const contactsApi = {{ url_for('main.api_contacts')|tojson }};
+      const inviteUrl = {{ url_for('auth.login', _external=True)|tojson }};
       const t = key => window.FlutuI18n?.[key] || key;
       const list = document.getElementById("contact-list");
       const status = document.getElementById("contact-status");
@@ -136,6 +140,20 @@
         });
       }
 
+      function invitationMessage(contact) {
+        return t("Hi {name}, I use ux9.eu to make plans with friends. Sign in with Google and join me: {url}")
+          .replace("{name}", () => contact.name)
+          .replace("{url}", () => inviteUrl);
+      }
+
+      function invitationLink(label, href) {
+        const link = document.createElement("a");
+        link.className = "invite-contact";
+        link.textContent = label;
+        link.href = href;
+        return link;
+      }
+
       async function createContacts(values) {
         const additions = uniqueContacts(values);
         if (!additions.length) return 0;
@@ -171,6 +189,16 @@
             email.textContent = contact.email;
             details.append(email);
           }
+          const actions = document.createElement("div");
+          actions.className = "contact-card-actions";
+          const message = invitationMessage(contact);
+          if (contact.email) {
+            const emailParameters = new URLSearchParams({ subject: t("Join me on ux9.eu"), body: message });
+            actions.append(invitationLink(t("Invite by email"), `mailto:${encodeURIComponent(contact.email)}?${emailParameters}`));
+          }
+          if (contact.tel) {
+            actions.append(invitationLink(t("Invite by text"), `sms:${encodeURIComponent(contact.tel)}?body=${encodeURIComponent(message)}`));
+          }
           const remove = document.createElement("button");
           remove.className = "remove-contact";
           remove.type = "button";
@@ -188,7 +216,8 @@
               }
             });
           });
-          item.append(details, remove);
+          actions.append(remove);
+          item.append(details, actions);
           list.append(item);
         });
         count.textContent = contacts.length === 1

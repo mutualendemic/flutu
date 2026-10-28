@@ -250,7 +250,7 @@ class ChatTests(unittest.TestCase):
         script = self.http.get("/static/chat-conversation.js")
         self.assertIn(b'node[type="option"][?quantum_selected]', script.data)
         self.assertIn(b'edge[kind="branch"][?quantum_selected]', script.data)
-        self.assertIn(b"input.value = ''; input.placeholder = value", script.data)
+        self.assertIn(b"input.value = ''; input.placeholder = t(value)", script.data)
         self.assertIn(b"input.reportValidity()", script.data)
         script.close()
 

@@ -23,6 +23,7 @@
 - Make documentation updates in the same change as the implementation, and verify examples, URLs, and instructions against the current code. Do not make unrelated documentation-only edits for changes that do not affect documented behavior.
 - Maintain the implementation specifications under `docs/specifications/` as the authoritative record of current decisions. Every user-facing page must have its own up-to-date page specification in `docs/specifications/pages/`; cross-page decisions belong in `docs/specifications/architecture.md`. Update these specifications in the same change as any behavior or design decision, and describe the current implementation rather than an aspirational design.
 - Keep `docs/specifications/README.md` as the index of all pages/routes and link every page specification from it. If a new page is added, add its spec and index entry together with its route, template, tests, and navigation.
+- For user-facing copy, use gettext in Jinja/Python and `window.FlutuI18n` in browser scripts. Add every literal browser `t()` key to `app/i18n.py` and update `app/translations/pt/LC_MESSAGES/messages.po` plus its compiled catalog in the same change. Do not leave visible text, titles, placeholders, accessibility labels, or dynamic errors hard-coded in English. Keep API error contracts language-neutral, but map machine-readable error codes to localized user-facing messages; never display raw codes as UI copy.
 
 ## Application architecture (Flask)
 

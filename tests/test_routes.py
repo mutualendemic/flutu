@@ -1,9 +1,13 @@
+import json
 import os
+import re
 import unittest
 from importlib import reload
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 from app import create_app
+from app.i18n import JS_MESSAGE_IDS
 import app.config as config_module
 from app.services.location_sharing import _isoformat_utc, register_user
 
@@ -116,6 +120,28 @@ class RouteTests(unittest.TestCase):
             self.assertEqual(browser_session["locale"], "pt_PT")
         denied = self.client.post("/language/fr", data={"next": "/"})
         self.assertEqual(denied.status_code, 400)
+
+    def test_browser_translation_keys_are_catalogued(self):
+        static_dir = Path(__file__).resolve().parents[1] / "app" / "static"
+        pattern = re.compile(r"\bt\(\s*(['\"])(.*?)\1\s*\)")
+        used = set()
+        for script in static_dir.glob("*.js"):
+            used.update(match.group(2) for match in pattern.finditer(script.read_text(encoding="utf-8")))
+        self.assertEqual(used - set(JS_MESSAGE_IDS), set())
+
+    def test_portuguese_browser_messages_translate_realtime_and_api_errors(self):
+        self.client.post("/language/pt_PT", data={"next": "/"})
+        self.sign_in()
+        response = self.client.get("/dashboard")
+        self.assertEqual(response.status_code, 200)
+        catalogue = response.get_data(as_text=True).split("window.FlutuI18n = ", 1)[1].split(";</script>", 1)[0]
+        messages = json.loads(catalogue)
+        self.assertIn("O Supabase aceitou um tópico de teste", messages[
+            "Supabase accepted an unauthorized private test topic. Realtime RLS is disabled or another SELECT policy is too broad."
+        ])
+        self.assertEqual(messages["invalid_payload"], "Os dados do pedido são inválidos.")
+        self.assertEqual(messages["Invite by email"], "Convidar por email")
+        self.assertEqual(messages["Invite by text"], "Convidar por SMS")
 
     def test_authenticated_root_redirects_to_dashboard(self):
         self.sign_in()
@@ -230,6 +256,11 @@ class RouteTests(unittest.TestCase):
         self.assertIn(b"Saved contacts", contacts.data)
         self.assertIn(b"/dashboard", contacts.data)
         self.assertIn(b'const contactsApi = "/api/contacts"', contacts.data)
+        self.assertIn(b'const inviteUrl = "http://localhost/auth/login"', contacts.data)
+        self.assertIn(b"Invite by email", contacts.data)
+        self.assertIn(b"Invite by text", contacts.data)
+        self.assertIn(b"mailto:${encodeURIComponent(contact.email)}", contacts.data)
+        self.assertIn(b"sms:${encodeURIComponent(contact.tel)}", contacts.data)
 
         decision = self.client.get("/decision")
         self.assertEqual(decision.status_code, 200)

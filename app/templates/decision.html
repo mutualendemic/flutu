@@ -19,7 +19,7 @@
       <button class="button" id="submit-button" type="submit">{{ _('Choose for me') }}</button>
     </form>
     <p id="answer" role="status" aria-live="polite"></p>
-    <p class="source">{{ _('Quantum hardware:') }} <a href="https://quantum.cloud.ibm.com/docs/en/guides/hello-world" target="_blank" rel="noopener noreferrer">IBM Quantum — Run your first circuit on hardware</a>.</p>
+    <p class="source">{{ _('Quantum hardware:') }} <a href="https://quantum.cloud.ibm.com/docs/en/guides/hello-world" target="_blank" rel="noopener noreferrer">{{ _('IBM Quantum — Run your first circuit on hardware') }}</a>.</p>
     <p class="source"><a href="{{ url_for('main.quantum_info') }}">{{ _('Learn more: quantum fluctuations and the many-worlds interpretation') }}</a>.</p>
     <a class="back-link" href="{{ url_for('main.dashboard') }}">{{ _('← Back to dashboard') }}</a>
   </main>
