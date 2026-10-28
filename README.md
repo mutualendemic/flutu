@@ -1,6 +1,6 @@
-# Flutu
+# ux9.eu
 
-Flutu is a small Flask application with Google-only OAuth sign-in, a protected dashboard, a personal contacts list, private OpenStreetMap-based location sharing, and a quantum-random direction demo.
+ux9.eu is a small Flask application with Google-only OAuth sign-in, a protected dashboard, a personal contacts list, private OpenStreetMap-based location sharing, and a quantum-random direction demo. The existing logo is retained; Flutu remains the internal repository and configuration name.
 
 The interface automatically follows the device's light or dark appearance preference, including system browser controls and the map's interface elements. Authenticated users can also create live branching conversations with contacts who have Flutu accounts and opt in to Web Push notifications for friend requests and collaborative chat activity.
 
@@ -30,6 +30,8 @@ The interface automatically follows the device's light or dark appearance prefer
 3. Add the exact redirect URI to the authorized redirect URIs in Google Cloud Console. For local development it is `http://127.0.0.1:8000/auth/google/callback`.
 4. Start the app with `bash start_server.sh`.
 5. Open http://127.0.0.1:8000. The development server binds exclusively to `127.0.0.1` and is not exposed to the local network.
+
+The public home page explains the main capabilities before sign-in. The interface supports English (UK, `en_GB`) and Portuguese (Portugal, `pt_PT`), selected from the language control or the browser's `Accept-Language` preference. The explicit choice is retained through sign-in and logout. Flask-Babel reads gettext catalogs from `app/translations/`; after changing a `.po` file, compile it with `python -m babel.messages.frontend compile -d app/translations`. The landing page, sign-in page, and dashboard currently have translated copy; the remaining authenticated pages and client-side messages are being localized incrementally. See the localization design in `docs/specifications/architecture.md`.
 
 Chat uses Supabase Realtime Broadcast by default when Supabase is configured; MongoDB remains the source of truth. Without Supabase, local development can use Flask-SocketIO/gevent (start with `bash start_server.sh`, not `flask run`). Redis is only needed for multi-instance Socket.IO deployment. `CHAT_REALTIME_MODE` supports `supabase`, `socketio`, and `polling`.
 

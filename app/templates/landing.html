@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}ux9.eu | {{ _('A private space for making plans') }}{% endblock %}
+{% block styles %}
+  .landing { width:min(100%,900px); margin:4vh auto 0; }
+  .landing-brand { display:flex; align-items:center; gap:12px; margin-bottom:30px; font-size:1.55rem; font-weight:800; }
+  .landing-brand img { width:48px; height:48px; }
+  .landing h1 { max-width:18ch; font-size:clamp(2rem,6vw,3.4rem); }
+  .landing-lead { max-width:66ch; font-size:1.1rem; }
+  .capabilities { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:14px; margin:28px 0; }
+  .capability { padding:18px; border:1px solid var(--border); border-radius:16px; background:var(--surface-muted); }
+  .capability h2 { margin:0 0 8px; font-size:1.05rem; }
+  .capability p { margin:0; }
+  .landing-actions { display:flex; flex-wrap:wrap; gap:12px; }
+  .landing-actions .button { width:auto; min-width:200px; }
+{% endblock %}
+{% block content %}
+<main class="card landing">
+  <div class="landing-brand"><img src="{{ url_for('static', filename='logo.svg') }}" alt="" /><span>ux9.eu</span></div>
+  <p class="eyebrow">{{ _('A calmer way to coordinate') }}</p>
+  <h1>{{ _('Bring your people and plans together.') }}</h1>
+  <p class="landing-lead">{{ _('ux9.eu helps you make decisions with friends, keep useful contacts together, and share location only with people you trust.') }}</p>
+  <section class="capabilities" aria-label="{{ _('What you can do') }}">
+    <article class="capability"><h2>{{ _('Branching conversations') }}</h2><p>{{ _('Create a question with options and let a quantum-random choice guide the next step.') }}</p></article>
+    <article class="capability"><h2>{{ _('Private location sharing') }}</h2><p>{{ _('Share live location only after consent, with controls to pause or revoke access.') }}</p></article>
+    <article class="capability"><h2>{{ _('Contacts and updates') }}</h2><p>{{ _('Keep your contacts in one place and optionally receive useful activity notifications.') }}</p></article>
+  </section>
+  <div class="landing-actions">
+    {% if google_configured %}
+      <a class="button" href="{{ url_for('auth.google_login') }}">{{ _('Continue with Google') }}</a>
+    {% else %}
+      <a class="button" href="{{ url_for('auth.login') }}">{{ _('Sign in') }}</a>
+    {% endif %}
+    <a class="button button-secondary" href="https://github.com/mutualendemic/flutu" target="_blank" rel="noopener noreferrer">{{ _('View the project') }}</a>
+  </div>
+</main>
+{% endblock %}

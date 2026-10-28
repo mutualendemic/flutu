@@ -250,6 +250,18 @@ class ChatTests(unittest.TestCase):
         script = self.http.get("/static/chat-conversation.js")
         self.assertIn(b'node[type="option"][?quantum_selected]', script.data)
         self.assertIn(b'edge[kind="branch"][?quantum_selected]', script.data)
+        self.assertIn(b"input.value = ''; input.placeholder = value", script.data)
+        self.assertIn(b"input.reportValidity()", script.data)
+        script.close()
+
+    def test_chat_list_uses_member_profile_photos_with_initials_fallback(self):
+        self.sign_in()
+        response = self.http.get("/chat/")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"member-photo", response.data)
+        script = self.http.get("/static/chat-list.js")
+        self.assertIn(b"member.picture", script.data)
+        self.assertIn(b"image.replaceWith(dot)", script.data)
         script.close()
 
     def test_member_snapshot_preserves_profile_photo_for_author_avatar(self):

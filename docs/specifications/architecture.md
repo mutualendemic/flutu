@@ -11,6 +11,28 @@ This specification describes decisions shared across pages and APIs, as reflecte
 - The version shown on sign-in uses the build SHA injected through the environment (`FLUTU_BUILD_COMMIT`, `VERCEL_GIT_COMMIT_SHA`, `GITHUB_SHA`, `SOURCE_VERSION`), truncated to 12 characters. Without a build SHA, configuration tries to obtain the local Git commit and uses `unknown` if it cannot.
 - All pages automatically follow the device's `prefers-color-scheme` setting. Shared design tokens in `base.html` provide light and dark palettes, and the browser chrome theme color and Leaflet controls follow the same preference; there is no separate theme toggle or stored override.
 
+## Branding and localization
+
+- The public site brand and browser page titles use `ux9.eu`; the existing shared logo asset is retained. The internal project/repository name and environment variable prefixes remain `Flutu` for compatibility, and the sign-in page continues to show the build commit version.
+- Supported interface locales are `en_GB` (English, United Kingdom; default) and `pt_PT` (Portuguese, Portugal). Flask-Babel provides gettext for Jinja and Python messages; translations live in `app/translations/<language>/LC_MESSAGES/messages.po` and compiled `messages.mo` catalogs.
+- Locale precedence is an explicit choice stored in the signed Flask session, then the best supported match from `Accept-Language`, then `en_GB`. The public language selector posts to `/language/<locale>` and redirects only to a same-site path. The choice is preserved through Google OAuth session replacement and logout. The shared template sets the corresponding BCP 47 `lang` attribute.
+- Browser scripts should receive localized strings through rendered configuration/data attributes rather than hard-coded translated literals. Dates and numbers should use the selected locale. API error codes and machine-readable contracts remain language-neutral; only user-facing text is translated. Push copy requires a persisted per-user locale before it can be localized for closed-browser delivery.
+- Current gettext coverage includes the public landing page, sign-in, and dashboard. Other page templates, API/flash messages, and static JavaScript still need incremental message extraction and translation before the whole authenticated application is fully localized.
+
+```mermaid
+flowchart TD
+	Browser[Browser request: session + Accept-Language] --> Choose[Locale selector]
+	Choose --> Babel[Flask-Babel / gettext]
+	Babel --> Jinja[Jinja templates and Python messages]
+	Babel --> Catalogs[en_GB and pt_PT message catalogs]
+	Jinja --> UI[HTML with localized text and lang attribute]
+	UI --> JS[Localized strings passed to browser scripts]
+	Selector[Public language selector] --> Session[Signed session locale]
+	Session --> Choose
+	OAuth[Google OAuth callback] --> Session
+	API[Language-neutral APIs] --> UI
+```
+
 ## Session and identity
 
 - Google OAuth is the only sign-in method. OAuth uses a random `state` stored in the session and validates identity through Google's trusted userinfo endpoint. There is no local password registration.
@@ -69,6 +91,7 @@ Install project dependencies from `requirements.txt`; Web Push uses `pywebpush`,
 ## Navigation, errors, and documentation
 
 - `/dashboard` is level 1. Pages linked from it are level 2 and return to the dashboard. The information page is level 3 and returns to the decision page that opened it.
+- Anonymous `/` renders the public capabilities landing page; signed-in `/` redirects to `/dashboard`. `/language/<locale>` updates the public or authenticated user's locale preference.
 - Protected APIs return appropriate HTTP status codes and JSON messages; MongoDB unavailability is reported as 503. Location APIs validate coordinates on the server and do not accept user identity from the client.
 - Chat mutation APIs additionally require the session CSRF token and same-origin request validation. Socket handlers authorize active membership on every event and broadcast to active per-user rooms.
 - Each page has a specification in `docs/specifications/pages/`; this specification contains cross-cutting decisions only. The README describes configuration and operation; update both alongside relevant changes. All project documentation must be written in English.

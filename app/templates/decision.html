@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Flutu | Quantum path selector{% endblock %}
+{% block title %}ux9.eu | {{ _('Quantum path selector') }}{% endblock %}
 {% block styles %}
   .decision { max-width: 560px; margin-top: 8vh; }
   #answer { min-height: 32px; margin: 22px 0 0; font-size: 1.25rem; font-weight: 800; }
@@ -12,16 +12,16 @@
 {% endblock %}
 {% block content %}
   <main class="card decision">
-    <p class="eyebrow">A small decision</p>
-    <h1>Should I go right or left?</h1>
-    <p>Take a breath and let chance choose. Each time you click, we run a fresh quantum measurement and show whether to go right or left.</p>
+    <p class="eyebrow">{{ _('A small decision') }}</p>
+    <h1>{{ _('Should I go right or left?') }}</h1>
+    <p>{{ _('Take a breath and let chance choose. Each time you click, we run a fresh quantum measurement and show whether to go right or left.') }}</p>
     <form id="decision-form">
-      <button class="button" id="submit-button" type="submit">Choose for me</button>
+      <button class="button" id="submit-button" type="submit">{{ _('Choose for me') }}</button>
     </form>
     <p id="answer" role="status" aria-live="polite"></p>
-    <p class="source">Quantum hardware: <a href="https://quantum.cloud.ibm.com/docs/en/guides/hello-world" target="_blank" rel="noopener noreferrer">IBM Quantum — Run your first circuit on hardware</a>.</p>
-    <p class="source"><a href="{{ url_for('main.quantum_info') }}">Learn more: quantum fluctuations and the many-worlds interpretation</a>.</p>
-    <a class="back-link" href="{{ url_for('main.dashboard') }}">← Back to dashboard</a>
+    <p class="source">{{ _('Quantum hardware:') }} <a href="https://quantum.cloud.ibm.com/docs/en/guides/hello-world" target="_blank" rel="noopener noreferrer">IBM Quantum — Run your first circuit on hardware</a>.</p>
+    <p class="source"><a href="{{ url_for('main.quantum_info') }}">{{ _('Learn more: quantum fluctuations and the many-worlds interpretation') }}</a>.</p>
+    <a class="back-link" href="{{ url_for('main.dashboard') }}">{{ _('← Back to dashboard') }}</a>
   </main>
 {% endblock %}
 {% block scripts %}
@@ -33,7 +33,7 @@
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       await window.FlutuAction.run(button, async () => {
-        answer.textContent = "Getting a result…";
+        answer.textContent = {{ _('Getting a result…')|tojson }};
         delete answer.dataset.state;
         try {
           const response = await fetch("{{ url_for('main.api_decision') }}", { method: "POST" });
@@ -43,15 +43,14 @@
             decision = JSON.parse(responseText);
           } catch {
             throw new Error(
-              `The server returned a non-JSON response (HTTP ${response.status}). ` +
-              "Check the Vercel Function logs; the IBM Quantum job may have timed out."
+              {{ _('The server returned a non-JSON response (HTTP {status}). Check the Vercel Function logs; the IBM Quantum job may have timed out.')|tojson }}.replace('{status}', response.status)
             );
           }
-          if (!response.ok) throw new Error(decision.error || "Could not get a decision.");
+          if (!response.ok) throw new Error(decision.error || {{ _('Could not get a decision.')|tojson }});
           if (typeof decision.go_right !== "boolean") {
-            throw new Error("The server returned an invalid decision. Check the Vercel Function logs.");
+            throw new Error({{ _('The server returned an invalid decision. Check the Vercel Function logs.')|tojson }});
           }
-          answer.textContent = decision.go_right ? "Go right →" : "Go left ←";
+          answer.textContent = decision.go_right ? {{ _('Go right →')|tojson }} : {{ _('Go left ←')|tojson }};
           answer.dataset.state = String(decision.go_right);
         } catch (error) {
           answer.textContent = error.message;

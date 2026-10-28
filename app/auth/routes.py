@@ -79,7 +79,10 @@ def callback():
         flash("Google sign-in could not be completed. Please try again.", "error")
         return redirect(url_for("auth.login"))
 
+    locale = session.get("locale")
     session.clear()
+    if locale in current_app.config["SUPPORTED_LOCALES"]:
+        session["locale"] = locale
     session.permanent = True
     session["user"] = {
         "sub": google_user["sub"],
@@ -97,5 +100,8 @@ def callback():
 
 @auth_bp.get("/logout")
 def logout():
+    locale = session.get("locale")
     session.clear()
+    if locale in current_app.config["SUPPORTED_LOCALES"]:
+        session["locale"] = locale
     return redirect(url_for("auth.login"))

@@ -61,18 +61,20 @@ class RouteTests(unittest.TestCase):
                 "picture": "https://example.com/test-user.png",
             }
 
-    def test_root_redirects_to_google_sign_in(self):
+    def test_root_renders_public_landing_page(self):
         response = self.client.get("/", follow_redirects=False)
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.headers["Location"], "/auth/login")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Bring your people and plans together", response.data)
+        self.assertIn(b"Private location sharing", response.data)
+        self.assertIn(b"ux9.eu", response.data)
+        self.assertIn(b'lang="en-GB"', response.data)
 
     def test_vercel_export_module_exposes_app(self):
         from api.index import app
 
         self.assertIsNotNone(app)
         response = app.test_client().get("/", follow_redirects=False)
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.headers["Location"], "/auth/login")
+        self.assertEqual(response.status_code, 200)
 
     def test_standard_google_env_names_are_supported_for_vercel(self):
         with patch.dict(
@@ -102,6 +104,24 @@ class RouteTests(unittest.TestCase):
         self.assertIn(self.app.config["BUILD_COMMIT"].encode(), response.data)
         self.assertNotIn(b"type=\"password\"", response.data)
         self.assertEqual(self.client.post("/login").status_code, 404)
+
+    def test_language_can_be_selected_before_and_after_sign_in(self):
+        response = self.client.post("/language/pt_PT", data={"next": "/"})
+        self.assertEqual(response.status_code, 302)
+        landing = self.client.get("/")
+        self.assertIn(b'lang="pt-PT"', landing.data)
+        self.assertIn("Junte as suas pessoas".encode(), landing.data)
+        self.sign_in()
+        with self.client.session_transaction() as browser_session:
+            self.assertEqual(browser_session["locale"], "pt_PT")
+        denied = self.client.post("/language/fr", data={"next": "/"})
+        self.assertEqual(denied.status_code, 400)
+
+    def test_authenticated_root_redirects_to_dashboard(self):
+        self.sign_in()
+        response = self.client.get("/", follow_redirects=False)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers["Location"], "/dashboard")
 
     def test_private_html_redirects_without_session(self):
         for path in ("/dashboard", "/contacts", "/decision", "/decision/info", "/map", "/profile"):

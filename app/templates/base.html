@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ get_locale().replace('_', '-') }}">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f3f7ff" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0b1220" media="(prefers-color-scheme: dark)" />
-    <title>{% block title %}Flutu{% endblock %}</title>
+    <title>{% block title %}ux9.eu{% endblock %}</title>
     <link rel="icon" href="{{ url_for('static', filename='logo.svg') }}" type="image/svg+xml" />
     <style>
       :root {
@@ -44,6 +44,9 @@
       .button-secondary:hover { background: var(--surface-muted); }
       .back-link { display: inline-block; margin-top: 24px; font-weight: 700; text-decoration: none; }
       .back-link:hover { text-decoration: underline; }
+      .language-picker { display:flex; justify-content:flex-end; gap:6px; width:min(100%,1100px); margin:0 auto 12px; }
+      .language-picker button { padding:7px 10px; border:1px solid var(--border); border-radius:9px; background:var(--surface); color:var(--text); font:inherit; cursor:pointer; }
+      .language-picker button[aria-current="true"] { border-color:var(--link); font-weight:700; }
       .error { margin: 12px 0; color: #b42318; }
       .sharing-status { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 16px; padding: 8px 12px; border: 1px solid #d9dee8; border-radius: 999px; background: #f7f8fa; color: #53627b; font-size: .85rem; font-weight: 700; }
       .sharing-status::before { width: 8px; height: 8px; border-radius: 50%; background: #98a2b3; content: ""; }
@@ -106,7 +109,16 @@
     </style>
   </head>
   <body>
+    <nav class="language-picker" aria-label="{{ _('Site language') }}">
+      {% for locale, label in [('en_GB', 'English (UK)'), ('pt_PT', 'Português (Portugal)')] %}
+        <form method="post" action="{{ url_for('main.set_language', locale=locale) }}">
+          <input type="hidden" name="next" value="{{ request.full_path.rstrip('?') }}" />
+          <button type="submit" {% if get_locale() == locale %}aria-current="true"{% endif %}>{{ label }}</button>
+        </form>
+      {% endfor %}
+    </nav>
     {% block content %}{% endblock %}
+    <script>window.FlutuI18n = {{ get_ui_messages()|tojson }};</script>
     {% block scripts %}{% endblock %}
     <script src="{{ url_for('static', filename='action-loading.js') }}" defer></script>
     {% if session.get('user') %}

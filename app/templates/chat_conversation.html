@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Flutu | Conversation{% endblock %}
+{% block title %}ux9.eu | {{ _('Conversation') }}{% endblock %}
 {% block styles %}
   .conversation-page { width:min(100%,1100px); margin:0 auto; }
   .conversation-top { display:flex; justify-content:space-between; align-items:center; gap:12px; }
@@ -47,36 +47,36 @@
 {% endblock %}
 {% block content %}
 <main class="card conversation-page" data-conversation-id="{{ conversation_id }}" data-csrf="{{ csrf_token() }}" data-realtime-mode="{{ chat_realtime_mode }}">
-  <header class="conversation-top"><div><p class="eyebrow">Branching chat</p><h1 id="conversation-title">Conversation</h1></div><div class="conversation-actions"><span id="connection-status" class="connection" data-connected="false" role="status">Connecting</span><button id="members-toggle" class="members-toggle" type="button" role="switch" aria-checked="false" aria-expanded="false" aria-controls="members-panel"><span>Members</span><span class="members-switch-track" aria-hidden="true"><span class="members-switch-thumb"></span></span></button></div></header>
-  <div class="graph-controls" aria-label="Graph view controls">
-    <button id="graph-fit" class="button button-secondary" type="button">Fit all</button>
-    <button id="graph-zoom-out" class="button button-secondary" type="button" aria-label="Zoom out">−</button>
-    <button id="graph-zoom-in" class="button button-secondary" type="button" aria-label="Zoom in">+</button>
-    <p class="graph-help">The flow is arranged automatically. Boxes cannot be moved; zoom and pan to inspect the full graph.</p>
+  <header class="conversation-top"><div><p class="eyebrow">{{ _('Branching chat') }}</p><h1 id="conversation-title">{{ _('Conversation') }}</h1></div><div class="conversation-actions"><span id="connection-status" class="connection" data-connected="false" role="status">{{ _('Connecting') }}</span><button id="members-toggle" class="members-toggle" type="button" role="switch" aria-checked="false" aria-expanded="false" aria-controls="members-panel"><span>{{ _('Members') }}</span><span class="members-switch-track" aria-hidden="true"><span class="members-switch-thumb"></span></span></button></div></header>
+  <div class="graph-controls" aria-label="{{ _('Graph view controls') }}">
+    <button id="graph-fit" class="button button-secondary" type="button">{{ _('Fit all') }}</button>
+    <button id="graph-zoom-out" class="button button-secondary" type="button" aria-label="{{ _('Zoom out') }}">−</button>
+    <button id="graph-zoom-in" class="button button-secondary" type="button" aria-label="{{ _('Zoom in') }}">+</button>
+    <p class="graph-help">{{ _('The flow is arranged automatically. Boxes cannot be moved; zoom and pan to inspect the full graph.') }}</p>
   </div>
   <div class="graph-stage" id="graph-stage">
-    <div id="graph" role="img" aria-label="Live branching flow: each question is followed by its options and the selected path leads to participant follow-ups"></div>
+    <div id="graph" role="img" aria-label="{{ _('Live branching flow: each question is followed by its options and the selected path leads to participant follow-ups') }}"></div>
     <div id="graph-empty-state" class="graph-empty-state" role="status" aria-live="polite">
-      <img src="{{ url_for('static', filename='logo.svg') }}" alt="Flutu">
-      <p>Conversation ready. The first question and its options will appear here.</p>
+      <img src="{{ url_for('static', filename='logo.svg') }}" alt="ux9.eu">
+      <p>{{ _('Conversation ready. The first question and its options will appear here.') }}</p>
     </div>
   </div>
-  <section id="details" class="detail-panel" aria-live="polite"><h2>Select a question or option</h2><p>Question cards identify their author. Green marks the option chosen by the quantum selector; follow-up links show which option led to each new question.</p></section>
-  <div id="quantum-branch-banner" class="quantum-banner" aria-live="polite">The quantum selector chooses one answer path from each question. Participants can add follow-up questions only to the selected option.</div>
+  <section id="details" class="detail-panel" aria-live="polite"><h2>{{ _('Select a question or option') }}</h2><p>{{ _('Question cards identify their author. Green marks the option chosen by the quantum selector; follow-up links show which option led to each new question.') }}</p></section>
+  <div id="quantum-branch-banner" class="quantum-banner" aria-live="polite">{{ _('The quantum selector chooses one answer path from each question. Participants can add follow-up questions only to the selected option.') }}</div>
   <section class="composer" aria-labelledby="composer-title" hidden>
-    <h2 id="composer-title">Start the conversation</h2>
-    <label for="question-text">Question</label>
-    <textarea id="question-text" maxlength="280" rows="2" placeholder="What should we decide?"></textarea>
+    <h2 id="composer-title">{{ _('Start the conversation') }}</h2>
+    <label for="question-text">{{ _('Question') }}</label>
+    <textarea id="question-text" maxlength="280" rows="2" placeholder="{{ _('What should we decide?') }}"></textarea>
     <div id="option-editors"></div>
     <div class="composer-tools">
-      <button id="add-option" class="button button-secondary" type="button">Add option</button>
-      <button id="send-question" class="button" type="button">Send question</button>
-      <button id="cancel-question" class="button button-secondary" type="button" hidden>Cancel</button>
+      <button id="add-option" class="button button-secondary" type="button">{{ _('Add option') }}</button>
+      <button id="send-question" class="button" type="button">{{ _('Send question') }}</button>
+      <button id="cancel-question" class="button button-secondary" type="button" hidden>{{ _('Cancel') }}</button>
     </div>
     <p id="chat-error" class="error" role="alert"></p>
   </section>
-  <section id="members-panel" class="members-panel" hidden><h2>Members</h2><ul id="member-list" class="member-list"></ul><label for="member-search">Add people from Contacts</label><input id="member-search" type="search" placeholder="Search contacts"><div id="member-picker" class="picker"></div></section>
-  <a class="back-link" href="{{ url_for('chat.conversation_list_page') }}">Back to conversations</a>
+  <section id="members-panel" class="members-panel" hidden><h2>{{ _('Members') }}</h2><ul id="member-list" class="member-list"></ul><label for="member-search">{{ _('Add people from Contacts') }}</label><input id="member-search" type="search" placeholder="{{ _('Search contacts') }}"><div id="member-picker" class="picker"></div></section>
+  <a class="back-link" href="{{ url_for('chat.conversation_list_page') }}">{{ _('Back to conversations') }}</a>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.30.4/dist/cytoscape.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.8.1/dist/socket.io.min.js" defer></script>

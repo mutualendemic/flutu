@@ -1,0 +1,874 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: ux9.eu 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: pt_PT\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Site language"
+msgstr "Idioma do site"
+
+msgid "A private space for making plans"
+msgstr "Um espaço privado para fazer planos"
+
+msgid "A calmer way to coordinate"
+msgstr "Uma forma mais tranquila de coordenar"
+
+msgid "Bring your people and plans together."
+msgstr "Junte as suas pessoas e os seus planos."
+
+msgid "ux9.eu helps you make decisions with friends, keep useful contacts together, and share location only with people you trust."
+msgstr "A ux9.eu ajuda-o a tomar decisões com amigos, organizar contactos úteis e partilhar a localização apenas com pessoas em quem confia."
+
+msgid "What you can do"
+msgstr "O que pode fazer"
+
+msgid "Branching conversations"
+msgstr "Conversas ramificadas"
+
+msgid "Create a question with options and let a quantum-random choice guide the next step."
+msgstr "Crie uma pergunta com opções e deixe uma escolha aleatória quântica orientar o passo seguinte."
+
+msgid "Private location sharing"
+msgstr "Partilha privada da localização"
+
+msgid "Share live location only after consent, with controls to pause or revoke access."
+msgstr "Partilhe a localização em tempo real apenas com consentimento, podendo pausar ou revogar o acesso."
+
+msgid "Contacts and updates"
+msgstr "Contactos e notificações"
+
+msgid "Keep your contacts in one place and optionally receive useful activity notifications."
+msgstr "Mantenha os seus contactos num só lugar e receba, se quiser, notificações úteis sobre a atividade."
+
+msgid "Continue with Google"
+msgstr "Continuar com o Google"
+
+msgid "Sign in"
+msgstr "Iniciar sessão"
+
+msgid "View the project"
+msgstr "Ver o projeto"
+
+msgid "Access your ux9.eu account"
+msgstr "Aceda à sua conta ux9.eu"
+
+msgid "Google sign-in is not configured. Set FLUTU_GOOGLE_CLIENT_ID and FLUTU_GOOGLE_CLIENT_SECRET."
+msgstr "O início de sessão com o Google não está configurado. Defina FLUTU_GOOGLE_CLIENT_ID e FLUTU_GOOGLE_CLIENT_SECRET."
+
+msgid "View project on GitHub"
+msgstr "Ver o projeto no GitHub"
+
+msgid "Version:"
+msgstr "Versão:"
+
+msgid "Dashboard"
+msgstr "Painel"
+
+msgid "Sign out"
+msgstr "Terminar sessão"
+
+msgid "Active session"
+msgstr "Sessão ativa"
+
+msgid "Checking location sharing…"
+msgstr "A verificar a partilha da localização…"
+
+msgid "Welcome to ux9.eu"
+msgstr "Bem-vindo à ux9.eu"
+
+msgid "Signed in as:"
+msgstr "Sessão iniciada como:"
+
+msgid "Dashboard pages"
+msgstr "Páginas do painel"
+
+msgid "Quantum path selector"
+msgstr "Seletor quântico de caminhos"
+
+msgid "My contacts"
+msgstr "Os meus contactos"
+
+msgid "Branching chat"
+msgstr "Conversa ramificada"
+
+msgid "Location map"
+msgstr "Mapa de localização"
+
+msgid "My profile"
+msgstr "O meu perfil"
+
+msgid "Friend notifications"
+msgstr "Notificações de amigos"
+
+msgid "Get notified about location-sharing requests, new conversation members, and questions from your conversations."
+msgstr "Receba notificações sobre pedidos de partilha da localização, novos membros e perguntas nas suas conversas."
+
+msgid "Enable notifications"
+msgstr "Ativar notificações"
+
+msgid "Checking this device…"
+msgstr "A verificar este dispositivo…"
+
+msgid "Could not complete this action."
+msgstr "Não foi possível concluir esta ação."
+
+msgid "Could not load contacts."
+msgstr "Não foi possível carregar os contactos."
+
+msgid "Could not load conversations."
+msgstr "Não foi possível carregar as conversas."
+
+msgid "Could not delete conversation."
+msgstr "Não foi possível eliminar a conversa."
+
+msgid "No conversations yet"
+msgstr "Ainda não existem conversas"
+
+msgid "Create a conversation and invite people from your Contacts."
+msgstr "Crie uma conversa e convide pessoas dos seus contactos."
+
+msgid "member"
+msgstr "membro"
+
+msgid "members"
+msgstr "membros"
+
+msgid "question"
+msgstr "pergunta"
+
+msgid "questions"
+msgstr "perguntas"
+
+msgid "Delete"
+msgstr "Eliminar"
+
+msgid "former member"
+msgstr "antigo membro"
+
+msgid "Permanently delete “{title}” for all members? Its questions and answers will also be deleted."
+msgstr "Eliminar permanentemente “{title}” para todos os membros? As perguntas e respostas também serão eliminadas."
+
+msgid "No contacts match your search."
+msgstr "Nenhum contacto corresponde à pesquisa."
+
+msgid "Not on the app"
+msgstr "Não utiliza a aplicação"
+
+msgid "Create"
+msgstr "Criar"
+
+msgid "Cancel"
+msgstr "Cancelar"
+
+msgid "Conversation"
+msgstr "Conversa"
+
+msgid "Start the conversation"
+msgstr "Iniciar a conversa"
+
+msgid "Waiting for the first question"
+msgstr "À espera da primeira pergunta"
+
+msgid "Create the opening question and provide the answer options. The quantum selector will choose the path."
+msgstr "Crie a pergunta inicial e indique as opções de resposta. O seletor quântico escolherá o caminho."
+
+msgid "The conversation creator will add the opening question. After that, every participant can add follow-up questions to the quantum-selected option."
+msgstr "A pessoa que criou a conversa irá adicionar a pergunta inicial. Depois, qualquer participante poderá acrescentar perguntas à opção escolhida pelo seletor quântico."
+
+msgid "QUANTUM CHOICE"
+msgstr "ESCOLHA QUÂNTICA"
+
+msgid "not selected"
+msgstr "não selecionada"
+
+msgid "By {name}"
+msgstr "Por {name}"
+
+msgid "Former member"
+msgstr "Antigo membro"
+
+msgid "ux9.eu member"
+msgstr "Membro da ux9.eu"
+
+msgid "Question author"
+msgstr "Autor da pergunta"
+
+msgid "Question author's profile photo"
+msgstr "Fotografia de perfil do autor da pergunta"
+
+msgid "Asked by {name} · {status}"
+msgstr "Pergunta de {name} · {status}"
+
+msgid "Quantum-selected path: "
+msgstr "Caminho escolhido pelo seletor quântico: "
+
+msgid "Other option: "
+msgstr "Outra opção: "
+
+msgid "Chosen by the quantum selector; this is the active path."
+msgstr "Escolhido pelo seletor quântico; este é o caminho ativo."
+
+msgid "Follow up"
+msgstr "Continuar"
+
+msgid "Follow up on “{label}”"
+msgstr "Continuar a partir de “{label}”"
+
+msgid "Send follow-up"
+msgstr "Enviar seguimento"
+
+msgid "Not selected by the quantum selector; follow-ups can only continue from the selected option."
+msgstr "Não foi escolhida pelo seletor quântico; só é possível continuar a partir da opção selecionada."
+
+msgid "The action could not be completed."
+msgstr "Não foi possível concluir a ação."
+
+msgid "Unsupported chat action."
+msgstr "Ação de conversa não suportada."
+
+msgid "Could not load this conversation."
+msgstr "Não foi possível carregar esta conversa."
+
+msgid "Option {number}"
+msgstr "Opção {number}"
+
+msgid "Remove"
+msgstr "Remover"
+
+msgid "Could not update members."
+msgstr "Não foi possível atualizar os membros."
+
+msgid "Could not add member."
+msgstr "Não foi possível adicionar o membro."
+
+msgid "Live updates · polling"
+msgstr "Atualizações em direto · consulta periódica"
+
+msgid "Reconnecting"
+msgstr "A restabelecer ligação"
+
+msgid "Private channel authorized · Supabase Realtime"
+msgstr "Canal privado autorizado · Supabase Realtime"
+
+msgid "Supabase accepted the private channel subscription under its Realtime authorization policy."
+msgstr "O Supabase aceitou a subscrição do canal privado ao abrigo da política de autorização Realtime."
+
+msgid "Supabase private-channel check failed · using polling"
+msgstr "Falhou a verificação do canal privado Supabase · a usar consulta periódica"
+
+msgid "Review private-channel settings and the realtime.messages SELECT RLS policy."
+msgstr "Verifique as definições do canal privado e a política RLS SELECT de realtime.messages."
+
+msgid "Chat is continuing with slower polling."
+msgstr "A conversa continua com atualizações menos frequentes."
+
+msgid "Connected"
+msgstr "Ligado"
+
+msgid "Switching to polling"
+msgstr "A mudar para consulta periódica"
+
+msgid "The chat graph could not load. Check the network connection and try again."
+msgstr "Não foi possível carregar o grafo da conversa. Verifique a ligação à Internet e tente novamente."
+
+msgid "Checking Supabase private-channel authorization…"
+msgstr "A verificar a autorização do canal privado Supabase…"
+
+msgid "Supabase private-channel check failed. Using slower polling."
+msgstr "Falhou a verificação do canal privado Supabase. A usar atualizações menos frequentes."
+
+msgid "Supabase client is unavailable. Using slower polling."
+msgstr "O cliente Supabase não está disponível. A usar atualizações menos frequentes."
+
+msgid "Supabase accepted the private channel subscription."
+msgstr "O Supabase aceitou a subscrição do canal privado."
+
+msgid "Supabase private-channel authorization failed. Check the realtime.messages SELECT RLS policy."
+msgstr "Falhou a autorização do canal privado Supabase. Verifique a política RLS SELECT de realtime.messages."
+
+msgid "Could not load Contacts."
+msgstr "Não foi possível carregar os contactos."
+
+msgid "Could not create conversation."
+msgstr "Não foi possível criar a conversa."
+
+msgid "Could not update notification settings."
+msgstr "Não foi possível atualizar as definições de notificações."
+
+msgid "Could not save this device subscription."
+msgstr "Não foi possível guardar a subscrição deste dispositivo."
+
+msgid "Push notifications are not supported by this browser."
+msgstr "Este navegador não suporta notificações push."
+
+msgid "Notification permission was not granted."
+msgstr "A permissão para notificações não foi concedida."
+
+msgid "Push notifications are not configured."
+msgstr "As notificações push não estão configuradas."
+
+msgid "Disable notifications on this device"
+msgstr "Desativar notificações neste dispositivo"
+
+msgid "Notifications are enabled on this device."
+msgstr "As notificações estão ativadas neste dispositivo."
+
+msgid "No active subscription on this device."
+msgstr "Não existe nenhuma subscrição ativa neste dispositivo."
+
+msgid "Could not remove this device subscription."
+msgstr "Não foi possível remover a subscrição deste dispositivo."
+
+msgid "Notifications are disabled on this device."
+msgstr "As notificações estão desativadas neste dispositivo."
+
+msgid "Updating notification settings…"
+msgstr "A atualizar as definições de notificações…"
+
+msgid "This browser does not support Web Push notifications."
+msgstr "Este navegador não suporta notificações Web Push."
+
+msgid "Notifications are blocked in this browser’s site settings."
+msgstr "As notificações estão bloqueadas nas definições deste site no navegador."
+
+msgid "Notifications are off. Enable them to receive friend requests and chat updates."
+msgstr "As notificações estão desativadas. Ative-as para receber pedidos de amizade e atualizações das conversas."
+
+msgid "Location sharing is unavailable."
+msgstr "A partilha da localização não está disponível."
+
+msgid "Location sharing status unavailable"
+msgstr "Estado da partilha da localização indisponível"
+
+msgid "Location access unavailable in this browser"
+msgstr "O acesso à localização não está disponível neste navegador"
+
+msgid "This browser does not support geolocation."
+msgstr "Este navegador não suporta geolocalização."
+
+msgid "Location requires a secure connection"
+msgstr "A localização requer uma ligação segura"
+
+msgid "Open ux9.eu using HTTPS to share device location."
+msgstr "Abra ux9.eu através de HTTPS para partilhar a localização do dispositivo."
+
+msgid "Location sharing needs attention"
+msgstr "A partilha da localização requer atenção"
+
+msgid "Sharing location with {count} contact"
+msgstr "A partilhar a localização com {count} contacto"
+
+msgid "Sharing location with {count} contacts"
+msgstr "A partilhar a localização com {count} contactos"
+
+msgid "Your latest location is shared while you are using ux9.eu."
+msgstr "A sua localização mais recente é partilhada enquanto utiliza a ux9.eu."
+
+msgid "Location sharing paused"
+msgstr "Partilha da localização em pausa"
+
+msgid "You have active permissions, but location updates are paused."
+msgstr "Tem autorizações ativas, mas as atualizações da localização estão em pausa."
+
+msgid "Location sharing off"
+msgstr "Partilha da localização desativada"
+
+msgid "No active location-sharing permissions."
+msgstr "Não existem autorizações de partilha da localização ativas."
+
+msgid "Location permission was denied. Allow access in your browser settings."
+msgstr "A permissão de localização foi recusada. Permita o acesso nas definições do navegador."
+
+msgid "Location requires HTTPS. Open ux9.eu using its secure https:// address."
+msgstr "A localização requer HTTPS. Abra ux9.eu através do endereço seguro https://."
+
+msgid "This browser or in-app browser does not provide location access. Open ux9.eu in your device browser."
+msgstr "Este navegador ou navegador integrado não permite o acesso à localização. Abra ux9.eu no navegador do dispositivo."
+
+msgid "Location permission was denied. Allow location access for this site in your browser settings, then try again."
+msgstr "A permissão de localização foi recusada. Permita o acesso a este site nas definições do navegador e tente novamente."
+
+msgid "Your device could not determine its location. Check that Location is enabled and try again outdoors."
+msgstr "Não foi possível determinar a localização do dispositivo. Verifique se a localização está ativada e tente novamente no exterior."
+
+msgid "Getting your location timed out. Check your device Location setting and try again."
+msgstr "O tempo para obter a localização terminou. Verifique a definição de localização do dispositivo e tente novamente."
+
+msgid "Updated {date} · accuracy ±{accuracy} m"
+msgstr "Atualizado em {date} · precisão ±{accuracy} m"
+
+msgid "Private on this device"
+msgstr "Privada neste dispositivo"
+
+msgid "Shared with authorized contacts"
+msgstr "Partilhada com contactos autorizados"
+
+msgid "Your device"
+msgstr "O seu dispositivo"
+
+msgid "Your marker is private on this device; it is not shared unless you enable location updates."
+msgstr "O seu marcador é privado neste dispositivo; não é partilhado a menos que ative as atualizações da localização."
+
+msgid "Your marker is shared with authorized contacts."
+msgstr "O seu marcador é partilhado com contactos autorizados."
+
+msgid "Distance unavailable — your location and their location are not currently available."
+msgstr "Distância indisponível — a sua localização e a da outra pessoa não estão disponíveis neste momento."
+
+msgid "Distance unavailable — your device location is not current."
+msgstr "Distância indisponível — a localização do seu dispositivo não é atual."
+
+msgid "Distance unavailable — they are not currently sharing their location with you."
+msgstr "Distância indisponível — a outra pessoa não está a partilhar a localização consigo neste momento."
+
+msgid "Distance: {distance} m away"
+msgstr "Distância: a {distance} m"
+
+msgid "Distance: {distance} km away"
+msgstr "Distância: a {distance} km"
+
+msgid "You are not sharing your location with anyone."
+msgstr "Não está a partilhar a sua localização com ninguém."
+
+msgid "Stop sharing"
+msgstr "Parar a partilha"
+
+msgid "Device location requires HTTPS. Open ux9.eu using its secure https:// address."
+msgstr "A localização do dispositivo requer HTTPS. Abra ux9.eu através do endereço seguro https://."
+
+msgid "This browser does not support device location. Try your device browser."
+msgstr "Este navegador não suporta a localização do dispositivo. Experimente o navegador do dispositivo."
+
+msgid "Location permission was denied. Allow location access for this site in browser settings, then tap “Locate my device”."
+msgstr "A permissão de localização foi recusada. Permita o acesso a este site nas definições do navegador e toque em “Localizar o meu dispositivo”."
+
+msgid "Your device could not determine its location. Check that Location is enabled."
+msgstr "Não foi possível determinar a localização do dispositivo. Verifique se a localização está ativada."
+
+msgid "Getting your location timed out. Check device Location and try again."
+msgstr "O tempo para obter a localização terminou. Verifique a localização do dispositivo e tente novamente."
+
+msgid "No pending requests."
+msgstr "Não existem pedidos pendentes."
+
+msgid "{name} wants to see your location."
+msgstr "{name} pretende ver a sua localização."
+
+msgid "Accept"
+msgstr "Aceitar"
+
+msgid "Decline"
+msgstr "Recusar"
+
+msgid "No outgoing requests."
+msgstr "Não existem pedidos enviados."
+
+msgid "Waiting for {email} to respond."
+msgstr "À espera da resposta de {email}."
+
+msgid "Sharing is enabled. Waiting for the next shared GPS update for your selected marker."
+msgstr "A partilha está ativa. À espera da próxima atualização GPS para o marcador selecionado."
+
+msgid "Request accepted. Start sharing when you are ready."
+msgstr "Pedido aceite. Comece a partilhar quando estiver preparado."
+
+msgid "Request updated."
+msgstr "Pedido atualizado."
+
+msgid "Location access revoked for that person."
+msgstr "O acesso à localização dessa pessoa foi revogado."
+
+msgid "No one has authorized a request to receive your location yet. Ask a contact to request it first."
+msgstr "Ainda ninguém autorizou um pedido para receber a sua localização. Peça primeiro a um contacto que envie um pedido."
+
+msgid "Location updates are on for {count} contact."
+msgstr "As atualizações da localização estão ativas para {count} contacto."
+
+msgid "Location updates are on for {count} contacts."
+msgstr "As atualizações da localização estão ativas para {count} contactos."
+
+msgid "A contact has permission, but your location updates are paused. Enable them to share your position."
+msgstr "Um contacto tem autorização, mas as atualizações da sua localização estão em pausa. Ative-as para partilhar a sua posição."
+
+msgid "Request sent. It will be visible when the contact next opens ux9.eu."
+msgstr "Pedido enviado. Ficará visível quando o contacto voltar a abrir a ux9.eu."
+
+msgid "A request is already pending."
+msgstr "Já existe um pedido pendente."
+
+msgid "Requesting your device location. Allow the browser permission when prompted…"
+msgstr "A solicitar a localização do dispositivo. Autorize o acesso quando o navegador pedir…"
+
+msgid "Location updates paused."
+msgstr "Atualizações da localização em pausa."
+
+msgid "Location updates enabled. Your current location was shared with authorized contacts."
+msgstr "Atualizações da localização ativadas. A sua localização atual foi partilhada com contactos autorizados."
+
+msgid "Revoke location access for everyone and stop sharing?"
+msgstr "Revogar o acesso à localização para todos e parar a partilha?"
+
+msgid "Sharing stopped for everyone."
+msgstr "A partilha foi interrompida para todos."
+
+msgid "Select a contact…"
+msgstr "Selecione um contacto…"
+
+msgid "No contacts with email addresses"
+msgstr "Não existem contactos com endereço de correio eletrónico"
+
+msgid "Contacts are unavailable"
+msgstr "Os contactos não estão disponíveis"
+
+msgid "Private location sharing"
+msgstr "Partilha privada da localização"
+
+msgid "Location map"
+msgstr "Mapa de localização"
+
+msgid "See locations shared with you and manage who can see yours."
+msgstr "Veja as localizações partilhadas consigo e controle quem pode ver a sua."
+
+msgid "Shared locations map"
+msgstr "Mapa das localizações partilhadas"
+
+msgid "Follow location updates: On"
+msgstr "Acompanhar atualizações da localização: Ativo"
+
+msgid "Follow location updates: Off"
+msgstr "Acompanhar atualizações da localização: Inativo"
+
+msgid "Turn on map following to center the view on all participant markers as locations update."
+msgstr "Ative o acompanhamento do mapa para centrar a vista nos marcadores dos participantes à medida que as localizações são atualizadas."
+
+msgid "Map following is on. The view includes all participant markers and adjusts when their locations change."
+msgstr "O acompanhamento do mapa está ativo. A vista inclui os marcadores de todos os participantes e ajusta-se quando as localizações mudam."
+
+msgid "Map following is off. The map will stay where you place it."
+msgstr "O acompanhamento do mapa está inativo. O mapa permanecerá onde o colocar."
+
+msgid "OpenStreetMap showing shared contact locations"
+msgstr "OpenStreetMap com as localizações partilhadas dos contactos"
+
+msgid "Map data © OpenStreetMap contributors. Locations are visible only while sharing permission is active."
+msgstr "Dados cartográficos © colaboradores do OpenStreetMap. As localizações só são visíveis enquanto a autorização de partilha estiver ativa."
+
+msgid "Request a location"
+msgstr "Pedir uma localização"
+
+msgid "Choose a saved contact with an email address. They must have signed in to ux9.eu; they decide whether to share."
+msgstr "Escolha um contacto guardado com endereço de correio eletrónico. Tem de ter iniciado sessão na ux9.eu e decide se pretende partilhar."
+
+msgid "Contact"
+msgstr "Contacto"
+
+msgid "Loading contacts…"
+msgstr "A carregar contactos…"
+
+msgid "Request location sharing"
+msgstr "Pedir partilha da localização"
+
+msgid "Requests for you"
+msgstr "Pedidos recebidos"
+
+msgid "Loading…"
+msgstr "A carregar…"
+
+msgid "Requests you sent"
+msgstr "Pedidos enviados"
+
+msgid "People you share with"
+msgstr "Pessoas com quem partilha"
+
+msgid "Distance is shown only when their current location is also shared with you."
+msgstr "A distância só é apresentada quando a localização atual dessa pessoa também é partilhada consigo."
+
+msgid "Enable location updates"
+msgstr "Ativar atualizações da localização"
+
+msgid "Pause location updates"
+msgstr "Pausar atualizações da localização"
+
+msgid "Stop all sharing"
+msgstr "Parar todas as partilhas"
+
+msgid "Accept an incoming request before sharing your location."
+msgstr "Aceite um pedido recebido antes de partilhar a sua localização."
+
+msgid "When you open this map, your device location is tracked privately here every 30 seconds."
+msgstr "Quando abre este mapa, a localização do dispositivo é consultada aqui em privado a cada 30 segundos."
+
+msgid "Locate my device"
+msgstr "Localizar o meu dispositivo"
+
+msgid "After enabling, ux9.eu updates your location about every 30 seconds while you use the app, provided the browser grants location access. You can pause updates or revoke access for one person or everyone."
+msgstr "Depois de ativada, a ux9.eu atualiza a sua localização aproximadamente a cada 30 segundos enquanto utiliza a aplicação, se o navegador permitir o acesso. Pode pausar as atualizações ou revogar o acesso a uma ou a todas as pessoas."
+
+msgid "Your address book"
+msgstr "A sua lista de contactos"
+
+msgid "Your contacts are saved to your ux9.eu account. Import contacts from your phone when your browser supports it, or add someone manually."
+msgstr "Os seus contactos são guardados na sua conta ux9.eu. Importe contactos do telemóvel se o navegador o permitir ou adicione-os manualmente."
+
+msgid "Import from phone"
+msgstr "Importar do telemóvel"
+
+msgid "Import .vcf file"
+msgstr "Importar ficheiro .vcf"
+
+msgid "Clear all contacts"
+msgstr "Limpar todos os contactos"
+
+msgid "If direct phone access is unavailable, export contacts as a .vcf file from your phone and import that file here."
+msgstr "Se o acesso direto ao telemóvel não estiver disponível, exporte os contactos do telemóvel para um ficheiro .vcf e importe-o aqui."
+
+msgid "Name"
+msgstr "Nome"
+
+msgid "Phone"
+msgstr "Telefone"
+
+msgid "Email"
+msgstr "Correio eletrónico"
+
+msgid "Add contact"
+msgstr "Adicionar contacto"
+
+msgid "Saved contacts"
+msgstr "Contactos guardados"
+
+msgid "{count} contacts"
+msgstr "{count} contactos"
+
+msgid "Search contacts"
+msgstr "Pesquisar contactos"
+
+msgid "No contacts yet. Import from your phone or add a contact above."
+msgstr "Ainda não existem contactos. Importe-os do telemóvel ou adicione um contacto acima."
+
+msgid "Remove {name}"
+msgstr "Remover {name}"
+
+msgid "Contact removed."
+msgstr "Contacto removido."
+
+msgid "Add a phone number or email address for this contact."
+msgstr "Adicione um número de telefone ou endereço de correio eletrónico para este contacto."
+
+msgid "Contact added."
+msgstr "Contacto adicionado."
+
+msgid "That contact is already in your list."
+msgstr "Esse contacto já está na sua lista."
+
+msgid "Direct phone contact access is unavailable in this browser. Use Import .vcf file instead, or try a supported mobile browser over HTTPS."
+msgstr "O acesso direto aos contactos do telemóvel não está disponível neste navegador. Utilize antes “Importar ficheiro .vcf” ou experimente um navegador móvel compatível através de HTTPS."
+
+msgid "{count} contact imported."
+msgstr "Foi importado {count} contacto."
+
+msgid "{count} contacts imported."
+msgstr "Foram importados {count} contactos."
+
+msgid "Import cancelled."
+msgstr "Importação cancelada."
+
+msgid "Could not import contacts. Check browser permissions and try again."
+msgstr "Não foi possível importar os contactos. Verifique as permissões do navegador e tente novamente."
+
+msgid "That file is too large. Choose a .vcf file smaller than 5 MB."
+msgstr "Esse ficheiro é demasiado grande. Escolha um ficheiro .vcf com menos de 5 MB."
+
+msgid "No usable contacts found. Choose a valid .vcf contact export."
+msgstr "Não foram encontrados contactos utilizáveis. Escolha uma exportação de contactos .vcf válida."
+
+msgid "{count} contact imported from file."
+msgstr "Foi importado {count} contacto do ficheiro."
+
+msgid "{count} contacts imported from file."
+msgstr "Foram importados {count} contactos do ficheiro."
+
+msgid "Could not import that .vcf file."
+msgstr "Não foi possível importar esse ficheiro .vcf."
+
+msgid "Remove all your saved contacts?"
+msgstr "Remover todos os contactos guardados?"
+
+msgid "All contacts removed."
+msgstr "Todos os contactos foram removidos."
+
+msgid "Contacts could not be loaded. Try refreshing the page."
+msgstr "Não foi possível carregar os contactos. Tente atualizar a página."
+
+msgid "A small decision"
+msgstr "Uma pequena decisão"
+
+msgid "Should I go right or left?"
+msgstr "Devo ir para a direita ou para a esquerda?"
+
+msgid "Take a breath and let chance choose. Each time you click, we run a fresh quantum measurement and show whether to go right or left."
+msgstr "Respire fundo e deixe o acaso escolher. Sempre que clicar, será feita uma nova medição quântica para sugerir se deve ir para a direita ou para a esquerda."
+
+msgid "Choose for me"
+msgstr "Escolher por mim"
+
+msgid "Quantum hardware:"
+msgstr "Computador quântico:"
+
+msgid "Learn more: quantum fluctuations and the many-worlds interpretation"
+msgstr "Saiba mais: flutuações quânticas e a interpretação dos muitos mundos"
+
+msgid "← Back to dashboard"
+msgstr "← Voltar ao painel"
+
+msgid "Getting a result…"
+msgstr "A obter um resultado…"
+
+msgid "The server returned a non-JSON response (HTTP {status}). Check the Vercel Function logs; the IBM Quantum job may have timed out."
+msgstr "O servidor devolveu uma resposta que não é JSON (HTTP {status}). Verifique os registos da função Vercel; a tarefa IBM Quantum pode ter excedido o tempo limite."
+
+msgid "Could not get a decision."
+msgstr "Não foi possível obter uma decisão."
+
+msgid "The server returned an invalid decision. Check the Vercel Function logs."
+msgstr "O servidor devolveu uma decisão inválida. Verifique os registos da função Vercel."
+
+msgid "Go right →"
+msgstr "Ir para a direita →"
+
+msgid "Go left ←"
+msgstr "Ir para a esquerda ←"
+
+msgid "Account settings"
+msgstr "Definições da conta"
+
+msgid "Signed-in account"
+msgstr "Conta com sessão iniciada"
+
+msgid "Your map marker"
+msgstr "O seu marcador no mapa"
+
+msgid "The map uses your Google profile photo as your marker. If Google has no profile photo, the map shows your initials instead."
+msgstr "O mapa utiliza a fotografia de perfil Google como marcador. Se não existir uma fotografia de perfil Google, o mapa apresenta as suas iniciais."
+
+msgid "← Back to the decision"
+msgstr "← Voltar à decisão"
+
+msgid "Quantum Physics and Many Worlds"
+msgstr "Física quântica e muitos mundos"
+
+msgid "What this experience does—and does not do"
+msgstr "O que esta experiência faz — e não faz"
+
+msgid "Quantum Fluctuations and the Many-Worlds Idea"
+msgstr "Flutuações quânticas e a ideia dos muitos mundos"
+
+msgid "This decision page turns an external random result into a simple suggestion: right or left. The physics behind quantum random numbers is fascinating, but this site's suggestion is a playful experience—not a measurement of fate or proof that a person splits across universes."
+msgstr "Esta página transforma um resultado aleatório externo numa sugestão simples: direita ou esquerda. A física dos números aleatórios quânticos é fascinante, mas a sugestão deste site é uma experiência lúdica — não mede o destino nem prova que uma pessoa se divide entre universos."
+
+msgid "Where does the choice come from?"
+msgstr "De onde vem a escolha?"
+
+msgid "When you click “Choose for me,” the server submits a one-qubit circuit to operational IBM Quantum hardware. A Hadamard gate puts the qubit into an equal superposition, then the circuit measures it once. The measured bit selects right or left. This uses IBM Quantum hardware rather than a local simulator; the result is not persisted."
+msgstr "Quando clica em “Escolher por mim”, o servidor envia um circuito de um qubit para hardware IBM Quantum operacional. Uma porta Hadamard coloca o qubit numa sobreposição igual e, em seguida, o circuito mede-o uma vez. O bit medido seleciona direita ou esquerda. É utilizado hardware IBM Quantum, não um simulador local; o resultado não é guardado."
+
+msgid "The random result is only used to select the app's suggestion. It does not make your decision for you: you remain free to follow the suggestion, choose the other way, or do neither."
+msgstr "O resultado aleatório serve apenas para selecionar a sugestão da aplicação. Não decide por si: continua livre para seguir a sugestão, escolher o outro caminho ou não fazer nenhum deles."
+
+msgid "What is a “quantum fluctuation”?"
+msgstr "O que é uma “flutuação quântica”?"
+
+msgid "In physics, the term usually describes quantum variations in physical quantities, such as fields, which play a role in theories and experimentally studied phenomena. This app's random bit comes from measuring a qubit on IBM Quantum hardware; it does not directly measure a fluctuation in your body, mind, or surroundings."
+msgstr "Em física, o termo descreve geralmente variações quânticas de grandezas físicas, como campos, relevantes em teorias e fenómenos estudados experimentalmente. O bit aleatório desta aplicação resulta da medição de um qubit em hardware IBM Quantum; não mede diretamente uma flutuação no seu corpo, mente ou ambiente."
+
+msgid "What about the many-worlds interpretation?"
+msgstr "E a interpretação dos muitos mundos?"
+
+msgid "The many-worlds interpretation is one interpretation of quantum mechanics. In simplified terms, it describes quantum evolution as branching states that stop interfering with one another through decoherence. It is a theoretical interpretation; there is no consensus that it is the correct description of reality, and its branches are not worlds we can visit or send messages between."
+msgstr "A interpretação dos muitos mundos é uma das interpretações da mecânica quântica. Em termos simplificados, descreve a evolução quântica como estados ramificados que deixam de interferir entre si através da decoerência. É uma interpretação teórica; não existe consenso de que seja a descrição correta da realidade, e os seus ramos não são mundos que possamos visitar ou entre os quais possamos enviar mensagens."
+
+msgid "People sometimes use the analogy, “in one branch I chose right; in another, left.” This image may help illustrate the interpretation, but it does not show that your consciousness or presence is copied, travels, or splits. This page cannot identify, create, or observe versions of you in parallel universes."
+msgstr "Por vezes, utiliza-se a analogia “num ramo escolhi a direita; noutro, a esquerda”. Esta imagem pode ajudar a ilustrar a interpretação, mas não demonstra que a sua consciência ou presença seja copiada, viaje ou se divida. Esta página não consegue identificar, criar ou observar versões suas em universos paralelos."
+
+msgid "In short:"
+msgstr "Em resumo:"
+
+msgid "quantum randomness inspires the app's choice; the connection to “taking different paths in different universes” is a hypothetical reflection based on one interpretation of quantum mechanics, not a proven effect of this experience."
+msgstr "a aleatoriedade quântica inspira a escolha da aplicação; a ligação a “seguir caminhos diferentes em universos diferentes” é uma reflexão hipotética baseada numa interpretação da mecânica quântica, não um efeito comprovado desta experiência."
+
+msgid "Learn more"
+msgstr "Saiba mais"
+
+msgid "Conversations"
+msgstr "Conversas"
+
+msgid "New conversation"
+msgstr "Nova conversa"
+
+msgid "Create a conversation"
+msgstr "Criar uma conversa"
+
+msgid "Title"
+msgstr "Título"
+
+msgid "Add people from Contacts"
+msgstr "Adicionar pessoas dos contactos"
+
+msgid "Back to dashboard"
+msgstr "Voltar ao painel"
+
+msgid "Branching chat"
+msgstr "Conversa ramificada"
+
+msgid "Connecting"
+msgstr "A ligar"
+
+msgid "Graph view controls"
+msgstr "Controlos de visualização do grafo"
+
+msgid "Fit all"
+msgstr "Ajustar ao ecrã"
+
+msgid "Zoom out"
+msgstr "Reduzir"
+
+msgid "Zoom in"
+msgstr "Ampliar"
+
+msgid "The flow is arranged automatically. Boxes cannot be moved; zoom and pan to inspect the full graph."
+msgstr "O fluxo é organizado automaticamente. Não é possível mover as caixas; amplie ou desloque o grafo para o explorar."
+
+msgid "Live branching flow: each question is followed by its options and the selected path leads to participant follow-ups"
+msgstr "Fluxo ramificado em direto: cada pergunta é seguida pelas opções e o caminho selecionado conduz às perguntas de seguimento dos participantes"
+
+msgid "Conversation ready. The first question and its options will appear here."
+msgstr "A conversa está pronta. A primeira pergunta e as respetivas opções aparecerão aqui."
+
+msgid "Select a question or option"
+msgstr "Selecione uma pergunta ou opção"
+
+msgid "Question cards identify their author. Green marks the option chosen by the quantum selector; follow-up links show which option led to each new question."
+msgstr "Os cartões identificam o autor da pergunta. A opção escolhida pelo seletor quântico aparece a verde; as ligações mostram qual opção originou cada nova pergunta."
+
+msgid "The quantum selector chooses one answer path from each question. Participants can add follow-up questions only to the selected option."
+msgstr "O seletor quântico escolhe um caminho de resposta para cada pergunta. Os participantes só podem acrescentar perguntas de seguimento à opção selecionada."
+
+msgid "What should we decide?"
+msgstr "O que devemos decidir?"
+
+msgid "Add option"
+msgstr "Adicionar opção"
+
+msgid "Send question"
+msgstr "Enviar pergunta"
+
+msgid "Back to conversations"
+msgstr "Voltar às conversas"
+
+msgid "Create first question"
+msgstr "Criar a primeira pergunta"
+
+msgid "Question"
+msgstr "Pergunta"

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Flutu | My profile{% endblock %}
+{% block title %}ux9.eu | {{ _('My profile') }}{% endblock %}
 {% block styles %}
   .profile { max-width: 680px; margin-top: 5vh; }
   .profile-header { display: flex; align-items: center; gap: 16px; margin: 18px 0 26px; }
@@ -12,9 +12,9 @@
 {% endblock %}
 {% block content %}
   <main class="card profile">
-    <p class="eyebrow">Account settings</p>
-    <h1>My profile</h1>
-    <section class="profile-header" aria-label="Signed-in account">
+    <p class="eyebrow">{{ _('Account settings') }}</p>
+    <h1>{{ _('My profile') }}</h1>
+    <section class="profile-header" aria-label="{{ _('Signed-in account') }}">
       {% if user.picture %}
         <img id="profile-photo" class="avatar" src="{{ user.picture }}" alt="" referrerpolicy="no-referrer" />
       {% else %}
@@ -26,10 +26,10 @@
       </div>
     </section>
     <section class="profile-note">
-      <h2>Your map marker</h2>
-      <p>The map uses your Google profile photo as your marker. If Google has no profile photo, the map shows your initials instead.</p>
+      <h2>{{ _('Your map marker') }}</h2>
+      <p>{{ _('The map uses your Google profile photo as your marker. If Google has no profile photo, the map shows your initials instead.') }}</p>
     </section>
-    <a class="back-link" href="{{ url_for('main.dashboard') }}">← Back to dashboard</a>
+    <a class="back-link" href="{{ url_for('main.dashboard') }}">{{ _('← Back to dashboard') }}</a>
   </main>
 {% endblock %}
 {% block scripts %}

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Flutu | Location map{% endblock %}
+{% block title %}ux9.eu | {{ _('Location map') }}{% endblock %}
 {% block styles %}
   .map-page { width: min(100%, 1180px); padding: clamp(18px, 3vw, 30px); }
   .map-header, .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
@@ -43,55 +43,55 @@
   <main class="card map-page">
     <header class="map-header">
       <div>
-        <p class="eyebrow">Private location sharing</p>
-        <h1>Location map</h1>
-        <p>See locations shared with you and manage who can see yours.</p>
+        <p class="eyebrow">{{ _('Private location sharing') }}</p>
+        <h1>{{ _('Location map') }}</h1>
+        <p>{{ _('See locations shared with you and manage who can see yours.') }}</p>
       </div>
     </header>
     <div class="columns">
-      <section class="panel" aria-label="Shared locations map">
+      <section class="panel" aria-label="{{ _('Shared locations map') }}">
         <div class="map-controls">
-          <button id="toggle-map-follow" class="button button-secondary small-button" type="button" aria-pressed="false">Follow location updates: Off</button>
-          <p id="map-follow-status" class="map-caption" role="status" aria-live="polite">Turn on map following to center the view on all participant markers as locations update.</p>
+          <button id="toggle-map-follow" class="button button-secondary small-button" type="button" aria-pressed="false">{{ _('Follow location updates: Off') }}</button>
+          <p id="map-follow-status" class="map-caption" role="status" aria-live="polite">{{ _('Turn on map following to center the view on all participant markers as locations update.') }}</p>
         </div>
-        <div id="map" role="application" aria-label="OpenStreetMap showing shared contact locations"></div>
-        <p class="map-caption">Map data © OpenStreetMap contributors. Locations are visible only while sharing permission is active.</p>
+        <div id="map" role="application" aria-label="{{ _('OpenStreetMap showing shared contact locations') }}"></div>
+        <p class="map-caption">{{ _('Map data © OpenStreetMap contributors. Locations are visible only while sharing permission is active.') }}</p>
       </section>
       <div class="stack">
         <section class="panel">
-          <h2>Request a location</h2>
-          <p class="subtle">Choose a saved contact with an email address. They must have signed in to Flutu; they decide whether to share.</p>
+          <h2>{{ _('Request a location') }}</h2>
+          <p class="subtle">{{ _('Choose a saved contact with an email address. They must have signed in to ux9.eu; they decide whether to share.') }}</p>
           <form id="request-form" class="contact-form">
-            <label for="contact-select">Contact</label>
-            <select id="contact-select" required><option value="">Loading contacts…</option></select>
-            <button class="button small-button" type="submit">Request location sharing</button>
+            <label for="contact-select">{{ _('Contact') }}</label>
+            <select id="contact-select" required><option value="">{{ _('Loading contacts…') }}</option></select>
+            <button class="button small-button" type="submit">{{ _('Request location sharing') }}</button>
           </form>
           <p id="request-message" class="notice" role="status" aria-live="polite"></p>
         </section>
         <section class="panel">
-          <h2>Requests for you</h2>
-          <ul id="incoming-list" class="items"><li class="empty">Loading…</li></ul>
+          <h2>{{ _('Requests for you') }}</h2>
+          <ul id="incoming-list" class="items"><li class="empty">{{ _('Loading…') }}</li></ul>
         </section>
         <section class="panel">
-          <h2>Requests you sent</h2>
-          <ul id="outgoing-list" class="items"><li class="empty">Loading…</li></ul>
+          <h2>{{ _('Requests you sent') }}</h2>
+          <ul id="outgoing-list" class="items"><li class="empty">{{ _('Loading…') }}</li></ul>
         </section>
         <section class="panel">
-          <div class="section-heading"><h2>People you share with</h2></div>
-          <p class="subtle">Distance is shown only when their current location is also shared with you.</p>
-          <ul id="sharing-list" class="items"><li class="empty">Loading…</li></ul>
+          <div class="section-heading"><h2>{{ _('People you share with') }}</h2></div>
+          <p class="subtle">{{ _('Distance is shown only when their current location is also shared with you.') }}</p>
+          <ul id="sharing-list" class="items"><li class="empty">{{ _('Loading…') }}</li></ul>
           <div class="share-controls" style="margin-top:12px">
-            <button id="toggle-sharing" class="button small-button" type="button" disabled>Enable location updates</button>
-            <button id="stop-all" class="button button-danger small-button" type="button" disabled>Stop all sharing</button>
+            <button id="toggle-sharing" class="button small-button" type="button" disabled>{{ _('Enable location updates') }}</button>
+            <button id="stop-all" class="button button-danger small-button" type="button" disabled>{{ _('Stop all sharing') }}</button>
           </div>
-          <p id="share-message" class="notice" role="status" aria-live="polite">Accept an incoming request before sharing your location.</p>
-          <p id="own-location-status" class="subtle" role="status" aria-live="polite">When you open this map, your device location is tracked privately here every 30 seconds.</p>
-          <button id="retry-own-location" class="button button-secondary small-button" type="button">Locate my device</button>
-          <p class="subtle">After enabling, Flutu updates your location about every 30 seconds while you use the app, provided the browser grants location access. You can pause updates or revoke access for one person or everyone.</p>
+          <p id="share-message" class="notice" role="status" aria-live="polite">{{ _('Accept an incoming request before sharing your location.') }}</p>
+          <p id="own-location-status" class="subtle" role="status" aria-live="polite">{{ _('When you open this map, your device location is tracked privately here every 30 seconds.') }}</p>
+          <button id="retry-own-location" class="button button-secondary small-button" type="button">{{ _('Locate my device') }}</button>
+          <p class="subtle">{{ _('After enabling, ux9.eu updates your location about every 30 seconds while you use the app, provided the browser grants location access. You can pause updates or revoke access for one person or everyone.') }}</p>
         </section>
       </div>
     </div>
-    <a class="back-link" href="{{ url_for('main.dashboard') }}">← Back to dashboard</a>
+    <a class="back-link" href="{{ url_for('main.dashboard') }}">{{ _('← Back to dashboard') }}</a>
   </main>
 {% endblock %}
 {% block scripts %}
@@ -108,6 +108,8 @@
     };
     const ownProfilePicture = {{ user.get('picture')|tojson }};
     const ownProfileName = {{ user.get('name', '')|tojson }};
+    const t = key => window.FlutuI18n?.[key] || key;
+    const locale = {{ get_locale().replace('_', '-')|tojson }};
     let currentOwnProfilePicture = ownProfilePicture;
     const map = L.map('map').setView([20, 0], 2);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -155,10 +157,10 @@
     toggleMapFollowButton.addEventListener('click', () => {
       mapFollowingLocations = !mapFollowingLocations;
       toggleMapFollowButton.setAttribute('aria-pressed', String(mapFollowingLocations));
-      toggleMapFollowButton.textContent = `Follow location updates: ${mapFollowingLocations ? 'On' : 'Off'}`;
+      toggleMapFollowButton.textContent = t(mapFollowingLocations ? 'Follow location updates: On' : 'Follow location updates: Off');
       mapFollowStatus.textContent = mapFollowingLocations
-        ? 'Map following is on. The view includes all participant markers and adjusts when their locations change.'
-        : 'Map following is off. The map will stay where you place it.';
+        ? t('Map following is on. The view includes all participant markers and adjusts when their locations change.')
+        : t('Map following is off. The map will stay where you place it.');
       if (mapFollowingLocations) fitMapToMarkers();
     });
 
@@ -168,7 +170,7 @@
         headers: { 'Content-Type': 'application/json', ...(options.headers || {}) }
       });
       const data = response.status === 204 ? {} : await response.json();
-      if (!response.ok) throw new Error(data.error || 'The request could not be completed.');
+      if (!response.ok) throw new Error(data.error || t('The request could not be completed.'));
       return data;
     }
 
@@ -178,12 +180,12 @@
     }
 
     function locationError(error) {
-      if (!window.isSecureContext) return 'Location requires HTTPS. Open Flutu using its secure https:// address.';
-      if (!navigator.geolocation) return 'This browser or in-app browser does not provide location access. Open Flutu in your device browser.';
-      if (error?.code === 1) return 'Location permission was denied. Allow location access for this site in your browser settings, then try again.';
-      if (error?.code === 2) return 'Your device could not determine its location. Check that Location is enabled and try again outdoors.';
-      if (error?.code === 3) return 'Getting your location timed out. Check your device Location setting and try again.';
-      return error?.message || 'Could not get your device location.';
+      if (!window.isSecureContext) return t('Location requires HTTPS. Open ux9.eu using its secure https:// address.');
+      if (!navigator.geolocation) return t('This browser or in-app browser does not provide location access. Open ux9.eu in your device browser.');
+      if (error?.code === 1) return t('Location permission was denied. Allow location access for this site in your browser settings, then try again.');
+      if (error?.code === 2) return t('Your device could not determine its location. Check that Location is enabled and try again outdoors.');
+      if (error?.code === 3) return t('Getting your location timed out. Check your device Location setting and try again.');
+      return error?.message || t('Could not get your device location.');
     }
 
     window.addEventListener('location-sharing-error', event => {
@@ -267,7 +269,7 @@
       const name = location.name || ownProfileName;
       ownCoordinates = { latitude: location.latitude, longitude: location.longitude };
       ownCoordinatesUpdatedAt = new Date(location.updated_at).getTime();
-      const detail = `Updated ${new Date(location.updated_at).toLocaleString()} · accuracy ±${Math.round(location.accuracy)} m`;
+      const detail = t('Updated {date} · accuracy ±{accuracy} m').replace('{date}', new Date(location.updated_at).toLocaleString(locale)).replace('{accuracy}', new Intl.NumberFormat(locale).format(Math.round(location.accuracy)));
       let locationChanged = !ownMarker;
       if (!ownMarker) {
         ownMarker = L.marker(point, { icon: profileMarkerIcon(picture, name) }).addTo(map);
@@ -278,11 +280,11 @@
         ownMarker.setIcon(profileMarkerIcon(picture, name));
       }
       if (locationChanged && mapFollowingLocations) fitMapToMarkers();
-      const privacyNotice = privateOnly ? 'Private on this device' : 'Shared with authorized contacts';
-      ownMarker.bindPopup(`<strong>Your device</strong><br>${escapeHtml(detail)}<br>${privacyNotice}`);
+      const privacyNotice = t(privateOnly ? 'Private on this device' : 'Shared with authorized contacts');
+      ownMarker.bindPopup(`<strong>${t('Your device')}</strong><br>${escapeHtml(detail)}<br>${privacyNotice}`);
       ownStatus.textContent = privateOnly
-        ? `${detail}. Your marker is private on this device; it is not shared unless you enable location updates.`
-        : `${detail}. Your marker is shared with authorized contacts.`;
+        ? `${detail}. ${t('Your marker is private on this device; it is not shared unless you enable location updates.')}`
+        : `${detail}. ${t('Your marker is shared with authorized contacts.')}`;
       refreshMarkerPopups();
       renderSharingPeople();
     }
@@ -310,18 +312,18 @@
       const theirLocationIsFresh = theirLocation && Number.isFinite(theirUpdatedAt)
         && Math.abs(now - theirUpdatedAt) < 120000;
       if (!ownLocationIsFresh && !theirLocationIsFresh) {
-        return 'Distance unavailable — your location and their location are not currently available.';
+        return t('Distance unavailable — your location and their location are not currently available.');
       }
-      if (!ownLocationIsFresh) return 'Distance unavailable — your device location is not current.';
-      if (!theirLocationIsFresh) return 'Distance unavailable — they are not currently sharing their location with you.';
+      if (!ownLocationIsFresh) return t('Distance unavailable — your device location is not current.');
+      if (!theirLocationIsFresh) return t('Distance unavailable — they are not currently sharing their location with you.');
       const distanceKm = calculateDistanceKm(ownCoordinates, theirLocation);
       return distanceKm < 1
-        ? `Distance: ${Math.round(distanceKm * 1000)} m away`
-        : `Distance: ${distanceKm.toFixed(1)} km away`;
+        ? t('Distance: {distance} m away').replace('{distance}', new Intl.NumberFormat(locale).format(Math.round(distanceKm * 1000)))
+        : t('Distance: {distance} km away').replace('{distance}', new Intl.NumberFormat(locale, {minimumFractionDigits: 1, maximumFractionDigits: 1}).format(distanceKm));
     }
 
     function popupContent(location) {
-      const detail = `Updated ${new Date(location.updated_at).toLocaleString()} · accuracy ±${Math.round(location.accuracy)} m`;
+      const detail = t('Updated {date} · accuracy ±{accuracy} m').replace('{date}', new Date(location.updated_at).toLocaleString(locale)).replace('{accuracy}', new Intl.NumberFormat(locale).format(Math.round(location.accuracy)));
       return `<strong>${escapeHtml(location.name)}</strong><br>${escapeHtml(detail)}<br>${escapeHtml(formatDistanceToLocation(location))}`;
     }
 
@@ -333,10 +335,10 @@
     }
 
     function renderSharingPeople() {
-      renderList(sharingList, sharingContacts, 'You are not sharing your location with anyone.', item => makeItem(
+      renderList(sharingList, sharingContacts, t('You are not sharing your location with anyone.'), item => makeItem(
         item.requester_name,
         `${item.requester_email} · ${formatDistance(item)}`,
-        [{ label: 'Stop sharing', action: () => revoke(item.id), danger: true }]
+        [{ label: t('Stop sharing'), action: () => revoke(item.id), danger: true }]
       ));
     }
 
@@ -428,12 +430,12 @@
     }
 
     function locationError(error) {
-      if (!window.isSecureContext) return 'Device location requires HTTPS. Open Flutu using its secure https:// address.';
-      if (!navigator.geolocation) return 'This browser does not support device location. Try your device browser.';
-      if (error?.code === 1) return 'Location permission was denied. Allow location access for this site in browser settings, then tap “Locate my device”.';
-      if (error?.code === 2) return 'Your device could not determine its location. Check that Location is enabled.';
-      if (error?.code === 3) return 'Getting your location timed out. Check device Location and try again.';
-      return error?.message || 'Could not get your device location.';
+      if (!window.isSecureContext) return t('Device location requires HTTPS. Open ux9.eu using its secure https:// address.');
+      if (!navigator.geolocation) return t('This browser does not support device location. Try your device browser.');
+      if (error?.code === 1) return t('Location permission was denied. Allow location access for this site in browser settings, then tap “Locate my device”.');
+      if (error?.code === 2) return t('Your device could not determine its location. Check that Location is enabled.');
+      if (error?.code === 3) return t('Getting your location timed out. Check device Location and try again.');
+      return error?.message || t('Could not get your device location.');
     }
 
     function updatePrivateLocation() {
@@ -475,15 +477,15 @@
       try {
         const data = await callApi(api.overview);
         renderLocations(data.locations);
-        renderList(incomingList, data.incoming_requests, 'No pending requests.', item => makeItem(
-          item.requester_name, `${item.requester_email} wants to see your location.`, [
-            { label: 'Accept', action: () => respond(item.id, 'accept') },
-            { label: 'Decline', action: () => respond(item.id, 'decline'), danger: true }
+        renderList(incomingList, data.incoming_requests, t('No pending requests.'), item => makeItem(
+          item.requester_name, t('{name} wants to see your location.').replace('{name}', item.requester_email), [
+            { label: t('Accept'), action: () => respond(item.id, 'accept') },
+            { label: t('Decline'), action: () => respond(item.id, 'decline'), danger: true }
           ]
         ));
-        renderList(outgoingList, data.outgoing_pending, 'No outgoing requests.', item => makeItem(
-          item.recipient_name, `Waiting for ${item.recipient_email} to respond.`, [
-            { label: 'Cancel', action: () => respond(item.id, 'cancel'), danger: true }
+        renderList(outgoingList, data.outgoing_pending, t('No outgoing requests.'), item => makeItem(
+          item.recipient_name, t('Waiting for {email} to respond.').replace('{email}', item.recipient_email), [
+            { label: t('Cancel'), action: () => respond(item.id, 'cancel'), danger: true }
           ]
         ));
         sharingContacts = data.sharing_with;
@@ -495,18 +497,18 @@
         if (sharingEnabled) {
           stopPrivateLocationTracking();
           if (data.own_location) renderOwnLocation(data.own_location, false);
-          else ownStatus.textContent = 'Sharing is enabled. Waiting for the next shared GPS update for your selected marker.';
+          else ownStatus.textContent = t('Sharing is enabled. Waiting for the next shared GPS update for your selected marker.');
         } else {
           startPrivateLocationTracking();
         }
         toggleSharingButton.disabled = sharingCount === 0;
-        toggleSharingButton.textContent = sharingEnabled ? 'Pause location updates' : 'Enable location updates';
+        toggleSharingButton.textContent = t(sharingEnabled ? 'Pause location updates' : 'Enable location updates');
         stopAllButton.disabled = sharingCount === 0;
         if (!sharingCount) message(shareMessage, data.incoming_requests.length
-          ? 'Accept an incoming request below before sharing your location.'
-          : 'No one has authorized a request to receive your location yet. Ask a contact to request it first.');
-        else if (sharingEnabled) message(shareMessage, `Location updates are on for ${sharingCount} contact${sharingCount === 1 ? '' : 's'}.`);
-        else message(shareMessage, 'A contact has permission, but your location updates are paused. Enable them to share your position.');
+          ? t('Accept an incoming request below before sharing your location.')
+          : t('No one has authorized a request to receive your location yet. Ask a contact to request it first.'));
+        else if (sharingEnabled) message(shareMessage, t(sharingCount === 1 ? 'Location updates are on for {count} contact.' : 'Location updates are on for {count} contacts.').replace('{count}', sharingCount));
+        else message(shareMessage, t('A contact has permission, but your location updates are paused. Enable them to share your position.'));
       } catch (error) { message(shareMessage, error.message, true); }
     }
 
@@ -518,7 +520,7 @@
         const notice = document.getElementById('request-message');
         try {
           const result = await callApi(api.requests, { method: 'POST', body: JSON.stringify({ contact_id: contactId }) });
-          message(notice, result.created ? 'Request sent. It will be visible when the contact next opens Flutu.' : 'A request is already pending.');
+          message(notice, result.created ? t('Request sent. It will be visible when the contact next opens ux9.eu.') : t('A request is already pending.'));
           await loadOverview();
         } catch (error) { message(notice, error.message, true); }
       });
@@ -529,7 +531,7 @@
       try {
         let position = null;
         if (!sharingEnabled) {
-          message(shareMessage, 'Requesting your device location. Allow the browser permission when prompted…');
+          message(shareMessage, t('Requesting your device location. Allow the browser permission when prompted…'));
           // Start the browser permission prompt directly from this user action.
           position = await getCurrentLocation();
         }
@@ -547,19 +549,19 @@
           });
         }
         window.dispatchEvent(new Event('location-sharing-updated'));
-        message(shareMessage, sharingEnabled ? 'Location updates paused.' : 'Location updates enabled. Your current location was shared with authorized contacts.');
+        message(shareMessage, t(sharingEnabled ? 'Location updates paused.' : 'Location updates enabled. Your current location was shared with authorized contacts.'));
         await loadOverview();
       } catch (error) {
         message(shareMessage, error.message, true);
       }
     }, {disabledAfter: () => sharingCount === 0}));
     stopAllButton.addEventListener('click', async () => window.FlutuAction.run(stopAllButton, async () => {
-      if (!window.confirm('Revoke location access for everyone and stop sharing?')) return;
+      if (!window.confirm(t('Revoke location access for everyone and stop sharing?'))) return;
       try {
         await callApi(api.shares, { method: 'DELETE' });
         await callApi(api.sharing, { method: 'POST', body: JSON.stringify({ enabled: false }) });
         window.dispatchEvent(new Event('location-sharing-updated'));
-        message(shareMessage, 'Sharing stopped for everyone.');
+        message(shareMessage, t('Sharing stopped for everyone.'));
         await loadOverview();
       } catch (error) { message(shareMessage, error.message, true); }
     }, {disabledAfter: () => sharingCount === 0}));
@@ -572,7 +574,7 @@
         select.replaceChildren();
         const option = document.createElement('option');
         option.value = '';
-        option.textContent = contacts.length ? 'Select a contact…' : 'No contacts with email addresses';
+        option.textContent = t(contacts.length ? 'Select a contact…' : 'No contacts with email addresses');
         select.append(option);
         contacts.forEach(contact => {
           const item = document.createElement('option');
@@ -583,7 +585,7 @@
       } catch (error) {
         select.replaceChildren();
         const option = document.createElement('option');
-        option.textContent = 'Contacts are unavailable';
+        option.textContent = t('Contacts are unavailable');
         select.append(option);
         message(document.getElementById('request-message'), error.message, true);
       }

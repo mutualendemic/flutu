@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Flutu | Branching chat{% endblock %}
+{% block title %}ux9.eu | {{ _('Branching chat') }}{% endblock %}
 {% block styles %}
   .chat-wrap { width: min(100%, 900px); margin: 0 auto; }
   .chat-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:20px; }
@@ -15,6 +15,7 @@
   .chat-meta { color:var(--muted); font-size:.9rem; }
   .member-dots { display:flex; gap:5px; margin-top:12px; }
   .member-dot { width:22px; height:22px; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; color:white; font-size:.65rem; font-weight:800; }
+  .member-photo { object-fit:cover; }
   .chat-dialog { width:min(100% - 24px, 560px); max-height:90vh; overflow:auto; border:1px solid var(--border); border-radius:20px; background:var(--surface); color:var(--text); padding:24px; }
   .chat-dialog::backdrop { background:#10182899; }
   .chat-dialog label { display:block; margin:12px 0 6px; font-weight:700; }
@@ -31,20 +32,20 @@
 {% block content %}
 <main class="card chat-wrap">
   <div id="chat-config" data-csrf="{{ csrf_token() }}" data-realtime-mode="{{ chat_realtime_mode }}" hidden></div>
-  <header class="chat-head"><div><p class="eyebrow">Conversations</p><h1>Branching chat</h1></div><button id="new-conversation" class="button" style="width:auto;margin:0">New conversation</button></header>
-  <p id="realtime-status" role="status" aria-live="polite">Checking Supabase private-channel authorization…</p>
+  <header class="chat-head"><div><p class="eyebrow">{{ _('Conversations') }}</p><h1>{{ _('Branching chat') }}</h1></div><button id="new-conversation" class="button" style="width:auto;margin:0">{{ _('New conversation') }}</button></header>
+  <p id="realtime-status" role="status" aria-live="polite">{{ _('Checking Supabase private-channel authorization…') }}</p>
   <p id="list-error" class="error" role="alert"></p>
   <section id="conversation-list" class="conversation-list" aria-live="polite"></section>
-  <a class="back-link" href="{{ url_for('main.dashboard') }}">Back to dashboard</a>
+  <a class="back-link" href="{{ url_for('main.dashboard') }}">{{ _('Back to dashboard') }}</a>
 </main>
 <dialog id="create-dialog" class="chat-dialog">
   <form id="create-form">
-    <p class="eyebrow">New conversation</p><h2>Create a conversation</h2>
-    <label for="conversation-title">Title</label><input id="conversation-title" name="title" type="text" maxlength="100" required autocomplete="off">
-    <label for="contact-search">Add people from Contacts</label><input id="contact-search" class="chat-search" type="search" placeholder="Search contacts">
+    <p class="eyebrow">{{ _('New conversation') }}</p><h2>{{ _('Create a conversation') }}</h2>
+    <label for="conversation-title">{{ _('Title') }}</label><input id="conversation-title" name="title" type="text" maxlength="100" required autocomplete="off">
+    <label for="contact-search">{{ _('Add people from Contacts') }}</label><input id="contact-search" class="chat-search" type="search" placeholder="{{ _('Search contacts') }}">
     <div id="contact-picker" class="picker"></div>
     <p id="create-error" class="error" role="alert"></p>
-    <div class="dialog-actions"><button class="button" type="submit">Create</button><button id="cancel-create" class="button button-secondary" type="button">Cancel</button></div>
+    <div class="dialog-actions"><button class="button" type="submit">{{ _('Create') }}</button><button id="cancel-create" class="button button-secondary" type="button">{{ _('Cancel') }}</button></div>
   </form>
 </dialog>
 <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.8.1/dist/socket.io.min.js" defer></script>

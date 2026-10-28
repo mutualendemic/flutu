@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Flutu | Dashboard{% endblock %}
+{% block title %}ux9.eu | {{ _('Dashboard') }}{% endblock %}
 {% block styles %}
   .dashboard { margin-top: 8vh; }
   .topbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 26px; }
@@ -18,25 +18,25 @@
 {% block content %}
   <main class="card dashboard">
     <header class="topbar">
-      <div class="brand"><img src="{{ url_for('static', filename='logo.svg') }}" alt="Flutu monkey sitting on a cloud" /> <span>Flutu</span></div>
-      <a class="logout" href="{{ url_for('auth.logout') }}">Sign out</a>
+      <div class="brand"><img src="{{ url_for('static', filename='logo.svg') }}" alt="" /> <span>ux9.eu</span></div>
+      <a class="logout" href="{{ url_for('auth.logout') }}">{{ _('Sign out') }}</a>
     </header>
-    <span class="badge">Active session</span>
-    <p id="location-sharing-indicator" class="sharing-status" role="status" aria-live="polite" hidden>Checking location sharing…</p>
-    <h1>Welcome to Flutu</h1>
-    <p>Signed in as: <strong>{{ user.name }}</strong> ({{ user.email }})</p>
-    <nav class="actions" aria-label="Dashboard pages">
-      <a class="button" href="{{ url_for('main.decision') }}">Quantum path selector</a>
-      <a class="button button-secondary" href="{{ url_for('main.contacts') }}">My contacts</a>
-      <a class="button button-secondary" href="{{ url_for('chat.conversation_list_page') }}">Branching chat</a>
-      <a class="button button-secondary" href="{{ url_for('main.location_map') }}">Location map</a>
-      <a class="button button-secondary" href="{{ url_for('main.profile') }}">My profile</a>
+    <span class="badge">{{ _('Active session') }}</span>
+    <p id="location-sharing-indicator" class="sharing-status" role="status" aria-live="polite" hidden>{{ _('Checking location sharing…') }}</p>
+    <h1>{{ _('Welcome to ux9.eu') }}</h1>
+    <p>{{ _('Signed in as:') }} <strong>{{ user.name }}</strong> ({{ user.email }})</p>
+    <nav class="actions" aria-label="{{ _('Dashboard pages') }}">
+      <a class="button" href="{{ url_for('main.decision') }}">{{ _('Quantum path selector') }}</a>
+      <a class="button button-secondary" href="{{ url_for('main.contacts') }}">{{ _('My contacts') }}</a>
+      <a class="button button-secondary" href="{{ url_for('chat.conversation_list_page') }}">{{ _('Branching chat') }}</a>
+      <a class="button button-secondary" href="{{ url_for('main.location_map') }}">{{ _('Location map') }}</a>
+      <a class="button button-secondary" href="{{ url_for('main.profile') }}">{{ _('My profile') }}</a>
     </nav>
     <section id="push-notifications" class="push-settings" data-csrf="{{ push_csrf_token }}" aria-labelledby="push-title">
-      <h2 id="push-title">Friend notifications</h2>
-      <p>Get notified about location-sharing requests, new conversation members, and questions from your conversations.</p>
-      <button id="push-toggle" class="button button-secondary" type="button" data-enabled="false">Enable notifications</button>
-      <p id="push-status" role="status" aria-live="polite">Checking this device…</p>
+      <h2 id="push-title">{{ _('Friend notifications') }}</h2>
+      <p>{{ _('Get notified about location-sharing requests, new conversation members, and questions from your conversations.') }}</p>
+      <button id="push-toggle" class="button button-secondary" type="button" data-enabled="false">{{ _('Enable notifications') }}</button>
+      <p id="push-status" role="status" aria-live="polite">{{ _('Checking this device…') }}</p>
     </section>
   </main>
   <script src="{{ url_for('static', filename='push-notifications.js') }}" defer></script>

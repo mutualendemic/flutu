@@ -1,4 +1,5 @@
 (() => {
+  const t = key => window.FlutuI18n?.[key] || key;
   const config = document.getElementById('location-sharing-config');
   if (!config) return;
   const locationSupported = Boolean(navigator.geolocation);
@@ -19,7 +20,7 @@
       headers: { 'Content-Type': 'application/json', ...(options.headers || {}) }
     });
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error || 'Location sharing is unavailable.');
+    if (!response.ok) throw new Error(t(data.error || 'Location sharing is unavailable.'));
     return data;
   }
 
@@ -29,26 +30,26 @@
     indicator.classList.toggle('is-sharing', Boolean(status?.enabled));
     indicator.classList.toggle('is-paused', Boolean(status?.active_recipients && !status?.enabled));
     if (error) {
-      indicator.textContent = 'Location sharing status unavailable';
+      indicator.textContent = t('Location sharing status unavailable');
       indicator.title = error;
     } else if (status.enabled && !locationSupported) {
-      indicator.textContent = 'Location access unavailable in this browser';
-      indicator.title = 'This browser does not support geolocation.';
+      indicator.textContent = t('Location access unavailable in this browser');
+      indicator.title = t('This browser does not support geolocation.');
     } else if (status.enabled && !window.isSecureContext) {
-      indicator.textContent = 'Location requires a secure connection';
-      indicator.title = 'Open Flutu using HTTPS to share device location.';
+      indicator.textContent = t('Location requires a secure connection');
+      indicator.title = t('Open ux9.eu using HTTPS to share device location.');
     } else if (status.enabled && lastLocationError) {
-      indicator.textContent = 'Location sharing needs attention';
+      indicator.textContent = t('Location sharing needs attention');
       indicator.title = lastLocationError;
     } else if (status.enabled) {
-      indicator.textContent = `Sharing location with ${status.active_recipients} contact${status.active_recipients === 1 ? '' : 's'}`;
-      indicator.title = 'Your latest location is shared while you are using Flutu.';
+      indicator.textContent = t(status.active_recipients === 1 ? 'Sharing location with {count} contact' : 'Sharing location with {count} contacts').replace('{count}', status.active_recipients);
+      indicator.title = t('Your latest location is shared while you are using ux9.eu.');
     } else if (status.active_recipients) {
-      indicator.textContent = 'Location sharing paused';
-      indicator.title = 'You have active permissions, but location updates are paused.';
+      indicator.textContent = t('Location sharing paused');
+      indicator.title = t('You have active permissions, but location updates are paused.');
     } else {
-      indicator.textContent = 'Location sharing off';
-      indicator.title = 'No active location-sharing permissions.';
+      indicator.textContent = t('Location sharing off');
+      indicator.title = t('No active location-sharing permissions.');
     }
   }
 
@@ -81,10 +82,10 @@
         updatePending = false;
       }
     }, error => {
-      if (error.code === 1) lastLocationError = 'Location permission was denied. Allow access in your browser settings.';
-      else if (error.code === 2) lastLocationError = 'Your device could not determine its location. Check that Location is enabled.';
-      else if (error.code === 3) lastLocationError = 'Getting your location timed out. Check your device Location setting.';
-      else lastLocationError = error.message || 'Could not get your device location.';
+      if (error.code === 1) lastLocationError = t('Location permission was denied. Allow access in your browser settings.');
+      else if (error.code === 2) lastLocationError = t('Your device could not determine its location. Check that Location is enabled.');
+      else if (error.code === 3) lastLocationError = t('Getting your location timed out. Check your device Location setting.');
+      else lastLocationError = error.message || t('Could not get your device location.');
       window.dispatchEvent(new CustomEvent('location-sharing-error', { detail: { message: lastLocationError } }));
       updatePending = false;
     }, { enableHighAccuracy: false, maximumAge: 15000, timeout: 20000 });

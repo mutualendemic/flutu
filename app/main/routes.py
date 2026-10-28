@@ -1,8 +1,9 @@
 from pymongo.errors import PyMongoError
 import hmac
 import secrets
+from urllib.parse import urlsplit
 
-from flask import Blueprint, current_app, jsonify, render_template, request, send_from_directory, session
+from flask import Blueprint, current_app, jsonify, redirect, render_template, request, send_from_directory, session
 
 from app.auth.decorators import login_required
 from app.services.quantum_random import choose_direction
@@ -23,6 +24,18 @@ from app.services.push_notifications import notify_users
 
 
 main_bp = Blueprint("main", __name__)
+
+
+@main_bp.post("/language/<locale>")
+def set_language(locale):
+    if locale not in current_app.config["SUPPORTED_LOCALES"]:
+        return jsonify(error="unsupported_language"), 400
+    session["locale"] = locale
+    destination = request.form.get("next", "/")
+    parsed_destination = urlsplit(destination)
+    if not destination.startswith("/") or destination.startswith("//") or parsed_destination.netloc:
+        destination = "/"
+    return redirect(destination)
 
 
 @main_bp.get("/dashboard")

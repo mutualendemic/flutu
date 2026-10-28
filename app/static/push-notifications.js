@@ -1,4 +1,5 @@
 (() => {
+  const t = key => window.FlutuI18n?.[key] || key;
   const panel = document.getElementById('push-notifications');
   if (!panel) return;
   const button = document.getElementById('push-toggle');
@@ -29,7 +30,7 @@
       body: JSON.stringify(subscription.toJSON()),
     });
     const result = await response.json();
-    if (!response.ok) throw new Error(result.error || 'Could not save this device subscription.');
+    if (!response.ok) throw new Error(t(result.error || 'Could not save this device subscription.'));
   }
 
   async function syncExistingSubscription() {
@@ -43,15 +44,15 @@
   }
 
   async function enablePush() {
-    if (!supportsPush()) throw new Error('Push notifications are not supported by this browser.');
+    if (!supportsPush()) throw new Error(t('Push notifications are not supported by this browser.'));
     const permission = await Notification.requestPermission();
-    if (permission !== 'granted') throw new Error('Notification permission was not granted.');
+    if (permission !== 'granted') throw new Error(t('Notification permission was not granted.'));
     const registration = await navigator.serviceWorker.register('/sw.js');
     let subscription = await registration.pushManager.getSubscription();
     if (!subscription) {
       const response = await fetch(`${api}/vapid-public-key`, {credentials: 'same-origin'});
       const config = await response.json();
-      if (!response.ok || !config.key) throw new Error(config.error || 'Push notifications are not configured.');
+      if (!response.ok || !config.key) throw new Error(t(config.error || 'Push notifications are not configured.'));
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: decodeApplicationKey(config.key),
@@ -59,8 +60,8 @@
     }
     await sendSubscription(subscription);
     button.dataset.enabled = 'true';
-    button.textContent = 'Disable notifications on this device';
-    setStatus('Notifications are enabled on this device.');
+    button.textContent = t('Disable notifications on this device');
+    setStatus(t('Notifications are enabled on this device.'));
   }
 
   async function disablePush() {
@@ -68,8 +69,8 @@
     const subscription = await registration?.pushManager.getSubscription();
     if (!subscription) {
       button.dataset.enabled = 'false';
-      button.textContent = 'Enable notifications';
-      setStatus('No active subscription on this device.');
+      button.textContent = t('Enable notifications');
+      setStatus(t('No active subscription on this device.'));
       return;
     }
     const response = await fetch(`${api}/unsubscribe`, {
@@ -79,22 +80,22 @@
       body: JSON.stringify({endpoint: subscription.endpoint}),
     });
     const result = await response.json();
-    if (!response.ok) throw new Error(result.error || 'Could not remove this device subscription.');
+    if (!response.ok) throw new Error(t(result.error || 'Could not remove this device subscription.'));
     await subscription.unsubscribe();
     button.dataset.enabled = 'false';
-    button.textContent = 'Enable notifications';
-    setStatus('Notifications are disabled on this device.');
+    button.textContent = t('Enable notifications');
+    setStatus(t('Notifications are disabled on this device.'));
   }
 
   button.addEventListener('click', async () => {
     if (button.disabled) return;
     button.disabled = true;
-    setStatus('Updating notification settings…');
+    setStatus(t('Updating notification settings…'));
     try {
       if (button.dataset.enabled === 'true') await disablePush();
       else await enablePush();
     } catch (error) {
-      setStatus(error.message || 'Could not update notification settings.', true);
+      setStatus(t(error.message || 'Could not update notification settings.'), true);
     } finally {
       button.disabled = false;
     }
@@ -103,21 +104,21 @@
   (async () => {
     if (!supportsPush()) {
       button.disabled = true;
-      setStatus('This browser does not support Web Push notifications.');
+      setStatus(t('This browser does not support Web Push notifications.'));
       return;
     }
     try {
       if (await syncExistingSubscription()) {
         button.dataset.enabled = 'true';
-        button.textContent = 'Disable notifications on this device';
-        setStatus('Notifications are enabled on this device.');
+        button.textContent = t('Disable notifications on this device');
+        setStatus(t('Notifications are enabled on this device.'));
       } else if (Notification.permission === 'denied') {
-        setStatus('Notifications are blocked in this browser’s site settings.');
+        setStatus(t('Notifications are blocked in this browser’s site settings.'));
       } else {
-        setStatus('Notifications are off. Enable them to receive friend requests and chat updates.');
+        setStatus(t('Notifications are off. Enable them to receive friend requests and chat updates.'));
       }
     } catch (error) {
-      setStatus(error.message || 'Notification settings are unavailable.', true);
+      setStatus(t(error.message || 'Notification settings are unavailable.'), true);
     }
   })();
 })();

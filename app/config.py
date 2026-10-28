@@ -26,6 +26,8 @@ def _build_commit():
 
 
 class Config:
+    SUPPORTED_LOCALES = ["en_GB", "pt_PT"]
+    BABEL_DEFAULT_LOCALE = "en_GB"
     SECRET_KEY = os.environ.get("FLASK_SECRET_KEY") or os.environ.get("SECRET_KEY", "dev-only-change-this-secret")
     GOOGLE_CLIENT_ID = os.environ.get("FLUTU_GOOGLE_CLIENT_ID") or os.environ.get("GOOGLE_CLIENT_ID", "")
     GOOGLE_CLIENT_SECRET = (

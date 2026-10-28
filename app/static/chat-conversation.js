@@ -1,4 +1,5 @@
 (() => {
+  const t = key => window.FlutuI18n?.[key] || key;
   const root = document.querySelector('.conversation-page');
   const conversationId = root.dataset.conversationId;
   const csrf = root.dataset.csrf;
@@ -82,7 +83,7 @@
     snapshot = data;
     canCreateRoot = data.can_create_initial_question === true;
     document.getElementById('graph-stage').classList.toggle('has-questions', data.nodes.length > 0);
-    document.getElementById('conversation-title').textContent = data.title || 'Conversation';
+    document.getElementById('conversation-title').textContent = data.title || t('Conversation');
     ensureGraph();
     const graphNodes = data.nodes.flatMap(node => {
       if (node.type !== 'question') return [node];
@@ -108,9 +109,9 @@
     for (const node of graphNodes) {
       nextNodeIds.add(node.id);
       if (node.type === 'option') {
-        node.display = `${node.label} · ${node.quantum_selected ? 'QUANTUM CHOICE' : 'not selected'}`;
+        node.display = `${node.label} · ${t(node.quantum_selected ? 'QUANTUM CHOICE' : 'not selected')}`;
       } else if (node.type === 'question') {
-        node.display = `${node.label}\nBy ${node.author_name || memberName(node.author_user_id)}`;
+        node.display = `${node.label}\n${t('By {name}').replace('{name}', node.author_name || memberName(node.author_user_id))}`;
       }
       nodes.set(node.id, node);
       const existing = graph.getElementById(node.id);
@@ -137,15 +138,15 @@
     }
     if (!data.nodes.length) {
       details.replaceChildren(
-        el('h2', canCreateRoot ? 'Start the conversation' : 'Waiting for the first question'),
-        el('p', canCreateRoot ? 'Create the opening question and provide the answer options. The quantum selector will choose the path.' : 'The conversation creator will add the opening question. After that, every participant can add follow-up questions to the quantum-selected option.'),
+        el('h2', t(canCreateRoot ? 'Start the conversation' : 'Waiting for the first question')),
+        el('p', t(canCreateRoot ? 'Create the opening question and provide the answer options. The quantum selector will choose the path.' : 'The conversation creator will add the opening question. After that, every participant can add follow-up questions to the quantum-selected option.')),
       );
     }
     const composer = document.querySelector('.composer');
     const banner = document.getElementById('quantum-branch-banner');
     if (composer) composer.hidden = !(canCreateRoot || followUpOption);
     if (banner) banner.classList.toggle('visible', data.branch_mode === 'quantum_random');
-    document.getElementById('send-question').textContent = followUpOption ? 'Send follow-up' : 'Create first question';
+    document.getElementById('send-question').textContent = t(followUpOption ? 'Send follow-up' : 'Create first question');
     document.getElementById('add-option').hidden = Boolean(followUpOption);
     optionsEditor.hidden = Boolean(followUpOption);
     document.getElementById('cancel-question').hidden = !followUpOption;
@@ -160,12 +161,12 @@
     const response = await fetch(`${api}/conversations/${encodeURIComponent(conversationId)}`);
     if (response.status === 401) window.location.assign('/');
     if (response.status === 403) window.location.assign('/chat/');
-    if (!response.ok) throw new Error('Could not load this conversation.');
+    if (!response.ok) throw new Error(t('Could not load this conversation.'));
     applyGraph(await response.json());
   }
 
   function memberName(userId) {
-    return snapshot?.members?.find(member => member.user_id === userId)?.name || 'Former member';
+    return snapshot?.members?.find(member => member.user_id === userId)?.name || t('Former member');
   }
 
   function renderDetailsQuestion(node) {
@@ -173,7 +174,7 @@
     const title = el('h2', node.label);
     const member = snapshot?.members?.find(item => item.user_id === node.author_user_id);
     const authorRow = el('div', undefined, 'question-author');
-    const avatar = el('span', (member?.name || 'Flutu member').trim().split(/\s+/).map(part => part[0] || '').slice(0, 2).join('').toUpperCase(), 'question-author-avatar');
+    const avatar = el('span', (member?.name || t('ux9.eu member')).trim().split(/\s+/).map(part => part[0] || '').slice(0, 2).join('').toUpperCase(), 'question-author-avatar');
     avatar.setAttribute('aria-hidden', 'true');
     const pictureUrl = member?.picture;
     if (pictureUrl) {
@@ -183,7 +184,7 @@
           const image = document.createElement('img');
           image.className = 'question-author-avatar';
           image.src = parsedUrl.href;
-          image.alt = `${member?.name || 'Question author'}'s profile photo`;
+          image.alt = `${member?.name || t('Question author')} · ${t("Question author's profile photo")}`;
           image.referrerPolicy = 'no-referrer';
           image.addEventListener('error', () => image.replaceWith(avatar), {once: true});
           authorRow.append(image);
@@ -191,12 +192,12 @@
       } catch (_) { /* Show initials when a profile photo URL is invalid. */ }
     }
     if (!authorRow.children.length) authorRow.append(avatar);
-    const author = el('p', `Asked by ${member?.name || memberName(node.author_user_id)} · ${node.status}`);
+    const author = el('p', t('Asked by {name} · {status}').replace('{name}', member?.name || memberName(node.author_user_id)).replace('{status}', t(node.status)));
     authorRow.append(author);
     details.append(title, authorRow);
     const opts = (snapshot.nodes || []).filter(item => item.type === 'option' && item.question_id === node.id.slice(1));
     for (const option of opts) {
-      details.append(el('p', `${option.quantum_selected ? 'Quantum-selected path: ' : 'Other option: '}${option.label}`));
+      details.append(el('p', `${t(option.quantum_selected ? 'Quantum-selected path: ' : 'Other option: ')}${option.label}`));
     }
   }
 
@@ -216,16 +217,16 @@
     details.append(el('h2', value.label));
     const question = nodes.get(`q${value.question_id}`);
     if (snapshot?.branch_mode === 'quantum_random' && value.quantum_selected) {
-      details.append(el('p', 'Chosen by the quantum selector; this is the active path.'));
-      const follow = el('button', 'Follow up', 'button button-secondary');
+      details.append(el('p', t('Chosen by the quantum selector; this is the active path.')));
+      const follow = el('button', t('Follow up'), 'button button-secondary');
       follow.type = 'button';
       follow.addEventListener('click', () => {
         followUpOption = value.option_id;
-        document.getElementById('composer-title').textContent = `Follow up on “${value.label}”`;
+        document.getElementById('composer-title').textContent = t('Follow up on “{label}”').replace('{label}', value.label);
         document.getElementById('question-text').value = '';
         document.querySelector('.composer').hidden = false;
         document.getElementById('cancel-question').hidden = false;
-        document.getElementById('send-question').textContent = 'Send follow-up';
+        document.getElementById('send-question').textContent = t('Send follow-up');
         document.getElementById('add-option').hidden = false;
         optionsEditor.hidden = false;
         document.getElementById('question-text').focus();
@@ -233,12 +234,12 @@
       });
       details.append(follow);
     } else if (snapshot?.branch_mode === 'quantum_random') {
-      details.append(el('p', 'Not selected by the quantum selector; follow-ups can only continue from the selected option.'));
+      details.append(el('p', t('Not selected by the quantum selector; follow-ups can only continue from the selected option.')));
     }
   }
 
   function handleAck(response) {
-    if (!response?.ok) throw new Error(response?.error || 'The action could not be completed.');
+    if (!response?.ok) throw new Error(t(response?.error || 'The action could not be completed.'));
     return response;
   }
 
@@ -250,7 +251,7 @@
       body = {...payload};
       delete body.conversation_id;
     } else {
-      throw new Error('Unsupported chat action.');
+      throw new Error(t('Unsupported chat action.'));
     }
     const response = await fetch(path, {
       method: 'POST',
@@ -258,7 +259,7 @@
       body: JSON.stringify(body),
     });
     const result = await response.json();
-    if (!response.ok) throw new Error(result.error || 'The action could not be completed.');
+    if (!response.ok) throw new Error(t(result.error || 'The action could not be completed.'));
     return result;
   }
 
@@ -270,7 +271,7 @@
       if (event === 'create_question') {
         document.getElementById('question-text').value = '';
         followUpOption = undefined;
-        document.getElementById('composer-title').textContent = 'Start the conversation';
+        document.getElementById('composer-title').textContent = t('Start the conversation');
         createOptionEditors(['Yes', 'No']);
       }
       await resync();
@@ -283,12 +284,12 @@
     labels.forEach((value, index) => {
       const row = el('div', undefined, 'option-editor');
       const input = document.createElement('input');
-      input.type = 'text'; input.maxLength = 60; input.value = value; input.setAttribute('aria-label', `Option ${index + 1}`);
-      const remove = el('button', 'Remove'); remove.type = 'button'; remove.disabled = labels.length <= 2;
+      input.type = 'text'; input.maxLength = 60; input.value = ''; input.placeholder = t(value); input.required = true; input.setAttribute('aria-label', t('Option {number}').replace('{number}', index + 1));
+      const remove = el('button', t('Remove')); remove.type = 'button'; remove.disabled = labels.length <= 2;
       remove.addEventListener('click', () => {
         if (optionsEditor.children.length <= 2) return;
         row.remove();
-        [...optionsEditor.querySelectorAll('input')].forEach((field, idx) => field.setAttribute('aria-label', `Option ${idx + 1}`));
+        [...optionsEditor.querySelectorAll('input')].forEach((field, idx) => field.setAttribute('aria-label', t('Option {number}').replace('{number}', idx + 1)));
         [...optionsEditor.querySelectorAll('button')].forEach(button => button.disabled = optionsEditor.children.length <= 2);
       });
       row.append(input, remove); optionsEditor.append(row);
@@ -322,9 +323,9 @@
         } catch (_) { /* Use initials when a profile photo URL is invalid. */ }
       }
       if (!item.children.length) item.append(dot);
-      item.append(el('span', `${member.name}${member.active ? '' : ' (former member)'}`));
+      item.append(el('span', `${member.name}${member.active ? '' : ` (${t('former member')})`}`));
       if (member.active && member.role !== 'owner') {
-        const remove = el('button', 'Remove'); remove.type = 'button';
+        const remove = el('button', t('Remove')); remove.type = 'button';
         remove.addEventListener('click', () => changeMemberWithLoading(remove, member.user_id, 'DELETE'));
         item.append(remove);
       }
@@ -336,7 +337,7 @@
 
     const response = await fetch(`${api}/conversations/${encodeURIComponent(conversationId)}/members/${encodeURIComponent(userId)}`, {method, headers: {'X-CSRF-Token': csrf}});
     const body = response.status === 204 ? {} : await response.json();
-    if (!response.ok) { setError(body.error || 'Could not update members.'); return; }
+    if (!response.ok) { setError(t(body.error || 'Could not update members.')); return; }
     await resync();
   }
 
@@ -356,7 +357,7 @@
       contacts.filter(contact => `${contact.name} ${contact.email}`.toLowerCase().includes(query)).forEach(contact => {
         const label = el('label');
         const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.value = contact.user_id || ''; checkbox.disabled = !contact.addable;
-        const text = el('span'); text.append(el('strong', contact.name), el('small', contact.addable ? contact.email : 'Not on the app'));
+        const text = el('span'); text.append(el('strong', contact.name), el('small', contact.addable ? contact.email : t('Not on the app')));
         label.append(checkbox, text); host.append(label);
       });
     };
@@ -369,15 +370,15 @@
     polling = true;
     if (socket) socket.disconnect();
     status.dataset.connected = 'true';
-    status.textContent = 'Live updates · polling';
+    status.textContent = t('Live updates · polling');
     const poll = async () => {
       try {
         await resync();
         status.dataset.connected = 'true';
-        status.textContent = 'Live updates · polling';
+        status.textContent = t('Live updates · polling');
       } catch (err) {
         status.dataset.connected = 'false';
-        status.textContent = 'Reconnecting';
+        status.textContent = t('Reconnecting');
         setError(err.message);
       } finally {
         if (polling) pollingTimer = window.setTimeout(poll, 3000);
@@ -405,8 +406,8 @@
     }, (state, detail) => {
       if (state === 'CONNECTED') {
         status.dataset.connected = 'true';
-        status.textContent = 'Private channel authorized · Supabase Realtime';
-        status.title = 'Supabase accepted the private channel subscription under its Realtime authorization policy.';
+        status.textContent = t('Private channel authorized · Supabase Realtime');
+        status.title = t('Supabase accepted the private channel subscription under its Realtime authorization policy.');
         setError('');
         if (polling) {
           polling = false;
@@ -414,9 +415,9 @@
         }
       } else if (state === 'AUTHORIZATION_FAILED' || state === 'CHANNEL_ERROR' || state === 'TIMED_OUT' || state === 'CLOSED' || state === 'ERROR') {
         status.dataset.connected = 'false';
-        status.textContent = 'Supabase private-channel check failed · using polling';
-        status.title = detail?.message || 'Review private-channel settings and the realtime.messages SELECT RLS policy.';
-        setError(`${status.title} Chat is continuing with slower polling.`);
+        status.textContent = t('Supabase private-channel check failed · using polling');
+        status.title = t(detail?.message || 'Review private-channel settings and the realtime.messages SELECT RLS policy.');
+        setError(`${status.title} ${t('Chat is continuing with slower polling.')}`);
         startPolling();
       }
     }, {conversationId}).then(connection => { realtimeConnection = connection; })
@@ -426,18 +427,18 @@
   function setupSocket() {
     socket = window.io('/chat');
     socket.on('connect', () => {
-      status.dataset.connected = 'true'; status.textContent = 'Connected';
+      status.dataset.connected = 'true'; status.textContent = t('Connected');
       socket.emit('join', {conversation_id: conversationId}, response => {
         try { handleAck(response); applyGraph(response.graph); }
         catch (err) { setError(err.message); }
       });
     });
     socket.on('disconnect', () => {
-      status.dataset.connected = 'false'; status.textContent = 'Switching to polling';
+      status.dataset.connected = 'false'; status.textContent = t('Switching to polling');
       startPolling();
     });
     socket.on('connect_error', () => {
-      status.dataset.connected = 'false'; status.textContent = 'Switching to polling';
+      status.dataset.connected = 'false'; status.textContent = t('Switching to polling');
       startPolling();
     });
     socket.on('question_created', payload => {
@@ -462,12 +463,14 @@
     createOptionEditors(labels);
   });
   document.getElementById('send-question').addEventListener('click', event => {
-    const options = [...optionsEditor.querySelectorAll('input')].map(input => input.value);
+    const optionInputs = [...optionsEditor.querySelectorAll('input')];
+    if (optionInputs.some(input => !input.reportValidity())) return;
+    const options = optionInputs.map(input => input.value);
     emitAck('create_question', {conversation_id: conversationId, text: document.getElementById('question-text').value, options, ...(followUpOption ? {parent_option_id: followUpOption} : {})}, event.currentTarget);
   });
   document.getElementById('cancel-question').addEventListener('click', () => {
     followUpOption = undefined;
-    document.getElementById('composer-title').textContent = 'Start the conversation';
+    document.getElementById('composer-title').textContent = t('Start the conversation');
     document.getElementById('question-text').value = '';
     document.querySelector('.composer').hidden = !canCreateRoot;
     document.getElementById('cancel-question').hidden = true;
@@ -491,7 +494,7 @@
         body: JSON.stringify({user_ids: [checkbox.value]}),
       });
       const body = await response.json();
-      if (!response.ok) setError(body.error || 'Could not add member.'); else await resync();
+      if (!response.ok) setError(t(body.error || 'Could not add member.')); else await resync();
     } catch (err) {
       setError(err.message || 'Could not add member.');
     } finally {
@@ -503,7 +506,7 @@
   createOptionEditors(['Yes', 'No']);
   resync().catch(err => setError(err.message));
   if (typeof window.cytoscape !== 'function') {
-    setError('The chat graph could not load. Check the network connection and try again.');
+    setError(t('The chat graph could not load. Check the network connection and try again.'));
   } else if (realtimeMode === 'supabase') {
     setupSupabaseRealtime();
   } else if (realtimeMode === 'polling') {

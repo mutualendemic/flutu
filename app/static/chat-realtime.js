@@ -1,4 +1,5 @@
 (() => {
+  const t = key => window.FlutuI18n?.[key] || key;
   const api = '/chat/api';
 
   async function loadConfig(options) {
@@ -7,8 +8,8 @@
       : '';
     const response = await fetch(`${api}/realtime-token${query}`, {credentials: 'same-origin'});
     const config = await response.json();
-    if (!response.ok) throw new Error(config.error || 'Supabase Realtime is unavailable.');
-    if (!window.supabase?.createClient) throw new Error('Supabase Realtime client did not load.');
+    if (!response.ok) throw new Error(t(config.error || 'Supabase Realtime is unavailable.'));
+    if (!window.supabase?.createClient) throw new Error(t('Supabase Realtime client did not load.'));
     return config;
   }
 
@@ -21,7 +22,7 @@
     return new Promise((resolve, reject) => {
       let settled = false;
       const timeout = window.setTimeout(() => finish(
-        new Error('Could not verify that Supabase blocks unauthorized private topics. Check the realtime.messages SELECT RLS policy.'),
+        new Error(t('Could not verify that Supabase blocks unauthorized private topics. Check the realtime.messages SELECT RLS policy.')),
       ), 8000);
       const finish = async error => {
         if (settled) return;
@@ -35,13 +36,13 @@
       probe.subscribe(status => {
         if (status === 'SUBSCRIBED') {
           finish(new Error(
-            'Supabase accepted an unauthorized private test topic. Realtime RLS is disabled or another SELECT policy is too broad.'
+            t('Supabase accepted an unauthorized private test topic. Realtime RLS is disabled or another SELECT policy is too broad.')
           ));
         } else if (status === 'CHANNEL_ERROR') {
           finish();
         } else if (status === 'TIMED_OUT' || status === 'CLOSED') {
           finish(new Error(
-            'Supabase could not confirm denial of an unauthorized private topic. Check private-channel settings and the realtime.messages SELECT RLS policy.'
+            t('Supabase could not confirm denial of an unauthorized private topic. Check private-channel settings and the realtime.messages SELECT RLS policy.')
           ));
         }
       });
@@ -77,9 +78,9 @@
         let subscribed = 0;
         window.clearTimeout(authorizationTimer);
         authorizationTimer = window.setTimeout(() => {
-          onStatus('AUTHORIZATION_FAILED', new Error(
+          onStatus('AUTHORIZATION_FAILED', new Error(t(
             'Private channel authorization timed out. Check that private Realtime channels are enabled and the realtime.messages SELECT RLS policy is installed.'
-          ));
+          )));
         }, 10000);
         let protectionProbeStarted = false;
         for (const topic of topics) {
@@ -106,9 +107,8 @@
               }
             } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
               window.clearTimeout(authorizationTimer);
-              const providerMessage = error?.message || error?.reason || error?.code;
               onStatus('AUTHORIZATION_FAILED', new Error(
-                `Supabase subscription failed (${status})${providerMessage ? `: ${providerMessage}` : ''}. Check that SUPABASE_JWT_SECRET is the project's legacy HS256 JWT secret, the Supabase URL and keys are from the same project, private Realtime is enabled, and the realtime.messages SELECT RLS policy is installed.`
+                t('Supabase private-channel subscription failed. Check the project configuration and private-channel access policy.')
               ));
             }
           });

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Flutu | My contacts{% endblock %}
+{% block title %}ux9.eu | {{ _('My contacts') }}{% endblock %}
 {% block styles %}
   .contacts { max-width: 720px; margin-top: 5vh; }
   .contact-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin: 22px 0; }
@@ -23,40 +23,41 @@
 {% endblock %}
 {% block content %}
   <main class="card contacts">
-    <p class="eyebrow">Your address book</p>
-    <h1>My contacts</h1>
-    <p>Your contacts are saved to your Flutu account. Import contacts from your phone when your browser supports it, or add someone manually.</p>
+    <p class="eyebrow">{{ _('Your address book') }}</p>
+    <h1>{{ _('My contacts') }}</h1>
+    <p>{{ _('Your contacts are saved to your ux9.eu account. Import contacts from your phone when your browser supports it, or add someone manually.') }}</p>
 
     <div class="contact-actions">
-      <button class="button" id="import-contacts" type="button">Import from phone</button>
-      <button class="button button-secondary" id="import-vcf" type="button">Import .vcf file</button>
-      <button class="button button-secondary" id="clear-contacts" type="button">Clear all contacts</button>
+      <button class="button" id="import-contacts" type="button">{{ _('Import from phone') }}</button>
+      <button class="button button-secondary" id="import-vcf" type="button">{{ _('Import .vcf file') }}</button>
+      <button class="button button-secondary" id="clear-contacts" type="button">{{ _('Clear all contacts') }}</button>
     </div>
     <input id="vcf-file" type="file" accept=".vcf,text/vcard,text/x-vcard" hidden />
-    <p class="notice">If direct phone access is unavailable, export contacts as a .vcf file from your phone and import that file here.</p>
+    <p class="notice">{{ _('If direct phone access is unavailable, export contacts as a .vcf file from your phone and import that file here.') }}</p>
     <p class="notice" id="contact-status" role="status" aria-live="polite"></p>
 
     <form class="manual-form" id="contact-form">
-      <label>Name <input name="name" autocomplete="name" maxlength="120" required /></label>
-      <label>Phone <input name="tel" type="tel" autocomplete="tel" maxlength="80" /></label>
-      <label>Email <input name="email" type="email" autocomplete="email" maxlength="254" /></label>
-      <button class="button button-secondary" type="submit">Add contact</button>
+      <label>{{ _('Name') }} <input name="name" autocomplete="name" maxlength="120" required /></label>
+      <label>{{ _('Phone') }} <input name="tel" type="tel" autocomplete="tel" maxlength="80" /></label>
+      <label>{{ _('Email') }} <input name="email" type="email" autocomplete="email" maxlength="254" /></label>
+      <button class="button button-secondary" type="submit">{{ _('Add contact') }}</button>
     </form>
 
     <div class="list-heading">
-      <h2>Saved contacts</h2>
-      <span class="count" id="contact-count">0 contacts</span>
+      <h2>{{ _('Saved contacts') }}</h2>
+      <span class="count" id="contact-count">{{ _('{count} contacts', count=0) }}</span>
     </div>
-    <input class="search" id="contact-search" type="search" placeholder="Search contacts" aria-label="Search contacts" />
+    <input class="search" id="contact-search" type="search" placeholder="{{ _('Search contacts') }}" aria-label="{{ _('Search contacts') }}" />
     <ul class="contact-list" id="contact-list"></ul>
-    <p class="empty" id="empty-state">No contacts yet. Import from your phone or add a contact above.</p>
-    <a class="back-link" href="{{ url_for('main.dashboard') }}">← Back to dashboard</a>
+    <p class="empty" id="empty-state">{{ _('No contacts yet. Import from your phone or add a contact above.') }}</p>
+    <a class="back-link" href="{{ url_for('main.dashboard') }}">{{ _('← Back to dashboard') }}</a>
   </main>
 {% endblock %}
 {% block scripts %}
   <script>
     (() => {
       const contactsApi = {{ url_for('main.api_contacts')|tojson }};
+      const t = key => window.FlutuI18n?.[key] || key;
       const list = document.getElementById("contact-list");
       const status = document.getElementById("contact-status");
       const count = document.getElementById("contact-count");
@@ -74,7 +75,7 @@
         });
         if (response.status === 204) return null;
         const result = await response.json();
-        if (!response.ok) throw new Error(result.error || "Could not complete this action.");
+        if (!response.ok) throw new Error(result.error || t("Could not complete this action."));
         return result;
       }
 
@@ -173,14 +174,14 @@
           const remove = document.createElement("button");
           remove.className = "remove-contact";
           remove.type = "button";
-          remove.textContent = "Remove";
-          remove.setAttribute("aria-label", `Remove ${contact.name}`);
+          remove.textContent = t("Remove");
+          remove.setAttribute("aria-label", t("Remove {name}").replace("{name}", contact.name));
           remove.addEventListener("click", async () => {
             await window.FlutuAction.run(remove, async () => {
               try {
                 await request(`${contactsApi}/${encodeURIComponent(contact.id)}`, { method: "DELETE" });
                 contacts = contacts.filter((saved) => saved.id !== contact.id);
-                status.textContent = "Contact removed.";
+                status.textContent = t("Contact removed.");
                 render();
               } catch (error) {
                 status.textContent = error.message;
@@ -190,11 +191,13 @@
           item.append(details, remove);
           list.append(item);
         });
-        count.textContent = `${contacts.length} ${contacts.length === 1 ? "contact" : "contacts"}`;
+        count.textContent = contacts.length === 1
+          ? t("{count} contact").replace("{count}", contacts.length)
+          : t("{count} contacts").replace("{count}", contacts.length);
         emptyState.hidden = visible.length > 0;
         emptyState.textContent = contacts.length && !visible.length
-          ? "No contacts match your search."
-          : "No contacts yet. Import from your phone or add a contact above.";
+          ? t("No contacts match your search.")
+          : t("No contacts yet. Import from your phone or add a contact above.");
       }
 
       document.getElementById("contact-form").addEventListener("submit", async (event) => {
@@ -204,13 +207,13 @@
           const form = new FormData(formElement);
           const contact = { name: form.get("name"), tel: form.get("tel"), email: form.get("email") };
           if (!contact.tel && !contact.email) {
-            status.textContent = "Add a phone number or email address for this contact.";
+            status.textContent = t("Add a phone number or email address for this contact.");
             return;
           }
           try {
             const added = await createContacts([contact]);
             formElement.reset();
-            status.textContent = added ? "Contact added." : "That contact is already in your list.";
+            status.textContent = added ? t("Contact added.") : t("That contact is already in your list.");
           } catch (error) {
             status.textContent = error.message;
           }
@@ -220,17 +223,17 @@
 
       importContactsButton.addEventListener("click", async () => window.FlutuAction.run(importContactsButton, async () => {
         if (!window.isSecureContext || !navigator.contacts || typeof navigator.contacts.select !== "function") {
-          status.textContent = "Direct phone contact access is unavailable in this browser. Use Import .vcf file instead, or try a supported mobile browser over HTTPS.";
+          status.textContent = t("Direct phone contact access is unavailable in this browser. Use Import .vcf file instead, or try a supported mobile browser over HTTPS.");
           return;
         }
         try {
           const selected = await navigator.contacts.select(["name", "tel", "email"], { multiple: true });
           const added = await createContacts(selected);
-          status.textContent = `${added} contact${added === 1 ? "" : "s"} imported.`;
+          status.textContent = added === 1 ? t("{count} contact imported.").replace("{count}", added) : t("{count} contacts imported.").replace("{count}", added);
         } catch (error) {
           status.textContent = error.name === "AbortError"
-            ? "Import cancelled."
-            : error.message || "Could not import contacts. Check browser permissions and try again.";
+            ? t("Import cancelled.")
+            : error.message || t("Could not import contacts. Check browser permissions and try again.");
         }
       }));
 
@@ -240,7 +243,7 @@
         const file = vcfFile.files[0];
         if (!file) return;
         if (file.size > 5 * 1024 * 1024) {
-          status.textContent = "That file is too large. Choose a .vcf file smaller than 5 MB.";
+          status.textContent = t("That file is too large. Choose a .vcf file smaller than 5 MB.");
           vcfFile.value = "";
           return;
         }
@@ -248,13 +251,13 @@
           try {
             const parsed = parseVcard(await file.text());
             if (!parsed.length) {
-              status.textContent = "No usable contacts found. Choose a valid .vcf contact export.";
+              status.textContent = t("No usable contacts found. Choose a valid .vcf contact export.");
               return;
             }
             const added = await createContacts(parsed.slice(0, 100));
-            status.textContent = `${added} contact${added === 1 ? "" : "s"} imported from file.`;
+            status.textContent = added === 1 ? t("{count} contact imported from file.").replace("{count}", added) : t("{count} contacts imported from file.").replace("{count}", added);
           } catch (error) {
-            status.textContent = error.message || "Could not import that .vcf file.";
+            status.textContent = error.message || t("Could not import that .vcf file.");
           } finally {
             vcfFile.value = "";
           }
@@ -262,11 +265,11 @@
       });
 
       clearContactsButton.addEventListener("click", async () => window.FlutuAction.run(clearContactsButton, async () => {
-        if (!contacts.length || !window.confirm("Remove all your saved contacts?")) return;
+        if (!contacts.length || !window.confirm(t("Remove all your saved contacts?"))) return;
         try {
           await request(contactsApi, { method: "DELETE" });
           contacts = [];
-          status.textContent = "All contacts removed.";
+          status.textContent = t("All contacts removed.");
           render();
         } catch (error) {
           status.textContent = error.message;
@@ -281,7 +284,7 @@
         })
         .catch((error) => {
           status.textContent = error.message;
-          emptyState.textContent = "Contacts could not be loaded. Try refreshing the page.";
+          emptyState.textContent = t("Contacts could not be loaded. Try refreshing the page.");
           render();
         });
     })();
