@@ -17,12 +17,15 @@ class QuantumRandomTests(unittest.TestCase):
 
     def test_consumes_cached_bit_without_connecting_to_ibm(self):
         collection = Mock()
-        collection.find_one_and_update.return_value = {"bits": ["0"], "next_index": 0}
+        collection.find_one_and_update.return_value = {"_id": "batch-id", "bits": ["0"], "next_index": 0}
         with patch.dict(os.environ, {}, clear=True), patch(
             "app.services.quantum_random.get_collection", return_value=collection
         ):
             self.assertFalse(choose_direction())
         collection.find_one_and_update.assert_called_once()
+        collection.update_one.assert_called_once_with(
+            {"_id": "batch-id"}, {"$unset": {"bits.0": ""}}
+        )
         collection.insert_one.assert_not_called()
 
     def test_requires_ibm_quantum_api_key_when_cache_is_empty(self):
@@ -55,7 +58,7 @@ class QuantumRandomTests(unittest.TestCase):
         collection = Mock()
         collection.find_one_and_update.side_effect = [
             None,
-            {"bits": ["1"] * BATCH_SIZE, "next_index": 0},
+            {"_id": "batch-id", "bits": ["1"] * BATCH_SIZE, "next_index": 0},
         ]
         with patch.dict(
             os.environ,
@@ -87,6 +90,9 @@ class QuantumRandomTests(unittest.TestCase):
         self.assertEqual(len(inserted_batch["bits"]), BATCH_SIZE)
         self.assertEqual(inserted_batch["next_index"], 0)
         self.assertEqual(collection.find_one_and_update.call_count, 2)
+        collection.update_one.assert_called_once_with(
+            {"_id": "batch-id"}, {"$unset": {"bits.0": ""}}
+        )
 
     def test_rejects_invalid_hardware_measurement(self):
         job_result = [Mock(data=Mock(meas=Mock(get_bitstrings=Mock(return_value=["10"]))))]

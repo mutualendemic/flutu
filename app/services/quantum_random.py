@@ -32,7 +32,14 @@ def _consume_bit(collection):
     index = batch.get("next_index")
     if not isinstance(bits, list) or not isinstance(index, int) or index < 0 or index >= len(bits):
         raise ValueError("Stored IBM Quantum batch is invalid.")
-    return bits[index]
+    bit = bits[index]
+    if bit not in {"0", "1"}:
+        raise ValueError("Stored IBM Quantum measurement is invalid.")
+    collection.update_one(
+        {"_id": batch["_id"]},
+        {"$unset": {f"bits.{index}": ""}},
+    )
+    return bit
 
 
 def choose_direction() -> bool:
