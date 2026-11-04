@@ -65,7 +65,7 @@ def _status_for_error(error):
         return 404
     if str(error) in {"forbidden", "members_must_be_contacts", "branch_mode_locked"}:
         return 403
-    if str(error) in {"already_closed", "question_has_answers", "closed_question", "vote_change_disabled", "winner_must_be_tied", "quantum_path_locked", "root_question_exists"}:
+    if str(error) in {"already_closed", "question_has_answers", "question_has_follow_ups", "closed_question", "vote_change_disabled", "winner_must_be_tied", "quantum_path_locked", "root_question_exists"}:
         return 409
     return 400
 
@@ -312,7 +312,18 @@ def api_edit_question(question_id):
     question = service.question_by_id(question_id)
     if not question or not service.is_active_member(str(question["conversation_id"]), _user_id()):
         return _api_error("forbidden", 403)
-    return _api_error("branch_mode_locked", 403)
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return _api_error("invalid_payload")
+    try:
+        service.edit_question(question_id, _user_id(), payload.get("text"), payload.get("options"))
+        emit_to_active_members("question_updated", {"id": question_id}, str(question["conversation_id"]))
+        return jsonify(question_id=question_id)
+    except (ValueError, PermissionError) as error:
+        return _api_error(str(error), _status_for_error(error))
+    except (PyMongoError, RuntimeError):
+        current_app.logger.exception("Could not edit chat question")
+        return _api_error("chat_unavailable", 503)
 
 
 @chat_bp.delete("/api/questions/<question_id>")

@@ -542,6 +542,10 @@ def edit_question(question_id, author_id, text=None, labels=None):
         raise ValueError("question_has_answers")
     if question["status"] != "open":
         raise ValueError("closed_question")
+    question_options = list(options.find({"question_id": qid}, {"_id": 1}))
+    option_ids = [option["_id"] for option in question_options]
+    if option_ids and questions.find_one({"parent_option_id": {"$in": option_ids}}, {"_id": 1}):
+        raise ValueError("question_has_follow_ups")
     update = {}
     if text is not None:
         if not isinstance(text, str) or not text.strip() or len(text.strip()) > 280:
@@ -549,6 +553,7 @@ def edit_question(question_id, author_id, text=None, labels=None):
         update["text"] = text.strip()
     if labels is not None:
         _, cleaned = validate_question(question.get("text", "Question"), labels)
+        questions.update_one({"_id": qid}, {"$unset": {"quantum_selected_option_id": ""}})
         options.delete_many({"question_id": qid})
         options.insert_many([{
             "question_id": qid, "conversation_id": question["conversation_id"], "label": label,
@@ -579,12 +584,17 @@ def graph_payload(conversation_id, viewer_id=None):
     conversation = get_conversation(cid) if cid else None
     if not conversation:
         raise ValueError("not_found")
-    _, members, questions, options, _ = _collections()
+    _, members, questions, options, answers = _collections()
     member_docs = list(members.find({"conversation_id": cid}))
     member_by_id = {item["user_id"]: _serialize_member(item) for item in member_docs}
     question_docs = list(questions.find({"conversation_id": cid}).sort([("created_at", ASCENDING), ("_id", ASCENDING)]))
     has_root_question = any(not question.get("parent_option_id") for question in question_docs)
     option_docs = list(options.find({"conversation_id": cid}).sort([("position", ASCENDING), ("_id", ASCENDING)]))
+    question_ids = [question["_id"] for question in question_docs]
+    answered_question_ids = {
+        answer["question_id"] for answer in answers.find({"question_id": {"$in": question_ids}}, {"question_id": 1})
+    } if question_ids else set()
+    dependent_option_ids = {question.get("parent_option_id") for question in question_docs if question.get("parent_option_id")}
     options_by_question = {}
     for option in option_docs:
         options_by_question.setdefault(option["question_id"], []).append(option)
@@ -614,6 +624,9 @@ def graph_payload(conversation_id, viewer_id=None):
             "lane": lane, "row": row, "winning_option_id": str(question["winning_option_id"]) if question.get("winning_option_id") else None,
             "created_at": question["created_at"].isoformat(), "allow_vote_change": question.get("allow_vote_change", True),
             "quantum_selected_option_id": str(selected_option["_id"]) if selected_option else None,
+            "can_edit_question": viewer_id == question["author_user_id"] and question["status"] == "open"
+            and question["_id"] not in answered_question_ids
+            and not any(option["_id"] in dependent_option_ids for option in question_options),
         })
         if parent:
             edges.append({"from": f"o{parent['_id']}", "to": f"q{qid}", "kind": "follow_up", "label": "Follow-up"})

@@ -6,7 +6,7 @@ from bson import ObjectId
 
 from app import create_app
 from app.chat.sockets import socketio
-from app.services.chat import _quantum_option_index, _serialize_member, create_question, delete_conversation, graph_payload, update_conversation_title, validate_question
+from app.services.chat import _quantum_option_index, _serialize_member, create_question, delete_conversation, edit_question, graph_payload, update_conversation_title, validate_question
 
 
 class ChatTests(unittest.TestCase):
@@ -251,6 +251,62 @@ class ChatTests(unittest.TestCase):
         self.assertEqual(notify.call_args.kwargs["exclude_ids"], {"google-user"})
         client.disconnect(namespace="/chat")
 
+    def test_question_edit_route_requires_authentication_and_csrf(self):
+        response = self.http.patch("/chat/api/questions/question-id", json={"text": "Updated", "options": ["A", "B"]})
+        self.assertEqual(response.status_code, 401)
+        self.sign_in()
+        response = self.http.patch("/chat/api/questions/question-id", json={"text": "Updated", "options": ["A", "B"]})
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json(), {"error": "csrf_failed"})
+
+    def test_active_author_can_edit_question_and_notify_members(self):
+        self.sign_in()
+        question = {"conversation_id": "conversation-id"}
+        with patch("app.chat.routes.service.question_by_id", return_value=question), patch(
+            "app.chat.routes.service.is_active_member", return_value=True
+        ), patch("app.chat.routes.service.edit_question") as edit, patch(
+            "app.chat.routes.emit_to_active_members"
+        ) as emit:
+            response = self.http.patch(
+                "/chat/api/questions/question-id",
+                json={"text": "Updated?", "options": ["A", "B"]}, headers=self.csrf_headers(),
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json(), {"question_id": "question-id"})
+        edit.assert_called_once_with("question-id", "google-user", "Updated?", ["A", "B"])
+        emit.assert_called_once_with("question_updated", {"id": "question-id"}, "conversation-id")
+
+    def test_edit_question_is_blocked_after_a_follow_up_exists(self):
+        question_id = ObjectId("65b0e7a3a6c6f166f1c3a061")
+        option_id = ObjectId("65b0e7a3a6c6f166f1c3a062")
+        question = {"_id": question_id, "author_user_id": "google-user", "status": "open", "text": "Original?", "conversation_id": ObjectId()}
+        questions = Mock()
+        questions.find_one.side_effect = [question, {"_id": ObjectId()}]
+        options = Mock()
+        options.find.return_value = [{"_id": option_id}]
+        answers = Mock()
+        answers.count_documents.return_value = 0
+        with patch("app.services.chat._collections", return_value=(Mock(), Mock(), questions, options, answers)):
+            with self.assertRaisesRegex(ValueError, "question_has_follow_ups"):
+                edit_question(str(question_id), "google-user", "Changed?", ["A", "B"])
+        options.delete_many.assert_not_called()
+
+    def test_edit_question_updates_text_and_resets_quantum_choice_when_options_change(self):
+        question_id = ObjectId("65b0e7a3a6c6f166f1c3a063")
+        option_id = ObjectId("65b0e7a3a6c6f166f1c3a064")
+        question = {"_id": question_id, "author_user_id": "google-user", "status": "open", "text": "Original?", "conversation_id": ObjectId()}
+        questions = Mock()
+        questions.find_one.side_effect = [question, None]
+        options = Mock()
+        options.find.return_value = [{"_id": option_id}]
+        answers = Mock()
+        answers.count_documents.return_value = 0
+        with patch("app.services.chat._collections", return_value=(Mock(), Mock(), questions, options, answers)):
+            self.assertEqual(edit_question(str(question_id), "google-user", "Updated?", ["New A", "New B"]), str(question_id))
+        questions.update_one.assert_any_call({"_id": question_id}, {"$unset": {"quantum_selected_option_id": ""}})
+        questions.update_one.assert_any_call({"_id": question_id}, {"$set": {"text": "Updated?"}})
+        self.assertEqual([item["label"] for item in options.insert_many.call_args.args[0]], ["New A", "New B"])
+
     def test_non_creator_cannot_delete_conversation(self):
         self.sign_in()
         with patch("app.services.chat._collections") as collections_factory:
@@ -288,7 +344,7 @@ class ChatTests(unittest.TestCase):
         script = self.http.get("/static/chat-conversation.js")
         self.assertIn(b'node[type="option"][?quantum_selected]', script.data)
         self.assertIn(b'edge[kind="branch"][?quantum_selected]', script.data)
-        self.assertIn(b"input.value = ''; input.placeholder = t(value)", script.data)
+        self.assertIn(b"input.value = useValues ? value : ''", script.data)
         self.assertIn(b"input.reportValidity()", script.data)
         script.close()
 
@@ -357,6 +413,7 @@ class ChatTests(unittest.TestCase):
         question_node = next(node for node in graph["nodes"] if node["type"] == "question")
         self.assertEqual(question_node["author_name"], "Test User")
         self.assertEqual(question_node["author_picture"], "https://example.com/avatar.png")
+        self.assertTrue(question_node["can_edit_question"])
 
     def test_chat_list_displays_private_channel_authorization_check(self):
         self.sign_in()
@@ -524,9 +581,11 @@ class ChatTests(unittest.TestCase):
         options = Mock()
         options.find.return_value.sort.return_value = option_docs
         options.find_one.return_value = None
+        answers = Mock()
+        answers.find.return_value = []
 
         with patch("app.services.chat.get_conversation", return_value=conversation), patch(
-            "app.services.chat._collections", return_value=(Mock(), members, questions, options, Mock())
+            "app.services.chat._collections", return_value=(Mock(), members, questions, options, answers)
         ), patch("app.services.chat._depth", return_value=0), patch(
             "app.services.chat._quantum_path_for_question", return_value=None
         ):
@@ -614,8 +673,10 @@ class ChatTests(unittest.TestCase):
         option_collection = Mock()
         option_collection.find.return_value.sort.return_value = options
         option_collection.find_one.return_value = options[0]
+        answers = Mock()
+        answers.find.return_value = []
         with patch("app.services.chat.get_conversation", return_value={"_id": conversation_id, "title": "Flow", "created_by_user_id": "owner"}), patch(
-            "app.services.chat._collections", return_value=(Mock(), members, questions, option_collection, Mock())
+            "app.services.chat._collections", return_value=(Mock(), members, questions, option_collection, answers)
         ), patch("app.services.chat._depth", side_effect=lambda question, *_args: 0 if question["_id"] == root_id else 1), patch(
             "app.services.chat._quantum_path_for_question", side_effect=lambda qid: options[0] if qid == root_id else options[2]
         ):

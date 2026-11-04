@@ -201,8 +201,14 @@ msgstr "Autor da pergunta"
 msgid "Question author's profile photo"
 msgstr "Fotografia de perfil do autor da pergunta"
 
-msgid "Asked by {name} · {status}"
-msgstr "Pergunta de {name} · {status}"
+msgid "Asked by {name}"
+msgstr "Pergunta de {name}"
+
+msgid "Edit question"
+msgstr "Editar pergunta"
+
+msgid "Save changes"
+msgstr "Salvar alterações"
 
 msgid "Quantum-selected path: "
 msgstr "Caminho escolhido pelo seletor quântico: "
@@ -1082,6 +1088,9 @@ msgstr "Esta pergunta já está encerrada."
 
 msgid "question_has_answers"
 msgstr "Esta pergunta já tem respostas e não pode ser alterada."
+
+msgid "question_has_follow_ups"
+msgstr "Esta pergunta já tem desdobramentos e não pode ser alterada."
 
 msgid "closed_question"
 msgstr "Esta pergunta está encerrada."

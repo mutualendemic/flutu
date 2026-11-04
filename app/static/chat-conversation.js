@@ -25,6 +25,7 @@
   let polling = false;
   let followUpOption;
   let canCreateRoot = false;
+  let editingQuestionId;
   let initialGraphFitDone = false;
 
   function el(tag, text, className) {
@@ -149,7 +150,7 @@
     }
     const composer = document.querySelector('.composer');
     const banner = document.getElementById('quantum-branch-banner');
-    if (composer) composer.hidden = !(canCreateRoot || followUpOption);
+    if (composer) composer.hidden = !(canCreateRoot || followUpOption || editingQuestionId);
     if (banner) banner.classList.toggle('visible', data.branch_mode === 'quantum_random');
     document.getElementById('send-question').textContent = t(followUpOption ? 'Send follow-up' : 'Create first question');
     document.getElementById('add-option').hidden = Boolean(followUpOption);
@@ -197,13 +198,34 @@
       } catch (_) { /* Show initials when a profile photo URL is invalid. */ }
     }
     if (!authorRow.children.length) authorRow.append(avatar);
-    const author = el('p', t('Asked by {name} · {status}').replace('{name}', member?.name || memberName(node.author_user_id)).replace('{status}', t(node.status)));
+    const author = el('p', t('Asked by {name}').replace('{name}', member?.name || memberName(node.author_user_id)));
     authorRow.append(author);
     details.append(title, authorRow);
     const opts = (snapshot.nodes || []).filter(item => item.type === 'option' && item.question_id === node.id.slice(1));
+    if (node.can_edit_question) {
+      const edit = el('button', t('Edit question'), 'button button-secondary');
+      edit.type = 'button';
+      edit.addEventListener('click', () => beginQuestionEdit(node, opts));
+      details.append(edit);
+    }
     for (const option of opts) {
       details.append(el('p', `${t(option.quantum_selected ? 'Quantum-selected path: ' : 'Other option: ')}${option.label}`));
     }
+  }
+
+  function beginQuestionEdit(node, opts) {
+    editingQuestionId = node.id.slice(1);
+    followUpOption = undefined;
+    document.getElementById('composer-title').textContent = t('Edit question');
+    document.getElementById('question-text').value = node.label;
+    createOptionEditors(opts.map(option => option.label), true);
+    document.getElementById('send-question').textContent = t('Save changes');
+    document.getElementById('add-option').hidden = false;
+    optionsEditor.hidden = false;
+    document.getElementById('cancel-question').hidden = false;
+    document.querySelector('.composer').hidden = false;
+    document.getElementById('question-text').focus();
+    document.querySelector('.composer').scrollIntoView({behavior: 'smooth', block: 'center'});
   }
 
   function selectNode(node) {
@@ -255,11 +277,14 @@
       path = `${api}/conversations/${encodeURIComponent(payload.conversation_id)}/questions`;
       body = {...payload};
       delete body.conversation_id;
+    } else if (event === 'edit_question') {
+      path = `${api}/questions/${encodeURIComponent(payload.question_id)}`;
+      body = {text: payload.text, options: payload.options};
     } else {
       throw new Error(t('Unsupported chat action.'));
     }
     const response = await fetch(path, {
-      method: 'POST',
+      method: event === 'edit_question' ? 'PATCH' : 'POST',
       headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf},
       body: JSON.stringify(body),
     });
@@ -278,18 +303,30 @@
         followUpOption = undefined;
         document.getElementById('composer-title').textContent = t('Start the conversation');
         createOptionEditors(['Yes', 'No']);
+      } else if (event === 'edit_question') {
+        const questionId = editingQuestionId;
+        editingQuestionId = undefined;
+        document.getElementById('question-text').value = '';
+        document.getElementById('composer-title').textContent = t('Start the conversation');
+        document.getElementById('cancel-question').hidden = true;
+        document.querySelector('.composer').hidden = !canCreateRoot;
+        createOptionEditors(['Yes', 'No']);
+        await resync();
+        const updatedNode = nodes.get(`q${questionId}`);
+        if (updatedNode) renderDetailsQuestion(updatedNode);
+        return;
       }
       await resync();
     } catch (err) { setError(err.message); }
     });
   }
 
-  function createOptionEditors(labels) {
+  function createOptionEditors(labels, useValues = false) {
     optionsEditor.replaceChildren();
     labels.forEach((value, index) => {
       const row = el('div', undefined, 'option-editor');
       const input = document.createElement('input');
-      input.type = 'text'; input.maxLength = 60; input.value = ''; input.placeholder = t(value); input.required = true; input.setAttribute('aria-label', t('Option {number}').replace('{number}', index + 1));
+      input.type = 'text'; input.maxLength = 60; input.value = useValues ? value : ''; input.placeholder = useValues ? '' : t(value); input.required = true; input.setAttribute('aria-label', t('Option {number}').replace('{number}', index + 1));
       const remove = el('button', t('Remove')); remove.type = 'button'; remove.disabled = labels.length <= 2;
       remove.addEventListener('click', () => {
         if (optionsEditor.children.length <= 2) return;
@@ -464,15 +501,21 @@
   document.getElementById('add-option').addEventListener('click', () => {
     if (optionsEditor.children.length >= 10) return;
     const labels = [...optionsEditor.querySelectorAll('input')].map(input => input.value).concat('');
-    createOptionEditors(labels);
+    createOptionEditors(labels, Boolean(editingQuestionId));
   });
   document.getElementById('send-question').addEventListener('click', event => {
     const optionInputs = [...optionsEditor.querySelectorAll('input')];
     if (optionInputs.some(input => !input.reportValidity())) return;
     const options = optionInputs.map(input => input.value);
-    emitAck('create_question', {conversation_id: conversationId, text: document.getElementById('question-text').value, options, ...(followUpOption ? {parent_option_id: followUpOption} : {})}, event.currentTarget);
+    const text = document.getElementById('question-text').value;
+    if (editingQuestionId) {
+      emitAck('edit_question', {question_id: editingQuestionId, text, options}, event.currentTarget);
+    } else {
+      emitAck('create_question', {conversation_id: conversationId, text, options, ...(followUpOption ? {parent_option_id: followUpOption} : {})}, event.currentTarget);
+    }
   });
   document.getElementById('cancel-question').addEventListener('click', () => {
+    editingQuestionId = undefined;
     followUpOption = undefined;
     document.getElementById('composer-title').textContent = t('Start the conversation');
     document.getElementById('question-text').value = '';
