@@ -1,6 +1,6 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: ux9.eu 1.0\n"
+"Project-Id-Version: flutu.eu 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Language: pt_PT\n"
@@ -21,8 +21,8 @@ msgstr "Uma forma mais tranquila de coordenar"
 msgid "Bring your people and plans together."
 msgstr "Junte as suas pessoas e os seus planos."
 
-msgid "ux9.eu helps you make decisions with friends, keep useful contacts together, and share location only with people you trust."
-msgstr "A ux9.eu ajuda-o a tomar decisões com amigos, organizar contactos úteis e partilhar a localização apenas com pessoas em quem confia."
+msgid "Flutu.eu helps you make decisions with friends, keep useful contacts together, and share location only with people you trust."
+msgstr "A Flutu.eu ajuda-o a tomar decisões com amigos, organizar contactos úteis e partilhar a localização apenas com pessoas em quem confia."
 
 msgid "What you can do"
 msgstr "O que pode fazer"
@@ -54,8 +54,8 @@ msgstr "Iniciar sessão"
 msgid "View the project"
 msgstr "Ver o projeto"
 
-msgid "Access your ux9.eu account"
-msgstr "Aceda à sua conta ux9.eu"
+msgid "Access your Flutu.eu account"
+msgstr "Aceda à sua conta Flutu.eu"
 
 msgid "Google sign-in is not configured. Set FLUTU_GOOGLE_CLIENT_ID and FLUTU_GOOGLE_CLIENT_SECRET."
 msgstr "O início de sessão com o Google não está configurado. Defina FLUTU_GOOGLE_CLIENT_ID e FLUTU_GOOGLE_CLIENT_SECRET."
@@ -78,8 +78,8 @@ msgstr "Sessão ativa"
 msgid "Checking location sharing…"
 msgstr "A verificar a partilha da localização…"
 
-msgid "Welcome to ux9.eu"
-msgstr "Bem-vindo à ux9.eu"
+msgid "Welcome to Flutu.eu"
+msgstr "Bem-vindo à flutu.eu"
 
 msgid "Signed in as:"
 msgstr "Sessão iniciada como:"
@@ -192,8 +192,8 @@ msgstr "Por {name}"
 msgid "Former member"
 msgstr "Antigo membro"
 
-msgid "ux9.eu member"
-msgstr "Membro da ux9.eu"
+msgid "Flutu.eu member"
+msgstr "Membro da Flutu.eu"
 
 msgid "Question author"
 msgstr "Autor da pergunta"
@@ -360,8 +360,8 @@ msgstr "Este navegador não suporta geolocalização."
 msgid "Location requires a secure connection"
 msgstr "A localização requer uma ligação segura"
 
-msgid "Open ux9.eu using HTTPS to share device location."
-msgstr "Abra ux9.eu através de HTTPS para partilhar a localização do dispositivo."
+msgid "Open flutu.eu using HTTPS to share device location."
+msgstr "Abra Flutu.eu através de HTTPS para partilhar a localização do dispositivo."
 
 msgid "Location sharing needs attention"
 msgstr "A partilha da localização requer atenção"
@@ -372,8 +372,8 @@ msgstr "A partilhar a localização com {count} contacto"
 msgid "Sharing location with {count} contacts"
 msgstr "A partilhar a localização com {count} contactos"
 
-msgid "Your latest location is shared while you are using ux9.eu."
-msgstr "A sua localização mais recente é partilhada enquanto utiliza a ux9.eu."
+msgid "Your latest location is shared while you are using flutu.eu."
+msgstr "A sua localização mais recente é partilhada enquanto utiliza a Flutu.eu."
 
 msgid "Location sharing paused"
 msgstr "Partilha da localização em pausa"
@@ -390,11 +390,11 @@ msgstr "Não existem autorizações de partilha da localização ativas."
 msgid "Location permission was denied. Allow access in your browser settings."
 msgstr "A permissão de localização foi recusada. Permita o acesso nas definições do navegador."
 
-msgid "Location requires HTTPS. Open ux9.eu using its secure https:// address."
-msgstr "A localização requer HTTPS. Abra ux9.eu através do endereço seguro https://."
+msgid "Location requires HTTPS. Open flutu.eu using its secure https:// address."
+msgstr "A localização requer HTTPS. Abra Flutu.eu através do endereço seguro https://."
 
-msgid "This browser or in-app browser does not provide location access. Open ux9.eu in your device browser."
-msgstr "Este navegador ou navegador integrado não permite o acesso à localização. Abra ux9.eu no navegador do dispositivo."
+msgid "This browser or in-app browser does not provide location access. Open flutu.eu in your device browser."
+msgstr "Este navegador ou navegador integrado não permite o acesso à localização. Abra Flutu.eu no navegador do dispositivo."
 
 msgid "Location permission was denied. Allow location access for this site in your browser settings, then try again."
 msgstr "A permissão de localização foi recusada. Permita o acesso a este site nas definições do navegador e tente novamente."
@@ -444,8 +444,8 @@ msgstr "Não está a partilhar a sua localização com ninguém."
 msgid "Stop sharing"
 msgstr "Parar a partilha"
 
-msgid "Device location requires HTTPS. Open ux9.eu using its secure https:// address."
-msgstr "A localização do dispositivo requer HTTPS. Abra ux9.eu através do endereço seguro https://."
+msgid "Device location requires HTTPS. Open flutu.eu using its secure https:// address."
+msgstr "A localização do dispositivo requer HTTPS. Abra Flutu.eu através do endereço seguro https://."
 
 msgid "This browser does not support device location. Try your device browser."
 msgstr "Este navegador não suporta a localização do dispositivo. Experimente o navegador do dispositivo."
@@ -501,8 +501,8 @@ msgstr "As atualizações da localização estão ativas para {count} contactos.
 msgid "A contact has permission, but your location updates are paused. Enable them to share your position."
 msgstr "Um contacto tem autorização, mas as atualizações da sua localização estão em pausa. Ative-as para partilhar a sua posição."
 
-msgid "Request sent. It will be visible when the contact next opens ux9.eu."
-msgstr "Pedido enviado. Ficará visível quando o contacto voltar a abrir a ux9.eu."
+msgid "Request sent. It will be visible when the contact next opens flutu.eu."
+msgstr "Pedido enviado. Ficará visível quando o contacto voltar a abrir a Flutu.eu."
 
 msgid "A request is already pending."
 msgstr "Já existe um pedido pendente."
@@ -567,8 +567,8 @@ msgstr "Dados cartográficos © colaboradores do OpenStreetMap. As localizaçõe
 msgid "Request a location"
 msgstr "Pedir uma localização"
 
-msgid "Choose a saved contact with an email address. They must have signed in to ux9.eu; they decide whether to share."
-msgstr "Escolha um contacto guardado com endereço de correio eletrónico. Tem de ter iniciado sessão na ux9.eu e decide se pretende partilhar."
+msgid "Choose a saved contact with an email address. They must have signed in to flutu.eu; they decide whether to share."
+msgstr "Escolha um contacto guardado com endereço de correio eletrónico. Tem de ter iniciado sessão na Flutu.eu e decide se pretende partilhar."
 
 msgid "Contact"
 msgstr "Contacto"
@@ -612,14 +612,14 @@ msgstr "Quando abre este mapa, a localização do dispositivo é consultada aqui
 msgid "Locate my device"
 msgstr "Localizar o meu dispositivo"
 
-msgid "After enabling, ux9.eu updates your location about every 30 seconds while you use the app, provided the browser grants location access. You can pause updates or revoke access for one person or everyone."
-msgstr "Depois de ativada, a ux9.eu atualiza a sua localização aproximadamente a cada 30 segundos enquanto utiliza a aplicação, se o navegador permitir o acesso. Pode pausar as atualizações ou revogar o acesso a uma ou a todas as pessoas."
+msgid "After enabling, flutu.eu updates your location about every 30 seconds while you use the app, provided the browser grants location access. You can pause updates or revoke access for one person or everyone."
+msgstr "Depois de ativada, a Flutu.eu atualiza a sua localização aproximadamente a cada 30 segundos enquanto utiliza a aplicação, se o navegador permitir o acesso. Pode pausar as atualizações ou revogar o acesso a uma ou a todas as pessoas."
 
 msgid "Your address book"
 msgstr "A sua lista de contactos"
 
-msgid "Your contacts are saved to your ux9.eu account. Import contacts from your phone when your browser supports it, or add someone manually."
-msgstr "Os seus contactos são guardados na sua conta ux9.eu. Importe contactos do telemóvel se o navegador o permitir ou adicione-os manualmente."
+msgid "Your contacts are saved to your Flutu.eu account. Import contacts from your phone when your browser supports it, or add someone manually."
+msgstr "Os seus contactos são guardados na sua conta Flutu.eu. Importe contactos do telemóvel se o navegador o permitir ou adicione-os manualmente."
 
 msgid "Import from phone"
 msgstr "Importar do telemóvel"
@@ -711,11 +711,11 @@ msgstr "Todos os contactos foram removidos."
 msgid "Contacts could not be loaded. Try refreshing the page."
 msgstr "Não foi possível carregar os contactos. Tente atualizar a página."
 
-msgid "Hi {name}, I use ux9.eu to make plans with friends. Sign in with Google and join me: {url}"
-msgstr "Olá {name}, utilizo a ux9.eu para combinar planos com amigos. Inicie sessão com o Google e junte-se a mim: {url}"
+msgid "Hi {name}, I use Flutu.eu to make plans with friends. Sign in with Google and join me: {url}"
+msgstr "Olá {name}, utilizo a Flutu.eu para combinar planos com amigos. Inicie sessão com o Google e junte-se a mim: {url}"
 
-msgid "Join me on ux9.eu"
-msgstr "Junte-se a mim na ux9.eu"
+msgid "Join me on Flutu.eu"
+msgstr "Junte-se a mim na Flutu.eu"
 
 msgid "Invite by email"
 msgstr "Convidar por email"

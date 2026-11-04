@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}ux9.eu | {{ _('Conversation') }}{% endblock %}
+{% block title %}Flutu.eu | {{ _('Conversation') }}{% endblock %}
 {% block styles %}
   .conversation-page { width:min(100%,1100px); margin:0 auto; }
   .conversation-top { display:flex; justify-content:space-between; align-items:center; gap:12px; }
@@ -70,7 +70,7 @@
   <div class="graph-stage" id="graph-stage">
     <div id="graph" role="img" aria-label="{{ _('Live branching flow: each question is followed by its options and the selected path leads to participant follow-ups') }}"></div>
     <div id="graph-empty-state" class="graph-empty-state" role="status" aria-live="polite">
-      <img src="{{ url_for('static', filename='logo.svg') }}" alt="ux9.eu">
+      <img src="{{ url_for('static', filename='logo.svg') }}" alt="Flutu.eu">
       <p>{{ _('Conversation ready. The first question and its options will appear here.') }}</p>
     </div>
   </div>

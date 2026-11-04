@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}ux9.eu | {{ _('Dashboard') }}{% endblock %}
+{% block title %}Flutu.eu | {{ _('Dashboard') }}{% endblock %}
 {% block styles %}
   .dashboard { margin-top: 8vh; }
   .topbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 26px; }
@@ -18,12 +18,12 @@
 {% block content %}
   <main class="card dashboard">
     <header class="topbar">
-      <div class="brand"><img src="{{ url_for('static', filename='logo.svg') }}" alt="" /> <span>ux9.eu</span></div>
+      <div class="brand"><img src="{{ url_for('static', filename='logo.svg') }}" alt="" /> <span>Flutu.eu</span></div>
       <a class="logout" href="{{ url_for('auth.logout') }}">{{ _('Sign out') }}</a>
     </header>
     <span class="badge">{{ _('Active session') }}</span>
     <p id="location-sharing-indicator" class="sharing-status" role="status" aria-live="polite" hidden>{{ _('Checking location sharing…') }}</p>
-    <h1>{{ _('Welcome to ux9.eu') }}</h1>
+    <h1>{{ _('Welcome to Flutu.eu') }}</h1>
     <p>{{ _('Signed in as:') }} <strong>{{ user.name }}</strong> ({{ user.email }})</p>
     <nav class="actions" aria-label="{{ _('Dashboard pages') }}">
       <a class="button" href="{{ url_for('main.decision') }}">{{ _('Quantum path selector') }}</a>

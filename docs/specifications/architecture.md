@@ -13,7 +13,7 @@ This specification describes decisions shared across pages and APIs, as reflecte
 
 ## Branding and localization
 
-- The public site brand and browser page titles use `ux9.eu`; the existing shared logo asset is retained. The internal project/repository name and environment variable prefixes remain `Flutu` for compatibility, and the sign-in page continues to show the build commit version.
+- The public site brand and browser page titles use `flutu.eu`; the existing shared logo asset is retained. The internal project/repository name and environment variable prefixes remain `Flutu` for compatibility, and the sign-in page continues to show the build commit version.
 - Supported interface locales are `en_GB` (English, United Kingdom; default) and `pt_PT` (Portuguese, Portugal). Flask-Babel provides gettext for Jinja and Python messages; translations live in `app/translations/<language>/LC_MESSAGES/messages.po` and compiled `messages.mo` catalogs.
 - Locale precedence is an explicit choice stored in the signed Flask session, then the best supported match from `Accept-Language`, then `en_GB`. The public language selector posts to `/language/<locale>` and redirects only to a same-site path. The choice is preserved through Google OAuth session replacement and logout. The shared template sets the corresponding BCP 47 `lang` attribute.
 - Browser scripts receive localized strings through the shared `window.FlutuI18n` catalogue. JavaScript translation keys must be included in `JS_MESSAGE_IDS`; known API error codes map to localized user-facing text while API contracts remain language-neutral. Dates and numbers should use the selected locale. Push copy requires a persisted per-user locale before it can be localized for closed-browser delivery.

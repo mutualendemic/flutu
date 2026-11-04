@@ -15,7 +15,7 @@
 - The public landing page introduces branching conversations, consent-based location sharing, contacts, and optional activity notifications. It provides Google sign-in and the project link. This overview is not displayed on the authenticated dashboard.
 - The landing page renders a local, dependency-free canvas particle animation inspired by the anti-gravity points effect in `https://codepen.io/ykob/pen/avEpdd`; no third-party frame or runtime is required. Particles drift upward, subtly react to pointer movement, and pause when the page is hidden. The canvas has a localized accessible label, honors reduced-motion preferences, and scales responsively.
 - The shared header offers English (UK) and Portuguese (Portugal). English (UK) is the default when no explicit selection or supported browser preference is available. The translated catalog currently covers the landing page, sign-in page, and dashboard; remaining private pages/messages are not yet fully translated.
-- The visible site brand is `ux9.eu`; the existing logo and build-version display are retained.
+- The visible site brand is `flutu.eu`; the existing logo and build-version display are retained.
 - The GitHub link in the interface points to `https://github.com/mutualendemic/flutu`, opens in a new tab, and uses `rel="noopener noreferrer"`.
 - The page shows the version as a short commit hash. In deployment, it uses `FLUTU_BUILD_COMMIT`, `VERCEL_GIT_COMMIT_SHA`, `GITHUB_SHA`, or `SOURCE_VERSION` (in that order); in development, it tries `git rev-parse`; if unavailable, it displays `unknown`.
 - Private routes are protected on the server by the `login_required` decorator; see the cross-cutting [architecture specification](../architecture.md).

@@ -37,13 +37,13 @@
       indicator.title = t('This browser does not support geolocation.');
     } else if (status.enabled && !window.isSecureContext) {
       indicator.textContent = t('Location requires a secure connection');
-      indicator.title = t('Open ux9.eu using HTTPS to share device location.');
+      indicator.title = t('Open flutu.eu using HTTPS to share device location.');
     } else if (status.enabled && lastLocationError) {
       indicator.textContent = t('Location sharing needs attention');
       indicator.title = lastLocationError;
     } else if (status.enabled) {
       indicator.textContent = t(status.active_recipients === 1 ? 'Sharing location with {count} contact' : 'Sharing location with {count} contacts').replace('{count}', status.active_recipients);
-      indicator.title = t('Your latest location is shared while you are using ux9.eu.');
+      indicator.title = t('Your latest location is shared while you are using flutu.eu.');
     } else if (status.active_recipients) {
       indicator.textContent = t('Location sharing paused');
       indicator.title = t('You have active permissions, but location updates are paused.');

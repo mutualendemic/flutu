@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}ux9.eu | {{ _('My contacts') }}{% endblock %}
+{% block title %}Flutu.eu | {{ _('My contacts') }}{% endblock %}
 {% block styles %}
   .contacts { max-width: 720px; margin-top: 5vh; }
   .contact-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin: 22px 0; }
@@ -39,7 +39,7 @@
   <main class="card contacts">
     <p class="eyebrow">{{ _('Your address book') }}</p>
     <h1>{{ _('My contacts') }}</h1>
-    <p>{{ _('Your contacts are saved to your ux9.eu account. Import contacts from your phone when your browser supports it, or add someone manually.') }}</p>
+    <p>{{ _('Your contacts are saved to your Flutu.eu account. Import contacts from your phone when your browser supports it, or add someone manually.') }}</p>
 
     <div class="contact-actions">
       <button class="button" id="import-contacts" type="button">{{ _('Import from phone') }}</button>
@@ -152,7 +152,7 @@
       }
 
       function invitationMessage(contact) {
-        return t("Hi {name}, I use ux9.eu to make plans with friends. Sign in with Google and join me: {url}")
+        return t("Hi {name}, I use Flutu.eu to make plans with friends. Sign in with Google and join me: {url}")
           .replace("{name}", () => contact.name)
           .replace("{url}", () => inviteUrl);
       }
@@ -221,7 +221,7 @@
           actions.className = "contact-card-actions";
           const message = invitationMessage(contact);
           if (contact.email) {
-            const emailParameters = new URLSearchParams({ subject: t("Join me on ux9.eu"), body: message });
+            const emailParameters = new URLSearchParams({ subject: t("Join me on Flutu.eu"), body: message });
             actions.append(invitationLink(
               t("Invite by email"),
               t("Invite {name} by email").replace("{name}", () => contact.name),

@@ -352,6 +352,7 @@ class ChatTests(unittest.TestCase):
         self.sign_in()
         response = self.http.get("/chat/")
         self.assertEqual(response.status_code, 200)
+        self.assertIn(b".conversation-link { display:block; flex:1; width:100%;", response.data)
         self.assertIn(b"member-photo", response.data)
         script = self.http.get("/static/chat-list.js")
         self.assertIn(b"member.picture", script.data)

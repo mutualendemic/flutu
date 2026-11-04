@@ -180,7 +180,7 @@
     const title = el('h2', node.label);
     const member = snapshot?.members?.find(item => item.user_id === node.author_user_id);
     const authorRow = el('div', undefined, 'question-author');
-    const avatar = el('span', (member?.name || t('ux9.eu member')).trim().split(/\s+/).map(part => part[0] || '').slice(0, 2).join('').toUpperCase(), 'question-author-avatar');
+    const avatar = el('span', (member?.name || t('flutu.eu member')).trim().split(/\s+/).map(part => part[0] || '').slice(0, 2).join('').toUpperCase(), 'question-author-avatar');
     avatar.setAttribute('aria-hidden', 'true');
     const pictureUrl = member?.picture;
     if (pictureUrl) {

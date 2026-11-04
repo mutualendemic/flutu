@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}ux9.eu | {{ _('Sign in') }}{% endblock %}
+{% block title %}Flutu.eu | {{ _('Sign in') }}{% endblock %}
 {% block styles %}
   .login-card { width: min(100%, 460px); margin-top: 8vh; padding: 36px 32px; }
   .brand { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 22px; font-size: 1.9rem; font-weight: 800; letter-spacing: -.06em; }
@@ -11,9 +11,9 @@
 {% endblock %}
 {% block content %}
   <main class="card login-card">
-    <div class="brand"><img src="{{ url_for('static', filename='logo.svg') }}" alt="" /> <span>ux9.eu</span></div>
+    <div class="brand"><img src="{{ url_for('static', filename='logo.svg') }}" alt="" /> <span>Flutu.eu</span></div>
     <h1>{{ _('Sign in') }}</h1>
-    <p class="subtitle">{{ _('Access your ux9.eu account') }}</p>
+    <p class="subtitle">{{ _('Access your Flutu.eu account') }}</p>
     {% for category, message in get_flashed_messages(with_categories=true) %}
       <p class="error" role="alert">{{ message }}</p>
     {% endfor %}

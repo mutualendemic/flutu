@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}ux9.eu | {{ _('Location map') }}{% endblock %}
+{% block title %}Flutu.eu | {{ _('Location map') }}{% endblock %}
 {% block styles %}
   .map-page { width: min(100%, 1180px); padding: clamp(18px, 3vw, 30px); }
   .map-header, .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
@@ -60,7 +60,7 @@
       <div class="stack">
         <section class="panel">
           <h2>{{ _('Request a location') }}</h2>
-          <p class="subtle">{{ _('Choose a saved contact with an email address. They must have signed in to ux9.eu; they decide whether to share.') }}</p>
+          <p class="subtle">{{ _('Choose a saved contact with an email address. They must have signed in to flutu.eu; they decide whether to share.') }}</p>
           <form id="request-form" class="contact-form">
             <label for="contact-select">{{ _('Contact') }}</label>
             <select id="contact-select" required><option value="">{{ _('Loading contacts…') }}</option></select>
@@ -87,7 +87,7 @@
           <p id="share-message" class="notice" role="status" aria-live="polite">{{ _('Accept an incoming request before sharing your location.') }}</p>
           <p id="own-location-status" class="subtle" role="status" aria-live="polite">{{ _('When you open this map, your device location is tracked privately here every 30 seconds.') }}</p>
           <button id="retry-own-location" class="button button-secondary small-button" type="button">{{ _('Locate my device') }}</button>
-          <p class="subtle">{{ _('After enabling, ux9.eu updates your location about every 30 seconds while you use the app, provided the browser grants location access. You can pause updates or revoke access for one person or everyone.') }}</p>
+          <p class="subtle">{{ _('After enabling, flutu.eu updates your location about every 30 seconds while you use the app, provided the browser grants location access. You can pause updates or revoke access for one person or everyone.') }}</p>
         </section>
       </div>
     </div>
@@ -180,8 +180,8 @@
     }
 
     function locationError(error) {
-      if (!window.isSecureContext) return t('Location requires HTTPS. Open ux9.eu using its secure https:// address.');
-      if (!navigator.geolocation) return t('This browser or in-app browser does not provide location access. Open ux9.eu in your device browser.');
+      if (!window.isSecureContext) return t('Location requires HTTPS. Open flutu.eu using its secure https:// address.');
+      if (!navigator.geolocation) return t('This browser or in-app browser does not provide location access. Open flutu.eu in your device browser.');
       if (error?.code === 1) return t('Location permission was denied. Allow location access for this site in your browser settings, then try again.');
       if (error?.code === 2) return t('Your device could not determine its location. Check that Location is enabled and try again outdoors.');
       if (error?.code === 3) return t('Getting your location timed out. Check your device Location setting and try again.');
@@ -430,7 +430,7 @@
     }
 
     function locationError(error) {
-      if (!window.isSecureContext) return t('Device location requires HTTPS. Open ux9.eu using its secure https:// address.');
+      if (!window.isSecureContext) return t('Device location requires HTTPS. Open flutu.eu using its secure https:// address.');
       if (!navigator.geolocation) return t('This browser does not support device location. Try your device browser.');
       if (error?.code === 1) return t('Location permission was denied. Allow location access for this site in browser settings, then tap “Locate my device”.');
       if (error?.code === 2) return t('Your device could not determine its location. Check that Location is enabled.');
@@ -520,7 +520,7 @@
         const notice = document.getElementById('request-message');
         try {
           const result = await callApi(api.requests, { method: 'POST', body: JSON.stringify({ contact_id: contactId }) });
-          message(notice, result.created ? t('Request sent. It will be visible when the contact next opens ux9.eu.') : t('A request is already pending.'));
+          message(notice, result.created ? t('Request sent. It will be visible when the contact next opens flutu.eu.') : t('A request is already pending.'));
           await loadOverview();
         } catch (error) { message(notice, error.message, true); }
       });

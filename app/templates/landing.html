@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}ux9.eu | {{ _('A private space for making plans') }}{% endblock %}
+{% block title %}Flutu.eu | {{ _('A private space for making plans') }}{% endblock %}
 {% block styles %}
   .landing { width:min(100%,900px); margin:4vh auto 0; }
   .landing-brand { display:flex; align-items:center; gap:12px; margin-bottom:30px; font-size:1.55rem; font-weight:800; }
@@ -17,13 +17,13 @@
 {% endblock %}
 {% block content %}
 <main class="card landing">
-  <div class="landing-brand"><img src="{{ url_for('static', filename='logo.svg') }}" alt="" /><span>ux9.eu</span></div>
+  <div class="landing-brand"><img src="{{ url_for('static', filename='logo.svg') }}" alt="" /><span>Flutu.eu</span></div>
   <div class="landing-effect">
     <canvas id="landing-particles" role="img" aria-label="{{ _('Floating particle animation') }}"></canvas>
   </div>
   <p class="eyebrow">{{ _('A calmer way to coordinate') }}</p>
   <h1>{{ _('Bring your people and plans together.') }}</h1>
-  <p class="landing-lead">{{ _('ux9.eu helps you make decisions with friends, keep useful contacts together, and share location only with people you trust.') }}</p>
+  <p class="landing-lead">{{ _('Flutu.eu helps you make decisions with friends, keep useful contacts together, and share location only with people you trust.') }}</p>
   <section class="capabilities" aria-label="{{ _('What you can do') }}">
     <article class="capability"><h2>{{ _('Branching conversations') }}</h2><p>{{ _('Create a question with options and let a quantum-random choice guide the next step.') }}</p></article>
     <article class="capability"><h2>{{ _('Private location sharing') }}</h2><p>{{ _('Share live location only after consent, with controls to pause or revoke access.') }}</p></article>

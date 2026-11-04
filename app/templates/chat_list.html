@@ -1,12 +1,12 @@
 {% extends "base.html" %}
-{% block title %}ux9.eu | {{ _('Branching chat') }}{% endblock %}
+{% block title %}Flutu.eu | {{ _('Branching chat') }}{% endblock %}
 {% block styles %}
   .chat-wrap { width: min(100%, 900px); margin: 0 auto; }
   .chat-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:20px; }
   .chat-head h1 { margin:0; }
   .conversation-list { display:grid; gap:12px; }
   .conversation-card { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:18px; border:1px solid var(--border); border-radius:16px; background:var(--surface-muted); color:var(--text); }
-  .conversation-link { display:block; flex:1; min-width:0; color:var(--text); text-decoration:none; }
+  .conversation-link { display:block; flex:1; width:100%; min-width:0; color:var(--text); text-decoration:none; }
   .conversation-delete { width:auto; margin:0; flex:none; }
   .small-button { padding:9px 12px; font-size:.9rem; }
   .button-danger { background:#b42318; }

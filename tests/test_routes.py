@@ -73,7 +73,7 @@ class RouteTests(unittest.TestCase):
         self.assertIn(b'id="landing-particles"', response.data)
         self.assertIn(b"landing-effect.js", response.data)
         self.assertNotIn(b"<iframe", response.data)
-        self.assertIn(b"ux9.eu", response.data)
+        self.assertIn(b"flutu.eu", response.data)
         self.assertIn(b'lang="en-GB"', response.data)
 
     def test_vercel_export_module_exposes_app(self):
