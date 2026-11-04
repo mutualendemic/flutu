@@ -37,6 +37,11 @@
       const link = document.createElement('a');
       link.className = 'conversation-link';
       link.href = `/chat/${encodeURIComponent(conversation.id)}`;
+      card.addEventListener('click', event => {
+        if (event.target.closest('button')) return;
+        if (event.target.closest('a')) return;
+        window.location.assign(link.href);
+      });
       const title = document.createElement('h2');
       title.textContent = conversation.title;
       const meta = document.createElement('p');
