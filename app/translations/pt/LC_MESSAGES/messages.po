@@ -834,6 +834,15 @@ msgstr "Criar uma conversa"
 msgid "Title"
 msgstr "Título"
 
+msgid "Edit conversation title"
+msgstr "Editar título da conversa"
+
+msgid "Save"
+msgstr "Guardar"
+
+msgid "Could not update conversation title."
+msgstr "Não foi possível atualizar o título da conversa."
+
 msgid "Add people from Contacts"
 msgstr "Adicionar pessoas dos contactos"
 

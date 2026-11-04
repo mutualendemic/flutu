@@ -9,6 +9,10 @@
   const status = document.getElementById('connection-status');
   const details = document.getElementById('details');
   const error = document.getElementById('chat-error');
+  const titleDialog = document.getElementById('edit-title-dialog');
+  const titleForm = document.getElementById('edit-title-form');
+  const titleInput = document.getElementById('edit-title-input');
+  const titleError = document.getElementById('edit-title-error');
   const optionsEditor = document.getElementById('option-editors');
   const membersPanel = document.getElementById('members-panel');
   const nodes = new Map();
@@ -84,6 +88,7 @@
     canCreateRoot = data.can_create_initial_question === true;
     document.getElementById('graph-stage').classList.toggle('has-questions', data.nodes.length > 0);
     document.getElementById('conversation-title').textContent = data.title || t('Conversation');
+    document.getElementById('edit-conversation-title').hidden = data.can_manage_members !== true;
     ensureGraph();
     const graphNodes = data.nodes.flatMap(node => {
       if (node.type !== 'question') return [node];
@@ -403,7 +408,7 @@
       }
       if (realtimeConnection) realtimeConnection.refresh().catch(() => startPolling());
       eventRefresh();
-    }, (state, detail) => {
+    }, state => {
       if (state === 'CONNECTED') {
         status.dataset.connected = 'true';
         status.textContent = t('Private channel authorized · Supabase Realtime');
@@ -415,9 +420,7 @@
         }
       } else if (state === 'AUTHORIZATION_FAILED' || state === 'CHANNEL_ERROR' || state === 'TIMED_OUT' || state === 'CLOSED' || state === 'ERROR') {
         status.dataset.connected = 'false';
-        status.textContent = t('Supabase private-channel check failed · using polling');
-        status.title = t(detail?.message || 'Review private-channel settings and the realtime.messages SELECT RLS policy.');
-        setError(`${status.title} ${t('Chat is continuing with slower polling.')}`);
+        status.removeAttribute('title');
         startPolling();
       }
     }, {conversationId}).then(connection => { realtimeConnection = connection; })
@@ -454,6 +457,7 @@
     socket.on('question_deleted', eventRefresh);
     socket.on('member_added', eventRefresh);
     socket.on('member_removed', eventRefresh);
+    socket.on('conversation_updated', eventRefresh);
     socket.on('conversation_removed', () => { window.location.assign('/chat/'); });
   }
 
@@ -483,6 +487,37 @@
     toggle.setAttribute('aria-expanded', String(!membersPanel.hidden));
     toggle.setAttribute('aria-checked', String(!membersPanel.hidden));
     if (!membersPanel.hidden && snapshot?.can_manage_members) await loadMemberPicker();
+  });
+  document.getElementById('edit-conversation-title').addEventListener('click', () => {
+    titleInput.value = snapshot?.title || '';
+    titleError.textContent = '';
+    titleDialog.showModal();
+    titleInput.focus();
+  });
+  document.getElementById('cancel-edit-title').addEventListener('click', () => titleDialog.close());
+  titleForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    if (!titleInput.reportValidity()) return;
+    const saveButton = document.getElementById('save-edit-title');
+    await window.FlutuAction.run(saveButton, async () => {
+      try {
+        const response = await fetch(`${api}/conversations/${encodeURIComponent(conversationId)}/title`, {
+          method: 'PATCH',
+          headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf},
+          body: JSON.stringify({title: titleInput.value}),
+        });
+        if (!response.ok) {
+          titleError.textContent = t('Could not update conversation title.');
+          return;
+        }
+        const body = await response.json();
+        snapshot.title = body.title;
+        document.getElementById('conversation-title').textContent = body.title;
+        titleDialog.close();
+      } catch (_) {
+        titleError.textContent = t('Could not update conversation title.');
+      }
+    });
   });
   document.getElementById('member-picker').addEventListener('change', async event => {
     if (!event.target.matches('input[type=checkbox]:checked')) return;

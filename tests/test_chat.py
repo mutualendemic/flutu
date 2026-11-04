@@ -6,7 +6,7 @@ from bson import ObjectId
 
 from app import create_app
 from app.chat.sockets import socketio
-from app.services.chat import _quantum_option_index, _serialize_member, create_question, delete_conversation, graph_payload, validate_question
+from app.services.chat import _quantum_option_index, _serialize_member, create_question, delete_conversation, graph_payload, update_conversation_title, validate_question
 
 
 class ChatTests(unittest.TestCase):
@@ -147,6 +147,44 @@ class ChatTests(unittest.TestCase):
         response = self.http.delete("/chat/api/conversations/conversation-id")
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.get_json(), {"error": "csrf_failed"})
+
+    def test_conversation_title_update_route_requires_authentication_and_csrf(self):
+        response = self.http.patch("/chat/api/conversations/conversation-id/title", json={"title": "Updated"})
+        self.assertEqual(response.status_code, 401)
+        self.sign_in()
+        response = self.http.patch("/chat/api/conversations/conversation-id/title", json={"title": "Updated"})
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json(), {"error": "csrf_failed"})
+
+    def test_creator_can_update_conversation_title_and_notify_members(self):
+        self.sign_in()
+        with patch("app.chat.routes.service.update_conversation_title", return_value="Updated"), patch(
+            "app.chat.routes.service.get_active_members", return_value=[{"user_id": "google-user"}, {"user_id": "friend"}]
+        ), patch("app.chat.routes.emit_to_user") as emit:
+            response = self.http.patch(
+                "/chat/api/conversations/conversation-id/title",
+                json={"title": "Updated"}, headers=self.csrf_headers(),
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json(), {"title": "Updated"})
+        emit.assert_any_call("conversation_updated", {"id": "conversation-id"}, "friend")
+
+    def test_conversation_title_update_is_limited_to_creator(self):
+        conversation_id = ObjectId("65b0e7a3a6c6f166f1c3a001")
+        with patch("app.services.chat.get_conversation", return_value={"created_by_user_id": "creator-user"}):
+            with self.assertRaises(PermissionError):
+                update_conversation_title(str(conversation_id), "google-user", "Updated")
+
+    def test_conversation_title_update_trims_and_validates_title(self):
+        conversation_id = ObjectId("65b0e7a3a6c6f166f1c3a001")
+        conversations = Mock()
+        conversations.update_one.return_value.matched_count = 1
+        with patch("app.services.chat.get_conversation", return_value={"created_by_user_id": "google-user"}), patch(
+            "app.services.chat._collections", return_value=(conversations, Mock(), Mock(), Mock(), Mock())
+        ):
+            self.assertEqual(update_conversation_title(str(conversation_id), "google-user", "  Updated  "), "Updated")
+            with self.assertRaisesRegex(ValueError, "invalid_title"):
+                update_conversation_title(str(conversation_id), "google-user", " " * 101)
 
     def test_creator_can_delete_conversation_and_notify_all_members(self):
         self.sign_in()

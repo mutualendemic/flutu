@@ -241,6 +241,7 @@ JS_MESSAGE_IDS = (
     "The action could not be completed.",
     "Unsupported chat action.",
     "Could not load this conversation.",
+    "Could not update conversation title.",
     "Option {number}",
     "Remove",
     "Could not update members.",

@@ -114,7 +114,7 @@
   function startListPolling() {
     if (listPollingTimer) return;
     if (socket) socket.disconnect();
-    realtimeStatus.textContent = t('Supabase private-channel check failed. Using slower polling.');
+    realtimeStatus.textContent = t('Using slower polling.');
     listPollingTimer = window.setInterval(() => loadConversations().catch(() => {}), 5000);
   }
 
@@ -129,15 +129,13 @@
       if (!topic.startsWith('chat-user:')) return;
       loadConversations().catch(() => {});
       if (realtimeConnection) realtimeConnection.refresh().catch(() => startListPolling());
-    }, (state, detail) => {
+    }, state => {
       if (state === 'CONNECTED') {
         window.clearInterval(listPollingTimer);
         listPollingTimer = undefined;
         realtimeStatus.textContent = t('Supabase accepted the private channel subscription.');
         realtimeStatus.classList.remove('error');
       } else if (state === 'AUTHORIZATION_FAILED' || state === 'CHANNEL_ERROR' || state === 'TIMED_OUT' || state === 'CLOSED' || state === 'ERROR') {
-        realtimeStatus.classList.add('error');
-        realtimeStatus.textContent = `${t(detail?.message || 'Supabase private-channel authorization failed. Check the realtime.messages SELECT RLS policy.')} ${t('Using slower polling.')}`;
         startListPolling();
       }
     }, {userOnly: true}).then(connection => { realtimeConnection = connection; })
@@ -213,6 +211,7 @@
   } else if (typeof window.io === 'function') {
     socket = window.io('/chat');
     socket.on('conversation_added', () => loadConversations().catch(() => {}));
+    socket.on('conversation_updated', () => loadConversations().catch(() => {}));
     socket.on('conversation_removed', () => loadConversations().catch(() => {}));
     socket.on('connect_error', startListPolling);
   } else startListPolling();

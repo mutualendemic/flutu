@@ -99,6 +99,28 @@ def get_conversation(conversation_id):
     return conversations.find_one({"_id": cid, "deleted_at": None})
 
 
+def update_conversation_title(conversation_id, actor_id, title):
+    if not isinstance(title, str) or not title.strip() or len(title.strip()) > 100:
+        raise ValueError("invalid_title")
+    cid = _id(conversation_id)
+    if cid is None:
+        raise ValueError("not_found")
+    conversation = get_conversation(cid)
+    if not conversation:
+        raise ValueError("not_found")
+    if conversation.get("created_by_user_id") != actor_id:
+        raise PermissionError("forbidden")
+    updated_title = title.strip()
+    conversations, *_ = _collections()
+    result = conversations.update_one(
+        {"_id": cid, "created_by_user_id": actor_id, "deleted_at": None},
+        {"$set": {"title": updated_title, "last_activity": now()}},
+    )
+    if not result.matched_count:
+        raise ValueError("not_found")
+    return updated_title
+
+
 def addable_contacts(user_id, conversation_id=None):
     contacts = list(get_collection("contacts").find({"owner_id": user_id}).sort("created_at", ASCENDING))
     users = get_collection("users")

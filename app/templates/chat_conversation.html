@@ -4,8 +4,11 @@
   .conversation-page { width:min(100%,1100px); margin:0 auto; }
   .conversation-top { display:flex; justify-content:space-between; align-items:center; gap:12px; }
   .conversation-top h1 { margin:0; }
+  .conversation-heading { min-width:0; }
+  .conversation-title-row { display:flex; align-items:center; flex-wrap:wrap; gap:10px; }
   .conversation-actions { display:flex; gap:8px; }
   .conversation-actions .button { width:auto; margin:0; padding:10px 14px; }
+  .conversation-title-row .button { width:auto; margin:0; padding:8px 12px; }
   .members-toggle { display:inline-flex; align-items:center; gap:10px; min-height:42px; padding:8px 12px; border:1px solid var(--border); border-radius:999px; background:var(--surface-solid); color:var(--text); font:inherit; font-weight:700; cursor:pointer; }
   .members-switch-track { position:relative; width:42px; height:24px; flex:0 0 auto; border-radius:999px; background:#98a2b3; transition:background .18s ease; }
   .members-switch-thumb { position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:#fff; box-shadow:0 1px 3px #0004; transition:transform .18s ease; }
@@ -36,6 +39,16 @@
   .quantum-banner { display:none; margin:12px 0 0; padding:12px 14px; border:1px solid rgba(247,144,9,.35); border-radius:12px; background:rgba(247,144,9,.08); color:var(--text); }
   .quantum-banner.visible { display:block; }
   .member-list { display:flex; flex-wrap:wrap; gap:8px; padding:0; list-style:none; }
+  .picker { display:grid; gap:8px; max-height:260px; overflow:auto; margin-top:10px; }
+  .picker label { display:flex; gap:10px; align-items:center; margin:0; padding:10px; border:1px solid var(--border); border-radius:10px; }
+  .picker label > span { min-width:0; }
+  .picker small { display:block; color:var(--muted); }
+  .title-dialog { width:min(100% - 24px, 480px); border:1px solid var(--border); border-radius:16px; background:var(--surface); color:var(--text); padding:22px; }
+  .title-dialog::backdrop { background:#10182899; }
+  .title-dialog label { display:block; margin:0 0 6px; font-weight:700; }
+  .title-dialog input { width:100%; padding:12px; border:1px solid var(--input-border); border-radius:10px; background:var(--input-bg); color:var(--text); font:inherit; }
+  .title-dialog-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:14px; }
+  .title-dialog-actions .button { width:auto; margin:0; }
   .member-chip { display:flex; align-items:center; gap:7px; padding:6px 10px; border:1px solid var(--border); border-radius:999px; color:var(--text); }
   .member-avatar, .question-author-avatar { width:34px; height:34px; flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; object-fit:cover; background:var(--surface-solid); color:var(--text); font-size:.8rem; font-weight:800; }
   .question-author { display:flex; align-items:center; gap:10px; margin:8px 0 12px; }
@@ -47,7 +60,7 @@
 {% endblock %}
 {% block content %}
 <main class="card conversation-page" data-conversation-id="{{ conversation_id }}" data-csrf="{{ csrf_token() }}" data-realtime-mode="{{ chat_realtime_mode }}">
-  <header class="conversation-top"><div><p class="eyebrow">{{ _('Branching chat') }}</p><h1 id="conversation-title">{{ _('Conversation') }}</h1></div><div class="conversation-actions"><span id="connection-status" class="connection" data-connected="false" role="status">{{ _('Connecting') }}</span><button id="members-toggle" class="members-toggle" type="button" role="switch" aria-checked="false" aria-expanded="false" aria-controls="members-panel"><span>{{ _('Members') }}</span><span class="members-switch-track" aria-hidden="true"><span class="members-switch-thumb"></span></span></button></div></header>
+  <header class="conversation-top"><div class="conversation-heading"><p class="eyebrow">{{ _('Branching chat') }}</p><div class="conversation-title-row"><h1 id="conversation-title">{{ _('Conversation') }}</h1><button id="edit-conversation-title" class="button button-secondary" type="button" hidden>{{ _('Edit conversation title') }}</button></div></div><div class="conversation-actions"><span id="connection-status" class="connection" data-connected="false" role="status">{{ _('Connecting') }}</span><button id="members-toggle" class="members-toggle" type="button" role="switch" aria-checked="false" aria-expanded="false" aria-controls="members-panel"><span>{{ _('Members') }}</span><span class="members-switch-track" aria-hidden="true"><span class="members-switch-thumb"></span></span></button></div></header>
   <div class="graph-controls" aria-label="{{ _('Graph view controls') }}">
     <button id="graph-fit" class="button button-secondary" type="button">{{ _('Fit all') }}</button>
     <button id="graph-zoom-out" class="button button-secondary" type="button" aria-label="{{ _('Zoom out') }}">−</button>
@@ -78,6 +91,14 @@
   <section id="members-panel" class="members-panel" hidden><h2>{{ _('Members') }}</h2><ul id="member-list" class="member-list"></ul><label for="member-search">{{ _('Add people from Contacts') }}</label><input id="member-search" type="search" placeholder="{{ _('Search contacts') }}"><div id="member-picker" class="picker"></div></section>
   <a class="back-link" href="{{ url_for('chat.conversation_list_page') }}">{{ _('Back to conversations') }}</a>
 </main>
+<dialog id="edit-title-dialog" class="title-dialog">
+  <form id="edit-title-form">
+    <label for="edit-title-input">{{ _('Title') }}</label>
+    <input id="edit-title-input" type="text" maxlength="100" required autocomplete="off">
+    <p id="edit-title-error" class="error" role="alert"></p>
+    <div class="title-dialog-actions"><button id="save-edit-title" class="button" type="submit">{{ _('Save') }}</button><button id="cancel-edit-title" class="button button-secondary" type="button">{{ _('Cancel') }}</button></div>
+  </form>
+</dialog>
 <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.30.4/dist/cytoscape.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.8.1/dist/socket.io.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.min.js" defer></script>

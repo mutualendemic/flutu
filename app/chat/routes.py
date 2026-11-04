@@ -168,6 +168,23 @@ def api_get_conversation(conversation_id):
         return _api_error("chat_unavailable", 503)
 
 
+@chat_bp.patch("/api/conversations/<conversation_id>/title")
+def api_update_conversation_title(conversation_id):
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return _api_error("invalid_payload")
+    try:
+        title = service.update_conversation_title(conversation_id, _user_id(), payload.get("title"))
+        for member in service.get_active_members(conversation_id):
+            emit_to_user("conversation_updated", {"id": conversation_id}, member["user_id"])
+        return jsonify(title=title)
+    except (ValueError, PermissionError) as error:
+        return _api_error(str(error), _status_for_error(error))
+    except (PyMongoError, RuntimeError):
+        current_app.logger.exception("Could not update chat conversation title")
+        return _api_error("chat_unavailable", 503)
+
+
 @chat_bp.delete("/api/conversations/<conversation_id>")
 def api_delete_conversation(conversation_id):
     try:
