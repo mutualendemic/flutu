@@ -5,6 +5,11 @@
   .brand { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 22px; font-size: 1.9rem; font-weight: 800; letter-spacing: -.06em; }
   .brand img { width: 52px; height: 52px; }
   .subtitle { margin: 8px 0 24px; text-align: center; }
+  .conditions { margin: 20px 0; padding: 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-muted); }
+  .conditions p { margin: 0 0 10px; }
+  .conditions p:last-of-type { margin-bottom: 0; }
+  .accept-conditions { display: flex; align-items: flex-start; gap: 10px; color: var(--text); line-height: 1.5; }
+  .accept-conditions input { flex: 0 0 auto; margin: 4px 0 0; }
   .repo-link { margin-top: 14px; }
   .github-icon { width: 20px; height: 20px; fill: currentColor; }
   .build-version { margin: 20px 0 0; color: #687791; font-size: .78rem; text-align: center; }
@@ -17,8 +22,19 @@
     {% for category, message in get_flashed_messages(with_categories=true) %}
       <p class="error" role="alert">{{ message }}</p>
     {% endfor %}
+    <section class="conditions" aria-label="{{ _('Site conditions') }}">
+      <p>{{ _('Flutu.eu is an alpha project and may be shut down at any time.') }}</p>
+      <p>{{ _('We are not responsible for decisions made by following the quantum selector’s instructions.') }}</p>
+      <p>{{ _('The site is not responsible for any damages the user may incur from using it.') }}</p>
+    </section>
     {% if google_configured %}
-      <a class="button" href="{{ url_for('auth.google_login') }}">{{ _('Continue with Google') }}</a>
+      <form data-conditions-form method="post" action="{{ url_for('auth.accept_conditions') }}">
+        <label class="accept-conditions">
+          <input type="checkbox" name="accepted" value="yes" required {% if session.get('conditions_accepted') %}checked{% endif %} />
+          <span>{{ _('I have read and accept these conditions.') }}</span>
+        </label>
+        <button class="button" type="submit" disabled>{{ _('Continue with Google') }}</button>
+      </form>
     {% else %}
       <p class="error" role="alert">{{ _('Google sign-in is not configured. Set FLUTU_GOOGLE_CLIENT_ID and FLUTU_GOOGLE_CLIENT_SECRET.') }}</p>
     {% endif %}
@@ -28,4 +44,7 @@
     </a>
     <p class="build-version">{{ _('Version:') }} <code>{{ build_commit }}</code></p>
   </main>
+{% endblock %}
+{% block scripts %}
+  <script src="{{ url_for('static', filename='conditions-acceptance.js') }}" defer></script>
 {% endblock %}

@@ -2,6 +2,7 @@ import secrets
 
 import requests
 from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for
+from flask_babel import gettext
 
 from app.services.google_oauth import build_authorization_url, fetch_google_user
 from app.services.location_sharing import register_user
@@ -29,6 +30,8 @@ def login():
 
 @auth_bp.get("/google/login")
 def google_login():
+    if not session.get("conditions_accepted"):
+        return redirect(url_for("auth.login"))
     if not google_is_configured():
         flash("Google sign-in is not configured. Set the OAuth credentials in .env.", "error")
         return redirect(url_for("auth.login"))
@@ -44,9 +47,21 @@ def google_login():
     )
 
 
+@auth_bp.post("/accept-conditions")
+def accept_conditions():
+    if request.form.get("accepted") != "yes":
+        flash(gettext("Please accept the conditions to continue."), "error")
+        return redirect(url_for("auth.login"))
+    session["conditions_accepted"] = True
+    return redirect(url_for("auth.google_login"))
+
+
 @auth_bp.get("/callback")
 @auth_bp.get("/google/callback")
 def callback():
+    if not session.get("conditions_accepted"):
+        session.pop("oauth_state", None)
+        return redirect(url_for("auth.login"))
     if not google_is_configured():
         flash("Google sign-in is not configured. Set the OAuth credentials in .env.", "error")
         return redirect(url_for("auth.login"))

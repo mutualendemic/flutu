@@ -72,6 +72,10 @@ class RouteTests(unittest.TestCase):
         self.assertIn(b"Private location sharing", response.data)
         self.assertIn(b'id="landing-particles"', response.data)
         self.assertIn(b"landing-effect.js", response.data)
+        self.assertIn(b"conditions-acceptance.js", response.data)
+        self.assertIn(b'data-conditions-form', response.data)
+        self.assertIn(b'type="submit" disabled', response.data)
+        self.assertIn(b"I have read and accept these conditions", response.data)
         self.assertNotIn(b"<iframe", response.data)
         self.assertIn(b"flutu.eu", response.data)
         self.assertIn(b'lang="en-GB"', response.data)
@@ -107,6 +111,10 @@ class RouteTests(unittest.TestCase):
         response = self.client.get("/auth/login")
         self.assertEqual(response.status_code, 503)
         self.assertIn(b"Google sign-in is not configured", response.data)
+        self.assertIn(b"alpha project", response.data)
+        self.assertIn(b"quantum selector", response.data)
+        self.assertIn(b"damages the user may incur", response.data)
+        self.assertIn(b'conditions-acceptance.js', response.data)
         self.assertIn(b"Version:", response.data)
         self.assertIn(self.app.config["BUILD_COMMIT"].encode(), response.data)
         self.assertNotIn(b"type=\"password\"", response.data)
@@ -526,8 +534,25 @@ class RouteTests(unittest.TestCase):
 
         app = create_app(GoogleConfig)
         client = app.test_client()
-        authorization = client.get("/auth/google/login")
+        login_page = client.get("/auth/login")
+        self.assertEqual(login_page.status_code, 200)
+        self.assertIn(b"I have read and accept these conditions.", login_page.data)
+        self.assertIn(b'type="submit" disabled', login_page.data)
+        blocked = client.get("/auth/google/login")
+        self.assertEqual(blocked.status_code, 302)
+        self.assertEqual(blocked.headers["Location"], "/auth/login")
+        with client.session_transaction() as session:
+            self.assertNotIn("oauth_state", session)
+
+        unaccepted = client.post("/auth/accept-conditions", data={})
+        self.assertEqual(unaccepted.status_code, 302)
+        with client.session_transaction() as session:
+            self.assertFalse(session.get("conditions_accepted"))
+
+        authorization = client.post("/auth/accept-conditions", data={"accepted": "yes"})
         self.assertEqual(authorization.status_code, 302)
+        self.assertEqual(authorization.headers["Location"], "/auth/google/login")
+        authorization = client.get(authorization.headers["Location"])
         self.assertIn("accounts.google.com/o/oauth2/v2/auth", authorization.headers["Location"])
         self.assertIn("state=", authorization.headers["Location"])
 
@@ -562,12 +587,25 @@ class RouteTests(unittest.TestCase):
             GOOGLE_REDIRECT_URI = "http://localhost/auth/callback"
 
         client = create_app(GoogleConfig).test_client()
-        client.get("/auth/google/login")
+        client.post("/auth/accept-conditions", data={"accepted": "yes"})
         response = client.get("/auth/callback?code=auth-code&state=attacker-state")
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.headers["Location"], "/auth/login")
         with client.session_transaction() as session:
             self.assertNotIn("user", session)
+
+    def test_google_oauth_callback_requires_conditions_acceptance(self):
+        class GoogleConfig:
+            SECRET_KEY = "test-secret"
+            TESTING = True
+            GOOGLE_CLIENT_ID = "test-client-id"
+            GOOGLE_CLIENT_SECRET = "test-client-secret"
+            GOOGLE_REDIRECT_URI = "http://localhost/auth/callback"
+
+        client = create_app(GoogleConfig).test_client()
+        response = client.get("/auth/callback?code=auth-code&state=some-state")
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers["Location"], "/auth/login")
 
 
 if __name__ == "__main__":

@@ -156,42 +156,45 @@ The local development server stays bound to `127.0.0.1`, while the Vercel export
 ## Architecture
 
 ```text
-run.py                      Flask development entry point
+run.py  # Flask development entry point
 app/
-  __init__.py                Application factory and Blueprint registration
-  config.py                  Environment-backed application configuration
-  auth/
-    decorators.py             Server-side login protection
-    routes.py                 Google login, OAuth callback, logout
-  main/
-    routes.py                 Dashboard, decision and API routes
-    chat/
-      routes.py                 Protected chat pages and REST endpoints
-      sockets.py                Authenticated Socket.IO event handlers
-  services/
-    google_oauth.py           Google authorization-code and userinfo integration
-    contacts.py               MongoDB contacts, scoped by Google account
-    location_sharing.py       Consent requests and private location updates
-    chat.py                   MongoDB chat documents, validation and graph snapshots
-    mongodb.py                Shared MongoDB collection access
-    quantum_random.py         IBM Quantum hardware random measurement
-  templates/
-    base.html                 Shared Jinja layout
-    login.html                Google-only sign-in page
-    dashboard.html            Authenticated root (level 1)
-    contacts.html             Private contacts list with optional phone import (level 2)
-    location_map.html         Private OpenStreetMap and sharing controls (level 2)
-    profile.html              Private account and map-marker preferences (level 2)
-    decision.html             Decision page (level 2)
-    quantum_info.html          Decision information (level 3)
-  static/
-    logo.svg                  Shared static logo
-    location-sharing.js       Authenticated cross-route location updates
-    chat-list.js               Conversation list and contact picker
-    chat-conversation.js       Fixed-position branching graph, quantum paths and live updates
+|-- __init__.py  # Application factory and Blueprint registration
+|-- config.py  # Environment-backed application configuration
+|-- auth/
+|   |-- decorators.py  # Server-side login protection
+|   `-- routes.py  # Google login, OAuth callback, logout
+|-- chat/
+|   |-- __init__.py
+|   |-- routes.py  # Protected chat pages and REST endpoints
+|   `-- sockets.py  # Authenticated Socket.IO event handlers
+|-- main/
+|   |-- __init__.py
+|   `-- routes.py  # Dashboard, decision and API routes
+|-- services/
+|   |-- google_oauth.py  # Google authorization-code and userinfo integration
+|   |-- contacts.py  # MongoDB contacts scoped by Google account
+|   |-- location_sharing.py  # Consent requests and private location updates
+|   |-- chat.py  # MongoDB chat documents, validation and graph snapshots
+|   |-- mongodb.py  # Shared MongoDB collection access
+|   `-- quantum_random.py  # IBM Quantum hardware random measurement
+|-- templates/
+|   |-- base.html  # Shared Jinja layout
+|   |-- login.html  # Google-only sign-in with required conditions acceptance
+|   |-- dashboard.html  # Authenticated root (level 1)
+|   |-- contacts.html  # Private contacts list (level 2)
+|   |-- location_map.html  # Private location-sharing map (level 2)
+|   |-- profile.html  # Private account and map-marker preferences (level 2)
+|   |-- decision.html  # Decision page (level 2)
+|   `-- quantum_info.html  # Decision information (level 3)
+|-- static/
+|   |-- conditions-acceptance.js  # Enables sign-in after conditions are accepted
+|   |-- logo.svg  # Shared static logo
+|   |-- location-sharing.js  # Authenticated cross-route location updates
+|   |-- chat-list.js  # Conversation list and contact picker
+|   `-- chat-conversation.js  # Branching graph, quantum paths and live updates
 tests/
-  test_routes.py              Authentication, route, and session tests
-  test_google_oauth.py         Google OAuth service tests
+|-- test_routes.py  # Authentication, route, and session tests
+`-- test_google_oauth.py  # Google OAuth service tests
 ```
 
 Routes are grouped by concern in Flask Blueprints and registered by `create_app()`. Templates extend `base.html`; integration and business logic live in dedicated modules, not in route handlers or templates. Google sign-in uses the OAuth 2.0 authorization-code flow with session-bound state validation and Google's userinfo endpoint.

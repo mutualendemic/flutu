@@ -57,6 +57,24 @@ msgstr "Ver o projeto"
 msgid "Access your Flutu.eu account"
 msgstr "Aceda à sua conta Flutu.eu"
 
+msgid "Site conditions"
+msgstr "Condições do site"
+
+msgid "Flutu.eu is an alpha project and may be shut down at any time."
+msgstr "A Flutu.eu é um projeto alfa e pode ser encerrada a qualquer momento."
+
+msgid "We are not responsible for decisions made by following the quantum selector’s instructions."
+msgstr "Não nos responsabilizamos por decisões tomadas com base nas instruções do seletor quântico."
+
+msgid "The site is not responsible for any damages the user may incur from using it."
+msgstr "O site não se responsabiliza por quaisquer danos sofridos pelo utilizador decorrentes da sua utilização."
+
+msgid "I have read and accept these conditions."
+msgstr "Li e aceito estas condições."
+
+msgid "Please accept the conditions to continue."
+msgstr "Aceite as condições para continuar."
+
 msgid "Google sign-in is not configured. Set FLUTU_GOOGLE_CLIENT_ID and FLUTU_GOOGLE_CLIENT_SECRET."
 msgstr "O início de sessão com o Google não está configurado. Defina FLUTU_GOOGLE_CLIENT_ID e FLUTU_GOOGLE_CLIENT_SECRET."
 

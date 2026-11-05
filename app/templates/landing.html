@@ -12,8 +12,14 @@
   .capability { padding:18px; border:1px solid var(--border); border-radius:16px; background:var(--surface-muted); }
   .capability h2 { margin:0 0 8px; font-size:1.05rem; }
   .capability p { margin:0; }
-  .landing-actions { display:flex; flex-wrap:wrap; gap:12px; }
+  .landing-actions { display:flex; flex-wrap:wrap; align-items:flex-end; gap:12px; }
   .landing-actions .button { width:auto; min-width:200px; }
+  .landing-login-form { display:flex; flex:1 1 420px; flex-direction:column; align-items:flex-start; }
+  .conditions-copy { margin:0 0 12px; }
+  .conditions-copy p { margin:0 0 8px; }
+  .conditions-copy p:last-child { margin-bottom:0; }
+  .accept-conditions { display:flex; align-items:flex-start; gap:10px; line-height:1.5; }
+  .accept-conditions input { flex:0 0 auto; margin:4px 0 0; }
 {% endblock %}
 {% block content %}
 <main class="card landing">
@@ -30,15 +36,25 @@
     <article class="capability"><h2>{{ _('Contacts and updates') }}</h2><p>{{ _('Keep your contacts in one place and optionally receive useful activity notifications.') }}</p></article>
   </section>
   <div class="landing-actions">
-    {% if google_configured %}
-      <a class="button" href="{{ url_for('auth.google_login') }}">{{ _('Continue with Google') }}</a>
-    {% else %}
-      <a class="button" href="{{ url_for('auth.login') }}">{{ _('Sign in') }}</a>
-    {% endif %}
+    <form class="landing-login-form" data-conditions-form method="post" action="{{ url_for('auth.accept_conditions') }}">
+      <section class="conditions-copy" aria-label="{{ _('Site conditions') }}">
+        <p>{{ _('Flutu.eu is an alpha project and may be shut down at any time.') }}</p>
+        <p>{{ _('We are not responsible for decisions made by following the quantum selector’s instructions.') }}</p>
+        <p>{{ _('The site is not responsible for any damages the user may incur from using it.') }}</p>
+      </section>
+      <label class="accept-conditions">
+        <input type="checkbox" name="accepted" value="yes" required {% if session.get('conditions_accepted') %}checked{% endif %} />
+        <span>{{ _('I have read and accept these conditions.') }}</span>
+      </label>
+      <button class="button" type="submit" disabled>
+        {% if google_configured %}{{ _('Continue with Google') }}{% else %}{{ _('Sign in') }}{% endif %}
+      </button>
+    </form>
     <a class="button button-secondary" href="https://github.com/mutualendemic/flutu" target="_blank" rel="noopener noreferrer">{{ _('View the project') }}</a>
   </div>
 </main>
 {% endblock %}
 {% block scripts %}
   <script src="{{ url_for('static', filename='landing-effect.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='conditions-acceptance.js') }}" defer></script>
 {% endblock %}
