@@ -457,7 +457,17 @@
       guestList.className = 'detail-value-list';
       guests.forEach(guest => {
         const item = document.createElement('li');
-        item.textContent = [guest.name, guest.email].filter(Boolean).join(' · ');
+        const identity = document.createElement('span');
+        identity.className = 'event-person-identity';
+        const name = document.createElement('strong');
+        name.textContent = guest.name;
+        identity.append(name);
+        if (guest.email) {
+          const email = document.createElement('small');
+          email.textContent = guest.email;
+          identity.append(email);
+        }
+        item.append(identity);
         guestList.append(item);
       });
       section.append(guestList);
@@ -473,7 +483,20 @@
         const item = document.createElement('li');
         const role = t(member.role === 'editor' || member.role === 'admin' ? 'Editor' : 'Viewer');
         const invitationStatus = t(member.status === 'accepted' ? 'Accepted' : 'Invitation pending');
-        item.textContent = [member.name, member.email, role, invitationStatus].filter(Boolean).join(' · ');
+        const identity = document.createElement('span');
+        identity.className = 'event-person-identity';
+        const name = document.createElement('strong');
+        name.textContent = member.name;
+        identity.append(name);
+        if (member.email) {
+          const email = document.createElement('small');
+          email.textContent = member.email;
+          identity.append(email);
+        }
+        const meta = document.createElement('small');
+        meta.textContent = `${role} · ${invitationStatus}`;
+        identity.append(meta);
+        item.append(identity);
         memberList.append(item);
       });
       section.append(memberList);
@@ -702,7 +725,14 @@
       input.value = item.id;
       input.checked = selected.includes(item.id);
       const text = document.createElement('span');
-      text.textContent = [item.name || item.title, item.email].filter(Boolean).join(' · ');
+      const name = document.createElement('strong');
+      name.textContent = item.name || item.title;
+      text.append(name);
+      if (item.email) {
+        const email = document.createElement('small');
+        email.textContent = item.email;
+        text.append(email);
+      }
       label.append(input, text);
       container.append(label);
     });
@@ -751,7 +781,7 @@
       if (current?.status === 'pending') {
         const invitation = document.createElement('small');
         invitation.textContent = t('Invitation pending');
-        label.append(invitation);
+          identity.append(invitation);
       }
       eventMemberPicker.append(label);
     }

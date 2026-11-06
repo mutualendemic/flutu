@@ -19,6 +19,8 @@
   .event-member-option input[type="checkbox"] { width:auto; }
   .event-member-identity { display:grid; min-width:0; overflow-wrap:anywhere; }
   .event-member-identity small { color:var(--muted); font-weight:400; }
+  .check-option > span, .event-person-identity { display:grid; min-width:0; overflow-wrap:anywhere; }
+  .check-option > span small, .event-person-identity small { color:var(--muted); font-weight:400; }
   .calendar-layout { display:grid; grid-template-columns:minmax(0, 1fr); gap:24px; align-items:start; }
   .month-area { min-width:0; }
   .today-button { width:auto; margin:0; padding:9px 12px; }
@@ -110,7 +112,7 @@
   @media(min-width:851px) { .event-detail { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); column-gap:22px; } .event-detail-header, .event-detail-description, .detail-actions { grid-column:1 / -1; } }
   @media(max-width:850px) { .calendar-layout { grid-template-columns:1fr; } }
   @media(max-width:560px) { .event-detail { padding:14px; } .event-detail-header { grid-template-columns:64px minmax(0, 1fr) auto; gap:10px; } .event-detail-cover, .event-detail-cover-placeholder { width:64px; min-height:64px; } .event-detail h3, .status-label { min-height:64px; } .event-detail h3 { font-size:1.2rem; } .event-detail-map { height:170px; } }
-  @media(max-width:560px) { .event-member-option { grid-template-columns:auto minmax(0,1fr); } .event-member-option select { grid-column:2; } .event-invitation-actions { width:100%; } .event-invitation-actions .button { flex:1; } }
+  @media(max-width:560px) { .check-grid { grid-template-columns:minmax(0,1fr); } .event-member-option { grid-template-columns:auto minmax(0,1fr); } .event-member-option select { grid-column:2; } .event-invitation-actions { width:100%; } .event-invitation-actions .button { flex:1; } }
   @media(max-width:560px) { body { padding:10px; } .calendar-header { align-items:flex-start; flex-wrap:wrap; } .calendar-header > div { flex:1 1 100%; } .calendar-header .button { width:100%; height:auto; min-height:44px; flex:none; padding:10px 14px; } .calendar-header .new-event-label { display:inline; } .day-cell { min-height:82px; } .day-select { padding:4px; } .day-number { width:26px; height:26px; } .day-events { padding:34px 4px 4px; } .event-chip { font-size:.68rem; padding:3px; } .form-grid, .recurrence-fields { grid-template-columns:1fr; gap:4px; } .point-controls { grid-template-columns:1fr 1fr; } .point-controls .button { grid-column:1 / -1; } .today-button { padding:8px; } }
 {% endblock %}
 {% block content %}

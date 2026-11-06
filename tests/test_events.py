@@ -78,6 +78,7 @@ class CalendarTests(unittest.TestCase):
         self.assertIn(b"__id__", response.data)
         self.assertIn(b'id="event-invitations"', response.data)
         self.assertIn(b'id="event-member-picker"', response.data)
+        self.assertIn(b'.check-grid { grid-template-columns:minmax(0,1fr); }', response.data)
 
     def test_event_member_picker_returns_linked_account_email(self):
         self.sign_in()
