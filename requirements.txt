@@ -1,9 +1,12 @@
 Flask>=3.1,<4
 Flask-Babel>=4.0,<5
+python-dotenv>=1.0,<2
 requests>=2.32,<3
 qiskit-ibm-runtime~=0.47.0
 gunicorn>=23,<24
 pymongo>=4.10,<5
+python-dateutil>=2.9,<3
+vercel-blob>=0.5.0,<1
 dnspython>=2.6,<3
 Flask-SocketIO>=5.5,<6
 gevent>=24.11

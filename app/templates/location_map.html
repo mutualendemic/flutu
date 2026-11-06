@@ -12,6 +12,8 @@
   #map { height: min(60vh, 560px); min-height: 340px; border-radius: 12px; background: #eaf0f6; z-index: 0; }
   .map-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
   .map-controls p { margin: 0; }
+  .map-controls label { display:flex; align-items:center; gap:8px; color:var(--text); font-size:.9rem; font-weight:700; }
+  .map-controls input { width:auto; margin:0; accent-color:var(--link); }
   .map-caption, .subtle { color: #667085; font-size: .88rem; }
   .stack { display: grid; gap: 16px; align-content: start; }
   .contact-form { display: grid; gap: 10px; }
@@ -19,6 +21,8 @@
   .small-button { width: auto; margin: 0; padding: 10px 12px; font-size: .9rem; }
   .user-map-avatar { display: block; width: 42px; height: 42px; border: 3px solid white; border-radius: 50%; background: #3655d4; box-shadow: 0 2px 8px #14213d66; object-fit: cover; }
   .user-map-initials { display: grid; width: 42px; height: 42px; place-items: center; border: 3px solid white; border-radius: 50%; background: #3655d4; box-shadow: 0 2px 8px #14213d66; color: white; font-size: .9rem; font-weight: 800; }
+  .event-map-pin { display:grid; width:34px; height:42px; place-items:center; overflow:hidden; border:2px solid white; border-radius:50% 50% 50% 0; background:#14866d; box-shadow:0 2px 6px #14213d66; transform:rotate(-45deg); }
+  .event-map-pin img { width:28px; height:28px; border-radius:50%; object-fit:cover; transform:rotate(45deg); }
   .share-controls button:disabled { opacity: .45; cursor: not-allowed; filter: grayscale(1); }
   .button-danger { background: #b42318; }
   .button-danger:hover { background: #912018; }
@@ -52,10 +56,11 @@
       <section class="panel" aria-label="{{ _('Shared locations map') }}">
         <div class="map-controls">
           <button id="toggle-map-follow" class="button button-secondary small-button" type="button" aria-pressed="false">{{ _('Follow location updates: Off') }}</button>
+          <label><input id="show-open-events" type="checkbox">{{ _('Show open events') }}</label>
           <p id="map-follow-status" class="map-caption" role="status" aria-live="polite">{{ _('Turn on map following to center the view on all participant markers as locations update.') }}</p>
         </div>
         <div id="map" role="application" aria-label="{{ _('OpenStreetMap showing shared contact locations') }}"></div>
-        <p class="map-caption">{{ _('Map data © OpenStreetMap contributors. Locations are visible only while sharing permission is active.') }}</p>
+        <p class="map-caption">{{ _('Map data © OpenStreetMap contributors. Contact locations are visible only while sharing permission is active. Open event pins are private to you and appear when enabled.') }}</p>
       </section>
       <div class="stack">
         <section class="panel">
@@ -104,7 +109,9 @@
       requests: {{ url_for('main.api_request_location')|tojson }},
       updates: {{ url_for('main.api_update_location')|tojson }},
       sharing: {{ url_for('main.api_set_location_sharing')|tojson }},
-      shares: {{ url_for('main.api_revoke_all_location_shares')|tojson }}
+      shares: {{ url_for('main.api_revoke_all_location_shares')|tojson }},
+      eventPoints: {{ url_for('calendar.api_map_points')|tojson }},
+      calendar: {{ url_for('calendar.page')|tojson }}
     };
     const ownProfilePicture = {{ user.get('picture')|tojson }};
     const ownProfileName = {{ user.get('name', '')|tojson }};
@@ -118,6 +125,7 @@
     }).addTo(map);
 
     const markers = new Map();
+    const eventMarkers = new Map();
     const incomingList = document.getElementById('incoming-list');
     const outgoingList = document.getElementById('outgoing-list');
     const sharingList = document.getElementById('sharing-list');
@@ -128,6 +136,7 @@
     const retryOwnLocationButton = document.getElementById('retry-own-location');
     const toggleMapFollowButton = document.getElementById('toggle-map-follow');
     const mapFollowStatus = document.getElementById('map-follow-status');
+    const showOpenEventsToggle = document.getElementById('show-open-events');
     let sharingCount = 0;
     let sharingEnabled = false;
     let mapFollowingLocations = false;
@@ -139,7 +148,7 @@
     let sharedLocationsByUser = new Map();
 
     function fitMapToMarkers() {
-      const visibleMarkers = [...markers.values()];
+      const visibleMarkers = [...markers.values(), ...eventMarkers.values()];
       if (ownMarker) visibleMarkers.push(ownMarker);
       const points = visibleMarkers.map(marker => marker.getLatLng());
       if (!points.length) return;
@@ -376,6 +385,89 @@
       });
     }
 
+    function eventMarkerIcon(point) {
+      const marker = document.createElement('span');
+      marker.className = 'event-map-pin';
+      if (point.image_url) {
+        const image = document.createElement('img');
+        image.src = point.image_url;
+        image.alt = '';
+        image.referrerPolicy = 'same-origin';
+        marker.append(image);
+      }
+      return L.divIcon({ className: 'event-map-marker', html: marker, iconSize: [34, 42], iconAnchor: [17, 40] });
+    }
+
+    function eventPopup(point) {
+      const content = document.createElement('div');
+      const title = document.createElement('strong');
+      title.textContent = point.title;
+      const place = document.createElement('div');
+      place.textContent = point.label;
+      content.append(title, place);
+      if (point.description) {
+        const description = document.createElement('p');
+        description.textContent = point.description;
+        content.append(description);
+      }
+      const link = document.createElement('a');
+      const eventUrl = new URL(api.calendar, window.location.origin);
+      eventUrl.searchParams.set('event', point.event_id);
+      if (point.start_at) eventUrl.searchParams.set('date', point.start_at);
+      link.href = eventUrl.toString();
+      link.textContent = t('Open event calendar');
+      content.append(link);
+      return content;
+    }
+
+    function renderEventMapPoints(points) {
+      const visible = new Set();
+      points.forEach(point => {
+        const id = `${point.event_id}:${point.point_index}`;
+        visible.add(id);
+        const coordinates = [point.latitude, point.longitude];
+        let marker = eventMarkers.get(id);
+        if (!marker) {
+          marker = L.marker(coordinates, { icon: eventMarkerIcon(point) }).addTo(map);
+          marker._eventImageUrl = point.image_url;
+          marker._eventPopupSignature = '';
+          eventMarkers.set(id, marker);
+        } else {
+          const previousPoint = marker.getLatLng();
+          if (previousPoint.lat !== coordinates[0] || previousPoint.lng !== coordinates[1]) marker.setLatLng(coordinates);
+          if (marker._eventImageUrl !== point.image_url) {
+            marker.setIcon(eventMarkerIcon(point));
+            marker._eventImageUrl = point.image_url;
+          }
+        }
+        const popupSignature = JSON.stringify([point.title, point.description, point.label, point.status]);
+        if (marker._eventPopupSignature !== popupSignature) {
+          marker.bindPopup(eventPopup(point));
+          marker._eventPopupSignature = popupSignature;
+        }
+      });
+      for (const [id, marker] of eventMarkers) {
+        if (!visible.has(id)) {
+          map.removeLayer(marker);
+          eventMarkers.delete(id);
+        }
+      }
+    }
+
+    async function loadEventMapPoints() {
+      try {
+        const url = new URL(api.eventPoints, window.location.origin);
+        if (showOpenEventsToggle.checked) url.searchParams.set('status', 'open');
+        const data = showOpenEventsToggle.checked ? await callApi(url) : { points: [] };
+        renderEventMapPoints(data.points);
+      } catch (_error) {}
+    }
+
+    showOpenEventsToggle.addEventListener('change', async () => {
+      await loadEventMapPoints();
+      fitMapToMarkers();
+    });
+
     function safeProfilePicture(picture) {
       if (typeof picture !== 'string' || !picture.trim()) return '';
       try {
@@ -477,6 +569,7 @@
       try {
         const data = await callApi(api.overview);
         renderLocations(data.locations);
+        await loadEventMapPoints();
         renderList(incomingList, data.incoming_requests, t('No pending requests.'), item => makeItem(
           item.requester_name, t('{name} wants to see your location.').replace('{name}', item.requester_email), [
             { label: t('Accept'), action: () => respond(item.id, 'accept') },

@@ -1,4 +1,5 @@
 import os
+import secrets
 from datetime import datetime, timedelta, timezone
 
 from pymongo import ASCENDING, ReturnDocument
@@ -8,6 +9,13 @@ from app.services.mongodb import get_collection
 
 BATCH_SIZE = 128
 BATCH_TTL_SECONDS = 24 * 60 * 60
+
+
+def _local_mock_enabled():
+    enabled = os.environ.get("FLUTU_LOCAL_QUANTUM_MOCK", "").strip().lower()
+    app_env = os.environ.get("APP_ENV", "development").strip().lower()
+    vercel = os.environ.get("VERCEL", "").strip().lower()
+    return enabled in {"1", "true", "yes", "on"} and app_env == "development" and vercel not in {"1", "true", "yes", "on"}
 
 
 def _direction_from_measurement(bitstrings) -> bool:
@@ -43,7 +51,10 @@ def _consume_bit(collection):
 
 
 def choose_direction() -> bool:
-    """Consume a cached IBM Quantum bit, filling a batch when needed."""
+    """Use the local mock when enabled; otherwise consume an IBM Quantum bit."""
+    if _local_mock_enabled():
+        return bool(secrets.randbits(1))
+
     try:
         collection = get_collection("quantum_random_batches")
         bit = _consume_bit(collection)

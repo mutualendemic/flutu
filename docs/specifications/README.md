@@ -14,6 +14,7 @@ This directory records decisions implemented in the current code. It is not a pr
 | Dashboard | `/dashboard` | [dashboard.md](pages/dashboard.md) |
 | Contacts | `/contacts` | [contacts.md](pages/contacts.md) |
 | Map and sharing | `/map` | [location-map.md](pages/location-map.md) |
+| Event calendar | `/calendar` | [event-calendar.md](pages/event-calendar.md) |
 | Profile and preferences | `/profile` | [profile.md](pages/profile.md) |
 | Direction choice | `/decision` | [decision.md](pages/decision.md) |
 | Decision information | `/decision/info` | [quantum-info.md](pages/quantum-info.md) |

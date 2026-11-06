@@ -366,6 +366,9 @@ msgstr "As notificações estão desativadas. Ative-as para receber pedidos de a
 msgid "Location sharing is unavailable."
 msgstr "A partilha da localização não está disponível."
 
+msgid "Map library unavailable."
+msgstr "A biblioteca do mapa não está disponível."
+
 msgid "Location sharing status unavailable"
 msgstr "Estado da partilha da localização indisponível"
 
@@ -561,6 +564,9 @@ msgstr "Veja as localizações partilhadas consigo e controle quem pode ver a su
 msgid "Shared locations map"
 msgstr "Mapa das localizações partilhadas"
 
+msgid "Show open events"
+msgstr "Mostrar eventos abertos"
+
 msgid "Follow location updates: On"
 msgstr "Acompanhar atualizações da localização: Ativo"
 
@@ -579,8 +585,8 @@ msgstr "O acompanhamento do mapa está inativo. O mapa permanecerá onde o coloc
 msgid "OpenStreetMap showing shared contact locations"
 msgstr "OpenStreetMap com as localizações partilhadas dos contactos"
 
-msgid "Map data © OpenStreetMap contributors. Locations are visible only while sharing permission is active."
-msgstr "Dados cartográficos © colaboradores do OpenStreetMap. As localizações só são visíveis enquanto a autorização de partilha estiver ativa."
+msgid "Map data © OpenStreetMap contributors. Contact locations are visible only while sharing permission is active. Open event pins are private to you and appear when enabled."
+msgstr "Dados cartográficos © colaboradores do OpenStreetMap. As localizações dos contactos só são visíveis enquanto a autorização de partilha estiver ativa. Os pins dos eventos abertos são privados e aparecem quando ativados."
 
 msgid "Request a location"
 msgstr "Pedir uma localização"
@@ -1160,3 +1166,309 @@ msgstr "Foi atingido o limite de contactos."
 
 msgid "Could not get your device location."
 msgstr "Não foi possível obter a localização do dispositivo."
+
+msgid "Event calendar"
+msgstr "Calendário de eventos"
+
+msgid "Make plans together"
+msgstr "Organize planos em conjunto"
+
+msgid "Your events, dates, places and conversations."
+msgstr "Os seus eventos, datas, locais e conversas."
+
+msgid "Create event"
+msgstr "Criar evento"
+
+msgid "New event"
+msgstr "Novo evento"
+
+msgid "Monthly calendar"
+msgstr "Calendário mensal"
+
+msgid "Previous month"
+msgstr "Mês anterior"
+
+msgid "Next month"
+msgstr "Mês seguinte"
+
+msgid "Today"
+msgstr "Hoje"
+
+msgid "Mon"
+msgstr "Seg"
+
+msgid "Tue"
+msgstr "Ter"
+
+msgid "Wed"
+msgstr "Qua"
+
+msgid "Thu"
+msgstr "Qui"
+
+msgid "Fri"
+msgstr "Sex"
+
+msgid "Sat"
+msgstr "Sáb"
+
+msgid "Sun"
+msgstr "Dom"
+
+msgid "Status"
+msgstr "Estado"
+
+msgid "Open"
+msgstr "Aberto"
+
+msgid "In progress"
+msgstr "Em curso"
+
+msgid "Closed"
+msgstr "Fechado"
+
+msgid "Repeat on"
+msgstr "Repetir em"
+
+msgid "Monday"
+msgstr "segunda-feira"
+
+msgid "Tuesday"
+msgstr "terça-feira"
+
+msgid "Wednesday"
+msgstr "quarta-feira"
+
+msgid "Thursday"
+msgstr "quinta-feira"
+
+msgid "Friday"
+msgstr "sexta-feira"
+
+msgid "Saturday"
+msgstr "sábado"
+
+msgid "Sunday"
+msgstr "domingo"
+
+msgid "Choose at least one weekday."
+msgstr "Escolha pelo menos um dia da semana."
+
+msgid "Find a place"
+msgstr "Encontrar um local"
+
+msgid "Search by place or address"
+msgstr "Pesquisar por local ou morada"
+
+msgid "Search"
+msgstr "Pesquisar"
+
+msgid "No matching locations."
+msgstr "Não foram encontrados locais correspondentes."
+
+msgid "Edit pin"
+msgstr "Editar pino"
+
+msgid "Save map point"
+msgstr "Guardar ponto no mapa"
+
+msgid "Event image (optional)"
+msgstr "Imagem do evento (opcional)"
+
+msgid "Image is resized and compressed to at most 64 KB."
+msgstr "A imagem é redimensionada e comprimida para, no máximo, 64 KB."
+
+msgid "Event image preview"
+msgstr "Pré-visualização da imagem do evento"
+
+msgid "Remove event image"
+msgstr "Remover imagem do evento"
+
+msgid "Enter at least two characters to search."
+msgstr "Introduza pelo menos dois caracteres para pesquisar."
+
+msgid "Location search is temporarily unavailable."
+msgstr "A pesquisa de locais está temporariamente indisponível."
+
+msgid "Please wait a moment before searching again."
+msgstr "Aguarde um momento antes de pesquisar novamente."
+
+msgid "Choose a PNG, JPEG or WebP image to optimize."
+msgstr "Escolha uma imagem PNG, JPEG ou WebP para otimizar."
+
+msgid "The selected event image could not be read."
+msgstr "Não foi possível ler a imagem do evento selecionada."
+
+msgid "The optimized event image must be 64 KB or smaller."
+msgstr "A imagem otimizada do evento tem de ter, no máximo, 64 KB."
+
+msgid "Description (optional)"
+msgstr "Descrição (opcional)"
+
+msgid "Dates and times"
+msgstr "Datas e horas"
+
+msgid "Add date"
+msgstr "Adicionar data"
+
+msgid "Guests from Contacts"
+msgstr "Convidados dos contactos"
+
+msgid "Loading conversations…"
+msgstr "A carregar conversas…"
+
+msgid "Select event locations on the map"
+msgstr "Selecionar locais do evento no mapa"
+
+msgid "Location name"
+msgstr "Nome do local"
+
+msgid "Pin image (optional)"
+msgstr "Imagem do pino (opcional)"
+
+msgid "Click the map to choose coordinates"
+msgstr "Clique no mapa para escolher as coordenadas"
+
+msgid "Add map point"
+msgstr "Adicionar ponto ao mapa"
+
+msgid "Save event"
+msgstr "Guardar evento"
+
+msgid "+{count} more"
+msgstr "+{count} mais"
+
+msgid "No events on this date."
+msgstr "Não há eventos nesta data."
+
+msgid "Guests"
+msgstr "Convidados"
+
+msgid "Map locations"
+msgstr "Locais no mapa"
+
+msgid "Edit"
+msgstr "Editar"
+
+msgid "Loading events…"
+msgstr "A carregar eventos…"
+
+msgid "Event date"
+msgstr "Data do evento"
+
+msgid "Remove date"
+msgstr "Remover data"
+
+msgid "Starts"
+msgstr "Início"
+
+msgid "Ends"
+msgstr "Fim"
+
+msgid "Repeats"
+msgstr "Repetição"
+
+msgid "Does not repeat"
+msgstr "Não se repete"
+
+msgid "Daily"
+msgstr "Diariamente"
+
+msgid "Weekly"
+msgstr "Semanalmente"
+
+msgid "Monthly"
+msgstr "Mensalmente"
+
+msgid "Yearly"
+msgstr "Anualmente"
+
+msgid "Every"
+msgstr "A cada"
+
+msgid "Repeat until"
+msgstr "Repetir até"
+
+msgid "Custom pin"
+msgstr "Pino personalizado"
+
+msgid "Remove map point"
+msgstr "Remover ponto do mapa"
+
+msgid "Open event calendar"
+msgstr "Abrir calendário de eventos"
+
+msgid "Enter a start and end for every event date."
+msgstr "Indique o início e o fim de cada data do evento."
+
+msgid "Choose an end date for a repeating date."
+msgstr "Escolha uma data final para a repetição."
+
+msgid "Delete this event?"
+msgstr "Eliminar este evento?"
+
+msgid "Choose a location on the map first."
+msgstr "Escolha primeiro um local no mapa."
+
+msgid "Event location"
+msgstr "Local do evento"
+
+msgid "Choose a valid date and time with a timezone."
+msgstr "Escolha uma data e hora válidas com fuso horário."
+
+msgid "Each event date needs a valid start and end, with the end after the start."
+msgstr "Cada data do evento precisa de um início e fim válidos, com o fim posterior ao início."
+
+msgid "The recurrence settings are invalid or outside the allowed date range."
+msgstr "As definições de repetição são inválidas ou estão fora do intervalo permitido."
+
+msgid "A repeating date cannot create more than 500 occurrences."
+msgstr "Uma data recorrente não pode gerar mais de 500 ocorrências."
+
+msgid "The event description is too long or invalid."
+msgstr "A descrição do evento é demasiado longa ou inválida."
+
+msgid "Choose a valid event status."
+msgstr "Escolha um estado válido para o evento."
+
+msgid "One or more selected guests are not in your contacts."
+msgstr "Um ou mais convidados selecionados não constam dos seus contactos."
+
+msgid "One or more selected conversations are unavailable."
+msgstr "Uma ou mais conversas selecionadas não estão disponíveis."
+
+msgid "One or more map locations are invalid or the event has too many locations."
+msgstr "Um ou mais locais no mapa são inválidos ou o evento tem demasiados locais."
+
+msgid "Choose a PNG, JPEG or WebP image to optimize."
+msgstr "Escolha uma imagem PNG, JPEG ou WebP para otimizar."
+
+msgid "The original image must be smaller than 10 MB."
+msgstr "A imagem original tem de ser inferior a 10 MB."
+
+msgid "The optimized pin image must be 24 KB or smaller."
+msgstr "A imagem otimizada do pino tem de ter, no máximo, 24 KB."
+
+msgid "Automatically resized to 256 px and optimized to at most 24 KB."
+msgstr "Redimensionada automaticamente para 256 px e otimizada para, no máximo, 24 KB."
+
+msgid "The calendar date range is invalid."
+msgstr "O intervalo de datas do calendário é inválido."
+
+msgid "The event calendar is temporarily unavailable."
+msgstr "O calendário de eventos está temporariamente indisponível."
+
+msgid "A private map pin image could not be stored or loaded."
+msgstr "Não foi possível guardar ou carregar uma imagem privada de pino do mapa."
+
+msgid "The selected pin image could not be read."
+msgstr "Não foi possível ler a imagem de pino selecionada."
+
+msgid "No contacts saved yet."
+msgstr "Ainda não existem contactos guardados."
+
+msgid "No conversations yet."
+msgstr "Ainda não existem conversas."
+
+msgid "The event title is invalid."
+msgstr "O título do evento é inválido."

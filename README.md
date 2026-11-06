@@ -1,6 +1,6 @@
 # flutu.eu
 
-Flutu.eu is a small Flask application with Google-only OAuth sign-in, a protected dashboard, a personal contacts list, private OpenStreetMap-based location sharing, and a quantum-random direction demo. The existing logo is retained; Flutu remains the internal repository and configuration name.
+Flutu.eu is a small Flask application with Google-only OAuth sign-in, a protected dashboard, a personal contacts list, an event calendar, private OpenStreetMap-based location sharing, and a quantum-random direction demo. The existing logo is retained; Flutu remains the internal repository and configuration name.
 
 The interface automatically follows the device's light or dark appearance preference, including system browser controls and the map's interface elements. Authenticated users can also create live branching conversations with contacts who have Flutu accounts and opt in to Web Push notifications for friend requests and collaborative chat activity.
 
@@ -14,6 +14,7 @@ The interface automatically follows the device's light or dark appearance prefer
 - Python 3.10 or later
 - Google OAuth 2.0 credentials (Web application)
 - MongoDB for persistent data
+- A private Vercel Blob store for custom event pin and cover images
 - Redis for production Socket.IO broadcasts
 
 ## Setup and run
@@ -33,7 +34,11 @@ The interface automatically follows the device's light or dark appearance prefer
 
 The public home page explains the main capabilities before sign-in. The interface supports English (UK, `en_GB`) and Portuguese (Portugal, `pt_PT`), selected from the language control or the browser's `Accept-Language` preference. The explicit choice is retained through sign-in and logout. Flask-Babel reads gettext catalogs from `app/translations/`; after changing a `.po` file, compile it with `python -m babel.messages.frontend compile -d app/translations`. The landing page, sign-in page, and dashboard currently have translated copy; the remaining authenticated pages and client-side messages are being localized incrementally. See the localization design in `docs/specifications/architecture.md`.
 
+The authenticated event calendar at `/calendar` supports events with multiple dated or recurring sessions, weekday-specific weekly recurrence, open/closed status, contact guests, branching conversations, searchable/editable map points, and optional event cover images. Pin and cover images are stored in a private Vercel Blob store and served only through authenticated, event-owner-checked routes. The `/map` page can optionally display the owner's open event pins without enabling GPS sharing. Create a private Blob store and connect it to the Vercel project to enable deployment uploads. For local uploads, set `BLOB_READ_WRITE_TOKEN` in ignored `.env`; calendar events without custom images do not require Blob credentials.
+
 Chat uses Supabase Realtime Broadcast by default when Supabase is configured; MongoDB remains the source of truth. Without Supabase, local development can use Flask-SocketIO/gevent (start with `bash start_server.sh`, not `flask run`). Redis is only needed for multi-instance Socket.IO deployment. `CHAT_REALTIME_MODE` supports `supabase`, `socketio`, and `polling`.
+
+For local testing without IBM Quantum hardware dependencies, set `FLUTU_LOCAL_QUANTUM_MOCK=true`. This uses a local random bit instead of contacting IBM Quantum and only activates when `APP_ENV=development` and the app is not running on Vercel. Keep this option unset or false in production; normal quantum decisions and chat branches require `IBM_QUANTUM_API_KEY`.
 
 Google OAuth is the only sign-in method; there is no local email/password login. For local development, `FLASK_SESSION_COOKIE_SECURE=false` allows cookies over HTTP. Set it to `true` when serving over HTTPS. Never use the development fallback session key in a deployed environment.
 
@@ -153,6 +158,8 @@ The repository includes a Vercel-compatible Flask export at `api/index.py`. Verc
 
 The local development server stays bound to `127.0.0.1`, while the Vercel export keeps the same app factory and routes as the local app.
 
+Create a **private** Vercel Blob store and connect it to this Vercel project before enabling custom event pin uploads. The Python SDK uses the project's Vercel OIDC credentials and `BLOB_STORE_ID` automatically; do not use a public store for calendar pins.
+
 ## Architecture
 
 ```text
@@ -163,6 +170,9 @@ app/
 |-- auth/
 |   |-- decorators.py  # Server-side login protection
 |   `-- routes.py  # Google login, OAuth callback, logout
+|-- calendar/
+|   |-- __init__.py  # Authenticated event calendar Blueprint
+|   `-- routes.py  # Calendar and private-image APIs
 |-- chat/
 |   |-- __init__.py
 |   |-- routes.py  # Protected chat pages and REST endpoints
@@ -174,6 +184,8 @@ app/
 |   |-- google_oauth.py  # Google authorization-code and userinfo integration
 |   |-- contacts.py  # MongoDB contacts scoped by Google account
 |   |-- location_sharing.py  # Consent requests and private location updates
+|   |-- events.py  # Event, recurrence and association persistence
+|   |-- blob_storage.py  # Private Vercel Blob image access
 |   |-- chat.py  # MongoDB chat documents, validation and graph snapshots
 |   |-- mongodb.py  # Shared MongoDB collection access
 |   `-- quantum_random.py  # IBM Quantum hardware random measurement
@@ -182,11 +194,13 @@ app/
 |   |-- login.html  # Google-only sign-in with required conditions acceptance
 |   |-- dashboard.html  # Authenticated root (level 1)
 |   |-- contacts.html  # Private contacts list (level 2)
+|   |-- calendar.html  # Private event calendar (level 2)
 |   |-- location_map.html  # Private location-sharing map (level 2)
 |   |-- profile.html  # Private account and map-marker preferences (level 2)
 |   |-- decision.html  # Decision page (level 2)
 |   `-- quantum_info.html  # Decision information (level 3)
 |-- static/
+|   |-- calendar.js  # Month view and event editor
 |   |-- conditions-acceptance.js  # Enables sign-in after conditions are accepted
 |   |-- logo.svg  # Shared static logo
 |   |-- location-sharing.js  # Authenticated cross-route location updates
@@ -206,6 +220,7 @@ The implementation decisions for cross-page architecture and each user-facing pa
 - Google OAuth login: `/auth/login`; callback: `/auth/callback` (the legacy `/auth/google/callback` remains supported); logout: `/auth/logout`.
 - `/dashboard` is the authenticated root at level 1. Its child pages return to their immediate parent.
 - `/contacts` is a level-2 page linked from the dashboard. Contacts are persisted in MongoDB and scoped to the signed-in Google account's stable `sub` identifier, making them available across devices. The server derives the owner from the authenticated session and never accepts an owner ID from the browser.
+- `/calendar` is a level-2 page linked from the dashboard. Events, occurrence rules, contact references, conversation references, and map coordinates are stored in MongoDB under the signed-in owner. Custom pin images live in a private Vercel Blob store; an authenticated proxy checks event ownership before downloading each image. See [the event-calendar specification](docs/specifications/pages/event-calendar.md) for limits and API behavior.
 - `/map` is a level-2 page linked from the dashboard. It lets a user request location sharing from a saved contact with an email address. The recipient sees the request on their map page and can accept or decline it; accepting also adds the requester to the recipient's contacts. A recipient can revoke one grant or all grants at any time. Opening the map tracks the current device locally every 30 seconds and shows the user's Google profile photo as a marker (or initials if no photo is available); private map readings are not sent to the server. To share with contacts, the owner must accept at least one incoming request and explicitly enable sharing; that action invokes the browser's native location-permission prompt (there is no separate Flutu authorization page). Shared positions are shown to authorized requesters.
 - `/profile` is a level-2 page linked from the dashboard. It shows the signed-in Google account and explains that the profile photo is used as the user's map marker, with initials as a fallback. The profile page remains available; it no longer contains marker selection controls.
 - On the map, distance to a person you share your location with is calculated locally only when you have a recent own position and that person has separately shared their location with you. Otherwise the distance is unavailable; Flutu does not infer or request their location without their consent.

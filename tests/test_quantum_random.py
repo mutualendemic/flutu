@@ -6,11 +6,30 @@ from unittest.mock import Mock, patch
 from app.services.quantum_random import (
     BATCH_SIZE,
     _direction_from_measurement,
+    _local_mock_enabled,
     choose_direction,
 )
 
 
 class QuantumRandomTests(unittest.TestCase):
+    def test_local_mock_returns_a_bit_without_accessing_mongodb_or_ibm(self):
+        with patch.dict(
+            os.environ,
+            {"FLUTU_LOCAL_QUANTUM_MOCK": "true", "APP_ENV": "development"},
+            clear=True,
+        ), patch("app.services.quantum_random.get_collection") as get_collection:
+            self.assertIsInstance(choose_direction(), bool)
+        get_collection.assert_not_called()
+
+    def test_local_mock_is_disabled_outside_local_development(self):
+        for environment in (
+            {"FLUTU_LOCAL_QUANTUM_MOCK": "true", "APP_ENV": "production"},
+            {"FLUTU_LOCAL_QUANTUM_MOCK": "true", "APP_ENV": "development", "VERCEL": "1"},
+            {"APP_ENV": "development"},
+        ):
+            with self.subTest(environment=environment), patch.dict(os.environ, environment, clear=True):
+                self.assertFalse(_local_mock_enabled())
+
     def test_measurement_bits_map_to_both_directions(self):
         self.assertFalse(_direction_from_measurement(["0"]))
         self.assertTrue(_direction_from_measurement(["1"]))

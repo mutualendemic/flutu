@@ -4,7 +4,6 @@ import re
 import subprocess
 from datetime import timedelta
 
-
 def _build_commit():
     for variable in ("FLUTU_BUILD_COMMIT", "VERCEL_GIT_COMMIT_SHA", "GITHUB_SHA", "SOURCE_VERSION"):
         value = os.environ.get(variable, "").strip()

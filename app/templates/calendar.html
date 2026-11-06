@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block title %}Flutu.eu | {{ _('Event calendar') }}{% endblock %}
+{% block styles %}
+  .calendar-page { width:min(100%, 1320px); padding:clamp(16px, 3vw, 30px); border:0; border-radius:0; background:transparent; box-shadow:none; }
+  .calendar-header, .section-heading { display:flex; align-items:center; justify-content:space-between; gap:14px; }
+  .calendar-header { margin-bottom:22px; }
+  .calendar-header h1 { margin-bottom:4px; }
+  .calendar-header p { margin:0; }
+  .calendar-header .button { width:auto; margin:0; }
+  .calendar-layout { display:grid; grid-template-columns:minmax(0, 1fr); gap:24px; align-items:start; }
+  .month-area { min-width:0; }
+  .today-button { width:auto; margin:0; padding:9px 12px; }
+  #month-grid { min-height:0; border:1px solid var(--border); border-radius:10px; background:var(--surface); overflow:hidden; }
+  #month-grid .fc, #agenda-grid .fc {
+    height:auto;
+    --fc-monarch-primary:var(--link);
+    --fc-monarch-primary-foreground:#fff;
+    --fc-monarch-event:var(--link);
+    --fc-monarch-event-contrast:#fff;
+    --fc-monarch-background:var(--surface);
+    --fc-monarch-popover:var(--surface-solid);
+    --fc-monarch-popover-foreground:var(--text);
+    --fc-monarch-foreground:var(--text);
+    --fc-monarch-muted-foreground:var(--muted);
+    --fc-monarch-border:var(--border);
+    --fc-monarch-strong-border:var(--border);
+    --fc-monarch-selected:var(--link);
+    --fc-monarch-selected-foreground:#fff;
+    --fc-monarch-outline:var(--link);
+    --fc-monarch-highlight:var(--page-mid);
+  }
+  #month-grid .fc .fc-toolbar { flex-wrap:wrap; gap:12px; margin:0; padding:14px; }
+  #month-grid .fc .fc-daygrid-day.fc-day-selected { outline:2px solid var(--link); outline-offset:-2px; }
+  #month-grid .fc .fc-daygrid-day-frame { min-height:72px; }
+  .agenda { padding-top:18px; border-top:1px solid var(--border); }
+  .agenda h2 { margin:0; font-size:1.1rem; }
+  #agenda-grid { margin-top:16px; overflow:hidden; border:1px solid var(--border); border-radius:8px; background:var(--surface); }
+  .event-detail { margin-top:18px; padding:18px; border:1px solid var(--border); border-top:3px solid var(--link); border-radius:8px; background:var(--surface); }
+  .event-detail-header { display:grid; grid-template-columns:76px minmax(0, 1fr) auto; align-items:stretch; gap:14px; padding-bottom:10px; border-bottom:1px solid var(--border); }
+  .event-detail h3 { display:flex; min-width:0; min-height:76px; align-items:center; margin:0; padding:7px 10px; border-radius:4px; font-size:1.3rem; line-height:1.25; overflow-wrap:anywhere; }
+  .event-detail-cover, .event-detail-cover-placeholder { display:block; width:76px; height:100%; min-height:76px; overflow:hidden; border:1px solid var(--border); border-radius:6px; object-fit:cover; }
+  .event-detail-cover-placeholder { border-color:transparent; }
+  .detail-section { padding:10px 0; border-bottom:1px solid var(--border); }
+  .detail-section h4 { margin:0 0 8px; padding-left:9px; border-left:3px solid var(--link); font-size:.94rem; }
+  .event-detail-description p { margin:0; font-size:.9rem; line-height:1.5; overflow-wrap:anywhere; }
+  .detail-value-list { display:grid; gap:0; margin:0; padding:0; list-style:none; }
+  .detail-value-list li { padding:6px 0; border-bottom:1px solid var(--border); overflow-wrap:anywhere; }
+  .detail-value-list li > div { display:flex; flex-wrap:wrap; gap:6px; line-height:1.4; }
+  .detail-value-list li > div + div { margin-top:2px; }
+  .detail-value-list li:last-child { border-bottom:0; }
+  .detail-value-list li strong { font-size:.85rem; }
+  .detail-value-list li span { font-size:.85rem; }
+  .event-detail-map { height:220px; overflow:hidden; border:1px solid var(--border); border-radius:6px; background:#e7edf1; }
+  .detail-actions { display:flex; flex-wrap:wrap; gap:6px; padding-top:10px; }
+  .detail-actions button { width:auto; min-height:36px; margin:0; padding:6px 9px; font-size:.88rem; }
+  .status-label { display:flex; min-height:76px; align-items:center; justify-content:center; padding:6px 10px; border-radius:4px; font-size:.8rem; font-weight:700; }
+  .calendar-empty { color:var(--muted); }
+  .calendar-back { margin-top:24px; }
+  .event-dialog { width:min(100% - 24px, 900px); max-height:94vh; overflow:auto; border:1px solid var(--border); border-radius:10px; background:var(--surface); color:var(--text); padding:24px; }
+  .event-dialog::backdrop { background:#10182899; }
+  .event-dialog h2 { margin:0 0 16px; }
+  .form-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px; }
+  .event-dialog label { display:block; margin:10px 0 5px; font-weight:700; font-size:.9rem; }
+  .event-dialog input, .event-dialog textarea, .event-dialog select { width:100%; padding:10px; border:1px solid var(--input-border); border-radius:6px; background:var(--input-bg); color:var(--text); font:inherit; }
+  .event-dialog textarea { min-height:84px; resize:vertical; }
+  .date-block { margin-top:12px; padding:12px 0; border-top:1px solid var(--border); }
+  .date-row-head { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  .date-row-head strong { font-size:.9rem; }
+  .remove-row { width:36px; height:36px; border:1px solid var(--border); border-radius:6px; background:var(--surface-solid); color:var(--text); font-size:1.1rem; cursor:pointer; }
+  .recurrence-fields { display:grid; grid-template-columns:1fr 100px 1fr; gap:10px; }
+  .weekday-picker { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; padding:0; border:0; }
+  .weekday-picker[hidden] { display:none; }
+  .weekday-picker legend { width:100%; margin-bottom:4px; font-size:.86rem; font-weight:700; }
+  .weekday-option { display:flex!important; align-items:center; gap:6px; margin:0!important; padding:6px 8px; border:1px solid var(--border); border-radius:6px; font-size:.82rem!important; font-weight:400!important; cursor:pointer; }
+  .weekday-option input { width:auto!important; margin:0; }
+  .check-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:6px; max-height:180px; overflow:auto; margin-top:8px; }
+  .check-option { display:flex!important; align-items:center; gap:8px; margin:0!important; padding:8px; border:1px solid var(--border); border-radius:5px; font-weight:400!important; }
+  .check-option input { width:auto; }
+  #event-location-map { height:280px; margin-top:8px; border-radius:6px; background:#e7edf1; }
+  .location-search { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:end; margin-top:10px; }
+  .location-search .button { width:auto; margin:0; padding:10px 12px; }
+  .location-results { display:grid; gap:4px; margin:8px 0 0; padding:0; list-style:none; }
+  .location-results button { width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; background:var(--surface-solid); color:var(--text); font:inherit; text-align:left; cursor:pointer; }
+  .point-actions { display:flex; flex:none; gap:6px; }
+  .point-actions button { width:auto; min-width:34px; padding:6px 8px; font-size:.8rem; }
+  #event-cover-preview { width:128px; height:88px; margin-top:8px; overflow:hidden; border:1px solid var(--border); border-radius:6px; }
+  #event-cover-preview img { width:100%; height:100%; object-fit:cover; }
+  .point-controls { display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 1fr) auto; gap:8px; align-items:end; }
+  .point-controls .button { width:auto; margin:0; padding:10px 12px; }
+  .point-list { display:grid; gap:6px; margin:10px 0 0; padding:0; list-style:none; }
+  .point-list li { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:7px 0; border-bottom:1px solid var(--border); color:var(--text); font-size:.86rem; }
+  .point-list button { width:32px; height:32px; border:1px solid var(--border); border-radius:6px; background:var(--surface-solid); color:var(--text); cursor:pointer; }
+  .dialog-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:18px; }
+  .dialog-actions .button { width:auto; margin:0; }
+  .notice { min-height:1.4em; margin:8px 0 0; color:#b42318; }
+  .event-pin { display:grid; width:34px; height:42px; place-items:center; overflow:hidden; border:2px solid white; border-radius:50% 50% 50% 0; background:#14866d; box-shadow:0 2px 6px #14213d66; transform:rotate(-45deg); }
+  .event-pin img { width:28px; height:28px; border-radius:50%; object-fit:cover; transform:rotate(45deg); }
+  @media(min-width:851px) { .event-detail { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); column-gap:22px; } .event-detail-header, .event-detail-description, .detail-actions { grid-column:1 / -1; } }
+  @media(max-width:850px) { .calendar-layout { grid-template-columns:1fr; } }
+  @media(max-width:560px) { .event-detail { padding:14px; } .event-detail-header { grid-template-columns:64px minmax(0, 1fr) auto; gap:10px; } .event-detail-cover, .event-detail-cover-placeholder { width:64px; min-height:64px; } .event-detail h3, .status-label { min-height:64px; } .event-detail h3 { font-size:1.2rem; } .event-detail-map { height:170px; } }
+  @media(max-width:560px) { body { padding:10px; } .calendar-header { align-items:flex-start; flex-wrap:wrap; } .calendar-header > div { flex:1 1 100%; } .calendar-header .button { width:100%; height:auto; min-height:44px; flex:none; padding:10px 14px; } .calendar-header .new-event-label { display:inline; } .day-cell { min-height:82px; } .day-select { padding:4px; } .day-number { width:26px; height:26px; } .day-events { padding:34px 4px 4px; } .event-chip { font-size:.68rem; padding:3px; } .form-grid, .recurrence-fields { grid-template-columns:1fr; gap:4px; } .point-controls { grid-template-columns:1fr 1fr; } .point-controls .button { grid-column:1 / -1; } .today-button { padding:8px; } }
+{% endblock %}
+{% block content %}
+<main class="card calendar-page">
+  <div id="calendar-config"
+       data-csrf="{{ calendar_csrf_token() }}"
+       data-events-url="{{ url_for('calendar.api_list_events') }}"
+       data-occurrences-url="{{ url_for('calendar.api_occurrences') }}"
+       data-contacts-url="{{ url_for('main.api_contacts') }}"
+      data-conversations-url="{{ url_for('chat.api_conversations') }}"
+       data-location-search-url="{{ url_for('calendar.api_location_search') }}"
+      data-conversation-template="{{ url_for('chat.conversation_page', conversation_id='__id__') }}"
+       data-calendar-url="{{ url_for('calendar.page') }}"
+       data-locale="{{ get_locale().replace('_', '-') }}"
+       hidden></div>
+  <header class="calendar-header">
+    <div><p class="eyebrow">{{ _('Make plans together') }}</p><h1>{{ _('Event calendar') }}</h1><p>{{ _('Your events, dates, places and conversations.') }}</p></div>
+    <button id="new-event" class="button" type="button" aria-label="{{ _('New event') }}" title="{{ _('Create event') }}"><span class="new-event-icon" aria-hidden="true">＋</span><span class="new-event-label">{{ _('New event') }}</span></button>
+  </header>
+  <div class="calendar-layout">
+    <section class="month-area" aria-label="{{ _('Monthly calendar') }}">
+      <div id="month-grid" class="month-grid" role="grid" aria-label="{{ _('Monthly calendar') }}"></div>
+      <p id="calendar-status" class="notice" role="status" aria-live="polite"></p>
+      <a class="back-link calendar-back" href="{{ url_for('main.dashboard') }}">{{ _('Back to dashboard') }}</a>
+    </section>
+    <aside class="agenda" aria-labelledby="agenda-title">
+      <h2 id="agenda-title"></h2>
+      <div id="agenda-grid" aria-labelledby="agenda-title"></div>
+      <section id="event-detail" class="event-detail" hidden></section>
+    </aside>
+  </div>
+</main>
+<dialog id="event-dialog" class="event-dialog">
+  <form id="event-form">
+    <h2 id="dialog-title">{{ _('New event') }}</h2>
+    <input id="event-id" type="hidden">
+    <div class="form-grid">
+      <div><label for="event-title">{{ _('Title') }}</label><input id="event-title" maxlength="160" required></div>
+      <div><label for="event-status">{{ _('Status') }}</label><select id="event-status"><option value="open">{{ _('Open') }}</option><option value="closed">{{ _('Closed') }}</option></select></div>
+    </div>
+    <label for="event-description">{{ _('Description (optional)') }}</label><textarea id="event-description" maxlength="5000"></textarea>
+    <label for="event-cover-image">{{ _('Event image (optional)') }}</label><input id="event-cover-image" type="file" accept="image/png,image/jpeg,image/webp"><small>{{ _('Image is resized and compressed to at most 64 KB.') }}</small>
+    <div id="event-cover-preview" hidden><img id="event-cover-preview-image" alt="{{ _('Event image preview') }}"></div>
+    <button id="remove-event-cover" class="button button-secondary today-button" type="button" hidden>{{ _('Remove event image') }}</button>
+    <div class="section-heading"><h3>{{ _('Dates and times') }}</h3><button id="add-date" class="button button-secondary today-button" type="button">{{ _('Add date') }}</button></div>
+    <div id="date-list"></div>
+    <h3>{{ _('Guests from Contacts') }}</h3><div id="guest-picker" class="check-grid"><p>{{ _('Loading contacts…') }}</p></div>
+    <h3>{{ _('Branching conversations') }}</h3><div id="conversation-picker" class="check-grid"><p>{{ _('Loading conversations…') }}</p></div>
+    <h3>{{ _('Map locations') }}</h3>
+    <div id="event-location-map" role="application" aria-label="{{ _('Select event locations on the map') }}"></div>
+    <div class="location-search">
+      <div><label for="location-search-input">{{ _('Find a place') }}</label><input id="location-search-input" type="search" maxlength="200" placeholder="{{ _('Search by place or address') }}"></div>
+      <button id="search-location" class="button button-secondary" type="button">{{ _('Search') }}</button>
+    </div>
+    <ul id="location-search-results" class="location-results" aria-live="polite"></ul>
+    <div class="point-controls">
+      <div><label for="point-label">{{ _('Location name') }}</label><input id="point-label" maxlength="120" placeholder="{{ _('Click the map to choose coordinates') }}"></div>
+      <div><label for="point-image">{{ _('Pin image (optional)') }}</label><input id="point-image" type="file" accept="image/png,image/jpeg,image/webp"><small>{{ _('Automatically resized to 256 px and optimized to at most 24 KB.') }}</small></div>
+      <div class="point-actions"><button id="add-point" class="button button-secondary" type="button">{{ _('Add map point') }}</button><button id="cancel-point-edit" class="button button-secondary" type="button" hidden>{{ _('Cancel') }}</button></div>
+    </div>
+    <ul id="point-list" class="point-list"></ul>
+    <p id="form-error" class="notice" role="alert"></p>
+    <div class="dialog-actions"><button id="cancel-event" class="button button-secondary" type="button">{{ _('Cancel') }}</button><button id="save-event" class="button" type="submit">{{ _('Save event') }}</button></div>
+  </form>
+</dialog>
+{% endblock %}
+{% block scripts %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@7.1.4/skeleton.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@7.1.4/themes/monarch/theme.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@7.1.4/themes/monarch/palettes/blue.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@7.1.4/all/global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@7.1.4/themes/monarch/global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@7.1.4/locales/en-gb/global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@7.1.4/locales/pt/global.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="{{ url_for('static', filename='calendar.js', v='6') }}" defer></script>
+{% endblock %}

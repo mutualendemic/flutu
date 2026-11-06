@@ -1,0 +1,540 @@
+import base64
+import json
+import unittest
+from datetime import datetime, timedelta, timezone
+from unittest.mock import Mock, patch
+
+from bson import ObjectId
+from app import create_app
+from app.services.blob_storage import BlobStorageError, delete_image, download_image, upload_image
+from app.services.location_search import search_locations
+from app.services.events import _nearest_event_occurrence, _normalize_dates, _normalize_points, create_event, delete_event, list_events, list_map_points, list_occurrences, normalize_event
+
+
+class CalendarTests(unittest.TestCase):
+    def setUp(self):
+        class TestConfig:
+            SECRET_KEY = "test-secret"
+            TESTING = True
+            GOOGLE_CLIENT_ID = ""
+            GOOGLE_CLIENT_SECRET = ""
+            GOOGLE_REDIRECT_URI = "http://localhost/auth/callback"
+            SESSION_COOKIE_HTTPONLY = True
+            SESSION_COOKIE_SAMESITE = "Lax"
+            SESSION_COOKIE_SECURE = False
+
+        self.app = create_app(TestConfig)
+        self.client = self.app.test_client()
+
+    def sign_in(self):
+        with self.client.session_transaction() as browser_session:
+            browser_session["user"] = {"sub": "google-user", "name": "Test User", "email": "user@example.com"}
+
+    def test_calendar_page_and_apis_require_authentication(self):
+        page = self.client.get("/calendar/", follow_redirects=False)
+        self.assertEqual(page.status_code, 302)
+        self.assertEqual(page.headers["Location"], "/")
+        for response in (
+            self.client.get("/calendar/api/events"),
+            self.client.get("/calendar/api/map-points"),
+            self.client.post("/calendar/api/events", json={}),
+        ):
+            self.assertEqual(response.status_code, 401)
+            self.assertEqual(response.get_json(), {"error": "Authentication required."})
+
+    def test_mutations_require_calendar_csrf_token(self):
+        self.sign_in()
+        response = self.client.post("/calendar/api/events", json={})
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json(), {"error": "csrf_failed"})
+
+        with self.client.session_transaction() as browser_session:
+            browser_session["_calendar_csrf_token"] = "calendar-csrf"
+        spoofed = self.client.post(
+            "/calendar/api/events", json={},
+            headers={"X-CSRF-Token": "calendar-csrf", "Referer": "http://localhost.attacker.invalid/"},
+        )
+        self.assertEqual(spoofed.status_code, 400)
+
+    def test_create_event_uses_authenticated_owner_and_valid_csrf(self):
+        self.sign_in()
+        with self.client.session_transaction() as browser_session:
+            browser_session["_calendar_csrf_token"] = "calendar-csrf"
+        with patch("app.calendar.routes.events.create_event", return_value={"id": "event-1"}) as create:
+            response = self.client.post(
+                "/calendar/api/events",
+                json={"title": "Planning", "owner_id": "attacker"},
+                headers={"X-CSRF-Token": "calendar-csrf", "Origin": "http://localhost"},
+            )
+        self.assertEqual(response.status_code, 201)
+        create.assert_called_once_with("google-user", {"title": "Planning", "owner_id": "attacker"})
+
+    def test_calendar_page_loads_authenticated_event_editor(self):
+        self.sign_in()
+        response = self.client.get("/calendar/")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"event-location-map", response.data)
+        self.assertIn(b"calendar.js", response.data)
+        self.assertIn(b"__id__", response.data)
+
+    def test_calendar_page_is_translated_into_portuguese(self):
+        self.client.post("/language/pt_PT", data={"next": "/"})
+        self.sign_in()
+        response = self.client.get("/calendar/")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Calendário de eventos".encode(), response.data)
+        self.assertIn("Datas e horas".encode(), response.data)
+        self.assertIn("Diariamente".encode(), response.data)
+        page = response.get_data(as_text=True)
+        catalogue = page.split("window.FlutuI18n = ", 1)[1].split(";</script>", 1)[0]
+        messages = json.loads(catalogue)
+        self.assertEqual(messages["Monday"], "segunda-feira")
+        self.assertEqual(messages["Sunday"], "domingo")
+        self.assertIn(".weekday-picker[hidden] { display:none; }", page)
+
+    def test_location_map_renders_event_marker_layer_endpoint(self):
+        self.client.post("/language/pt_PT", data={"next": "/"})
+        self.sign_in()
+        response = self.client.get("/map")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"/calendar/api/map-points", response.data)
+        self.assertIn(b'id="show-open-events"', response.data)
+        self.assertIn("Mostrar eventos abertos".encode(), response.data)
+        self.assertIn(b"...markers.values(), ...eventMarkers.values()", response.data)
+        self.assertIn(b"await loadEventMapPoints();\n      fitMapToMarkers();", response.data)
+        self.assertIn(b"Open event calendar", response.data)
+
+    def test_private_blob_image_requires_authentication_and_sets_safe_headers(self):
+        event_id = "507f1f77bcf86cd799439011"
+        image_id = "550e8400-e29b-41d4-a716-446655440000"
+        denied = self.client.get(f"/calendar/api/events/{event_id}/images/{image_id}")
+        self.assertEqual(denied.status_code, 401)
+        self.sign_in()
+        with patch("app.calendar.routes.events.get_event_image", return_value=("image/png", b"image-bytes")) as load:
+            response = self.client.get(f"/calendar/api/events/{event_id}/images/{image_id}")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data, b"image-bytes")
+        self.assertEqual(response.headers["Cache-Control"], "private, no-cache")
+        self.assertEqual(response.headers["X-Content-Type-Options"], "nosniff")
+        load.assert_called_once_with("google-user", event_id, image_id)
+
+    def test_event_api_returns_authentication_proxy_not_blob_path(self):
+        self.sign_in()
+        event = {
+            "id": "507f1f77bcf86cd799439011",
+            "cover_image_id": "550e8400-e29b-41d4-a716-446655440001",
+            "has_cover_image": True,
+            "map_points": [{"image_id": "550e8400-e29b-41d4-a716-446655440000", "has_image": True}],
+        }
+        with patch("app.calendar.routes.events.list_events", return_value=[event]):
+            response = self.client.get("/calendar/api/events")
+        self.assertEqual(response.status_code, 200)
+        point = response.get_json()["events"][0]["map_points"][0]
+        self.assertEqual(point["image_url"], "/calendar/api/events/507f1f77bcf86cd799439011/images/550e8400-e29b-41d4-a716-446655440000")
+        self.assertNotIn("image_path", point)
+        self.assertEqual(
+            response.get_json()["events"][0]["cover_image_url"],
+            "/calendar/api/events/507f1f77bcf86cd799439011/cover-image",
+        )
+
+    def test_event_cover_image_route_is_private_and_sets_safe_headers(self):
+        event_id = "507f1f77bcf86cd799439011"
+        denied = self.client.get(f"/calendar/api/events/{event_id}/cover-image")
+        self.assertEqual(denied.status_code, 401)
+        self.sign_in()
+        with patch("app.calendar.routes.events.get_event_cover_image", return_value=("image/webp", b"small-image")) as load:
+            response = self.client.get(f"/calendar/api/events/{event_id}/cover-image")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data, b"small-image")
+        self.assertEqual(response.headers["Cache-Control"], "private, no-cache")
+        load.assert_called_once_with("google-user", event_id)
+
+    def test_map_points_api_can_filter_to_open_events(self):
+        self.sign_in()
+        with patch("app.calendar.routes.events.list_map_points", return_value=[]) as list_points:
+            response = self.client.get("/calendar/api/map-points?status=open")
+        self.assertEqual(response.status_code, 200)
+        list_points.assert_called_once_with("google-user", open_only=True)
+
+    def test_map_points_api_does_not_filter_when_open_events_toggle_is_off(self):
+        self.sign_in()
+        with patch("app.calendar.routes.events.list_map_points", return_value=[]) as list_points:
+            response = self.client.get("/calendar/api/map-points")
+        self.assertEqual(response.status_code, 200)
+        list_points.assert_called_once_with("google-user", open_only=False)
+
+    def test_map_points_include_the_next_event_occurrence(self):
+        start_at = (datetime.now(timezone.utc) + timedelta(days=1)).replace(microsecond=0)
+        event = {
+            "_id": ObjectId("507f1f77bcf86cd799439011"),
+            "title": "Planning",
+            "status": "open",
+            "dates": [{
+                "start_at": start_at.isoformat(),
+                "end_at": (start_at + timedelta(hours=1)).isoformat(),
+            }],
+            "map_points": [{"label": "Venue", "latitude": 38.7, "longitude": -9.1}],
+        }
+        collection = Mock()
+        collection.find.return_value = [event]
+        with patch("app.services.events.get_collection", return_value=collection):
+            points = list_map_points("google-user", open_only=True)
+        self.assertEqual(points[0]["start_at"], start_at.isoformat(timespec="seconds").replace("+00:00", "Z"))
+
+    def test_map_points_choose_the_next_matching_recurrence(self):
+        event = {"dates": [{
+            "start_at": "2026-11-02T10:00:00Z",
+            "end_at": "2026-11-02T11:00:00Z",
+            "recurrence": {
+                "frequency": "weekly",
+                "interval": 1,
+                "weekdays": [0],
+                "until": "2026-11-30T10:00:00Z",
+            },
+        }]}
+        now = datetime(2026, 11, 6, 12, tzinfo=timezone.utc)
+        self.assertEqual(_nearest_event_occurrence(event, now), "2026-11-09T10:00:00Z")
+
+    def test_location_search_requires_auth_and_returns_normalized_results(self):
+        denied = self.client.get("/calendar/api/location-search?q=Lisbon")
+        self.assertEqual(denied.status_code, 401)
+        self.sign_in()
+        response_data = [{"lat": "38.7223", "lon": "-9.1393", "display_name": "Lisbon, Portugal"}]
+        with patch("app.services.location_search.requests.get") as get:
+            get.return_value.json.return_value = response_data
+            response = self.client.get("/calendar/api/location-search?q=Lisbon")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["locations"], [{
+            "label": "Lisbon, Portugal", "latitude": 38.7223, "longitude": -9.1393,
+        }])
+        self.assertEqual(get.call_args.kwargs["params"]["q"], "Lisbon")
+
+    def test_location_search_rejects_empty_query(self):
+        with self.assertRaisesRegex(ValueError, "invalid_location_query"):
+            search_locations(" ")
+
+    def test_create_event_uploads_image_and_persists_only_blob_reference(self):
+        collection = Mock()
+        with patch("app.services.events.get_collection", return_value=collection), \
+             patch("app.services.events.blob_storage.new_image_id", return_value="550e8400-e29b-41d4-a716-446655440000"), \
+             patch("app.services.events.blob_storage.upload_image", return_value="calendar/event/image.png") as upload:
+            result = create_event("google-user", {
+                "title": "Planning",
+                "dates": [{"start_at": "2026-11-05T10:00:00Z", "end_at": "2026-11-05T11:00:00Z"}],
+                "map_points": [{
+                    "label": "Venue", "latitude": 38.7, "longitude": -9.1,
+                    "image": "data:image/png;base64,eA==",
+                }],
+            })
+        saved = collection.insert_one.call_args.args[0]
+        self.assertNotIn("image_data", saved["map_points"][0])
+        self.assertEqual(saved["map_points"][0]["image_path"], "calendar/event/image.png")
+        self.assertTrue(result["map_points"][0]["has_image"])
+        upload.assert_called_once_with(
+            str(saved["_id"]), "550e8400-e29b-41d4-a716-446655440000", "image/png", b"x"
+        )
+
+    def test_create_event_stores_cover_image_as_private_blob_reference(self):
+        collection = Mock()
+        with patch("app.services.events.get_collection", return_value=collection), \
+             patch("app.services.events.blob_storage.new_image_id", return_value="550e8400-e29b-41d4-a716-446655440000"), \
+             patch("app.services.events.blob_storage.upload_image", return_value="calendar/event/cover.webp") as upload:
+            result = create_event("google-user", {
+                "title": "Planning",
+                "dates": [{"start_at": "2026-11-05T10:00:00Z", "end_at": "2026-11-05T11:00:00Z"}],
+                "cover_image": "data:image/webp;base64,eA==",
+            })
+
+        saved = collection.insert_one.call_args.args[0]
+        self.assertNotIn("cover_image_data", saved)
+        self.assertEqual(saved["cover_image_path"], "calendar/event/cover.webp")
+        self.assertEqual(result["cover_image_id"], "550e8400-e29b-41d4-a716-446655440000")
+        self.assertTrue(result["has_cover_image"])
+        upload.assert_called_once_with(
+            str(saved["_id"]), "550e8400-e29b-41d4-a716-446655440000", "image/webp", b"x"
+        )
+
+    def test_deleting_event_deletes_all_associated_images(self):
+        event_id = "507f1f77bcf86cd799439011"
+        image_paths = [
+            "calendar/event/first-pin.webp",
+            "calendar/event/second-pin.jpg",
+            "calendar/event/cover.png",
+        ]
+        collection = Mock()
+        collection.find_one.return_value = {
+            "map_points": [
+                {"image_path": image_paths[0]},
+                {"image_path": image_paths[1]},
+                {"label": "No photo"},
+            ],
+            "cover_image_path": image_paths[2],
+        }
+        collection.delete_one.return_value.deleted_count = 1
+        with patch("app.services.events.get_collection", return_value=collection), \
+             patch("app.services.events.blob_storage.delete_image") as delete_image:
+            deleted = delete_event("google-user", event_id)
+
+        self.assertTrue(deleted)
+        self.assertEqual(
+            [call.args[0] for call in delete_image.call_args_list], image_paths
+        )
+
+    def test_event_cover_accepts_ui_limit_above_pin_image_limit(self):
+        image = "data:image/webp;base64," + base64.b64encode(b"x" * (32 * 1024)).decode("ascii")
+        normalized = normalize_event({
+            "title": "Planning",
+            "dates": [{"start_at": "2026-11-05T10:00:00Z", "end_at": "2026-11-05T11:00:00Z"}],
+            "cover_image": image,
+        }, "google-user")
+        self.assertEqual(normalized["cover_image_data"], image)
+
+    def test_create_event_allows_multiple_events_on_same_date(self):
+        collection = Mock()
+        payload = {
+            "title": "Planning",
+            "dates": [{"start_at": "2026-11-05T10:00:00Z", "end_at": "2026-11-05T11:00:00Z"}],
+        }
+        with patch("app.services.events.get_collection", return_value=collection):
+            first = create_event("google-user", payload)
+            second = create_event("google-user", payload)
+
+        self.assertNotEqual(first["id"], second["id"])
+        self.assertEqual(collection.insert_one.call_count, 2)
+
+    def test_blob_sdk_uses_private_access_for_uploads_and_downloads(self):
+        sdk = Mock()
+        sdk.put_blob.return_value.pathname = "calendar/event/pin.webp"
+        sdk.get_blob.return_value.metadata.content_type = "image/webp"
+        sdk.get_blob.return_value.body = b"compressed-image"
+        with patch("app.services.blob_storage._sdk", return_value=sdk):
+            path = upload_image("event", "image", "image/webp", b"compressed-image")
+            downloaded = download_image(path)
+            delete_image(path)
+        self.assertEqual(path, "calendar/event/pin.webp")
+        self.assertEqual(downloaded, ("image/webp", b"compressed-image"))
+        sdk.put_blob.assert_called_once_with(
+            "calendar/event/image.webp", b"compressed-image", access="private",
+            content_type="image/webp", add_random_suffix=True,
+        )
+        sdk.get_blob.assert_called_once_with(path, access="private")
+        sdk.delete_blob.assert_called_once_with(path)
+
+    def test_blob_download_rejects_non_image_content_types(self):
+        sdk = Mock()
+        sdk.get_blob.return_value.metadata.content_type = "text/html"
+        with patch("app.services.blob_storage._sdk", return_value=sdk), \
+             self.assertRaises(BlobStorageError):
+            download_image("calendar/event/pin.webp")
+
+    def test_blob_http_fallback_uploads_to_private_store(self):
+        response = Mock()
+        response.json.return_value = {"pathname": "calendar/event/pin.webp"}
+        fake_token = "vercel_blob_rw_teststore_faketoken"
+        with patch("app.services.blob_storage._sdk", return_value=None), \
+             patch.dict("os.environ", {"BLOB_READ_WRITE_TOKEN": fake_token}), \
+             patch("app.services.blob_storage.requests.put", return_value=response) as put:
+            path = upload_image("event", "image", "image/webp", b"compressed-image")
+
+        self.assertEqual(path, "calendar/event/pin.webp")
+        headers = put.call_args.kwargs["headers"]
+        self.assertEqual(headers["x-vercel-blob-access"], "private")
+        self.assertEqual(headers["Authorization"], f"Bearer {fake_token}")
+        self.assertEqual(headers["x-content-type"], "image/webp")
+
+    def test_blob_http_fallback_downloads_private_image(self):
+        response = Mock()
+        response.headers = {"Content-Type": "image/webp"}
+        response.iter_content.return_value = [b"compressed-image"]
+        fake_token = "vercel_blob_rw_teststore_faketoken"
+        with patch("app.services.blob_storage._sdk", return_value=None), \
+             patch.dict("os.environ", {"BLOB_READ_WRITE_TOKEN": fake_token}), \
+             patch("app.services.blob_storage.requests.get", return_value=response) as get:
+            image = download_image("calendar/event/pin.webp")
+
+        self.assertEqual(image, ("image/webp", b"compressed-image"))
+        self.assertEqual(
+            get.call_args.args[0],
+            "https://teststore.private.blob.vercel-storage.com/calendar/event/pin.webp",
+        )
+        self.assertEqual(get.call_args.kwargs["headers"]["Authorization"], f"Bearer {fake_token}")
+        response.close.assert_called_once()
+
+    def test_blob_http_fallback_downloads_event_cover_above_pin_image_limit(self):
+        response = Mock()
+        response.headers = {"Content-Type": "image/webp"}
+        response.iter_content.return_value = [b"x" * (32 * 1024)]
+        fake_token = "vercel_blob_rw_teststore_faketoken"
+        with patch("app.services.blob_storage._sdk", return_value=None), \
+             patch.dict("os.environ", {"BLOB_READ_WRITE_TOKEN": fake_token}), \
+             patch("app.services.blob_storage.requests.get", return_value=response):
+            image = download_image("calendar/event/cover.webp")
+
+        self.assertEqual(image, ("image/webp", b"x" * (32 * 1024)))
+
+    def test_blob_http_fallback_deletes_blob_path(self):
+        response = Mock()
+        fake_token = "vercel_blob_rw_teststore_faketoken"
+        with patch("app.services.blob_storage._sdk", return_value=None), \
+             patch.dict("os.environ", {"BLOB_READ_WRITE_TOKEN": fake_token}), \
+             patch("app.services.blob_storage.requests.post", return_value=response) as post:
+            delete_image("calendar/event/pin.webp")
+
+        self.assertEqual(post.call_args.kwargs["json"], {"urls": ["calendar/event/pin.webp"]})
+        self.assertEqual(post.call_args.kwargs["headers"]["Authorization"], f"Bearer {fake_token}")
+
+    def test_calendar_date_requires_timezone_and_end_after_start(self):
+        dates = [{"start_at": "2026-11-05T10:00:00Z", "end_at": "2026-11-05T12:00:00Z"}]
+        self.assertEqual(_normalize_dates(dates)[0]["start_at"], "2026-11-05T10:00:00Z")
+        for invalid in (
+            [{"start_at": "2026-11-05T10:00:00", "end_at": "2026-11-05T12:00:00Z"}],
+            [{"start_at": "2026-11-05T12:00:00Z", "end_at": "2026-11-05T10:00:00Z"}],
+        ):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                _normalize_dates(invalid)
+        with self.assertRaisesRegex(ValueError, "invalid_recurrence"):
+            _normalize_dates([{
+                "start_at": "2026-11-05T10:00:00Z",
+                "end_at": "2026-11-05T11:00:00Z",
+                "recurrence": {"frequency": [], "until": "2026-11-12T10:00:00Z"},
+            }])
+
+    def test_daily_recurrence_is_bounded_and_normalized(self):
+        date = {
+            "start_at": "2026-11-05T10:00:00Z",
+            "end_at": "2026-11-05T11:00:00Z",
+            "recurrence": {"frequency": "daily", "interval": 2, "until": "2026-11-12T10:00:00Z"},
+        }
+        normalized = _normalize_dates([date])[0]
+        self.assertEqual(normalized["recurrence"]["frequency"], "daily")
+        self.assertEqual(normalized["recurrence"]["interval"], 2)
+
+    def test_daily_recurrence_expands_only_dates_in_requested_range(self):
+        collection = Mock()
+        collection.find.return_value = [{
+            "_id": ObjectId("507f1f77bcf86cd799439011"),
+            "title": "Planning",
+            "status": "open",
+            "dates": [{
+                "start_at": "2026-11-05T10:00:00Z",
+                "end_at": "2026-11-05T11:00:00Z",
+                "recurrence": {"frequency": "daily", "interval": 1, "until": "2026-11-10T10:00:00Z"},
+            }],
+        }]
+        with patch("app.services.events.get_collection", return_value=collection):
+            result = list_occurrences("google-user", "2026-11-06T00:00:00Z", "2026-11-10T00:00:00Z")
+        self.assertEqual([item["start_at"] for item in result], [
+            "2026-11-06T10:00:00Z", "2026-11-07T10:00:00Z", "2026-11-08T10:00:00Z", "2026-11-09T10:00:00Z"
+        ])
+
+    def test_weekly_recurrence_normalizes_selected_weekdays(self):
+        normalized = normalize_event({
+            "title": "Planning",
+            "dates": [{
+                "start_at": "2026-11-02T10:00:00Z",
+                "end_at": "2026-11-02T11:00:00Z",
+                "recurrence": {
+                    "frequency": "weekly",
+                    "interval": 1,
+                    "until": "2026-11-11T10:00:00Z",
+                    "weekdays": [0, 2],
+                },
+            }],
+        }, "google-user")
+
+        self.assertEqual(normalized["dates"][0]["recurrence"]["weekdays"], [0, 2])
+
+    def test_weekly_recurrence_expands_selected_weekdays_only(self):
+        collection = Mock()
+        collection.find.return_value = [{
+            "_id": ObjectId("507f1f77bcf86cd799439011"),
+            "title": "Planning",
+            "status": "open",
+            "dates": [{
+                "start_at": "2026-11-02T10:00:00Z",
+                "end_at": "2026-11-02T11:00:00Z",
+                "recurrence": {
+                    "frequency": "weekly",
+                    "interval": 1,
+                    "until": "2026-11-11T10:00:00Z",
+                    "weekdays": [0, 2],
+                },
+            }],
+        }]
+        with patch("app.services.events.get_collection", return_value=collection):
+            result = list_occurrences("google-user", "2026-11-02T00:00:00Z", "2026-11-11T23:59:59Z")
+
+        self.assertEqual([item["start_at"] for item in result], [
+            "2026-11-02T10:00:00Z", "2026-11-04T10:00:00Z",
+            "2026-11-09T10:00:00Z", "2026-11-11T10:00:00Z",
+        ])
+
+    def test_event_status_rejects_in_progress(self):
+        with self.assertRaisesRegex(ValueError, "invalid_status"):
+            normalize_event({
+                "title": "Planning",
+                "status": "in_progress",
+                "dates": [{"start_at": "2026-11-05T10:00:00Z", "end_at": "2026-11-05T11:00:00Z"}],
+            }, "google-user")
+
+    def test_guests_and_conversations_must_belong_to_existing_relationships(self):
+        contact_id = "507f1f77bcf86cd799439012"
+        contacts = Mock()
+        contacts.find.return_value = [{"_id": ObjectId(contact_id)}]
+        payload = {
+            "title": "Planning",
+            "dates": [{"start_at": "2026-11-05T10:00:00Z", "end_at": "2026-11-05T11:00:00Z"}],
+            "guest_contact_ids": [contact_id],
+            "conversation_ids": ["507f1f77bcf86cd799439013"],
+        }
+        with patch("app.services.events.get_collection", return_value=contacts), \
+             patch("app.services.chat.is_active_member", return_value=True) as is_member:
+            result = normalize_event(payload, "google-user")
+        self.assertEqual(result["guest_contact_ids"], [contact_id])
+        is_member.assert_called_once_with("507f1f77bcf86cd799439013", "google-user")
+
+        contacts.find.return_value = []
+        with patch("app.services.events.get_collection", return_value=contacts), \
+             patch("app.services.chat.is_active_member", return_value=True), \
+             self.assertRaisesRegex(ValueError, "invalid_guests"):
+            normalize_event(payload, "google-user")
+
+    def test_event_members_are_visible_to_accepted_guest(self):
+        member_user = "guest-user"
+        event = {
+            "_id": ObjectId("507f1f77bcf86cd799439014"),
+            "owner_id": "google-user",
+            "title": "Planning",
+            "status": "open",
+            "dates": [{"start_at": "2026-11-05T10:00:00Z", "end_at": "2026-11-05T11:00:00Z"}],
+            "members": [{"user_id": member_user, "role": "admin", "status": "accepted"}],
+        }
+        collection = Mock()
+        collection.find.return_value = [event]
+        with patch("app.services.events.get_collection", return_value=collection):
+            result = list_events(member_user)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["members"][0]["user_id"], member_user)
+
+        normalized = normalize_event({
+            "title": "Planning",
+            "dates": [{"start_at": "2026-11-05T10:00:00Z", "end_at": "2026-11-05T11:00:00Z"}],
+            "members": [{"user_id": member_user, "role": "admin", "status": "accepted"}],
+        }, "google-user")
+        self.assertEqual(normalized["members"][0]["user_id"], member_user)
+        self.assertEqual(normalized["members"][0]["role"], "admin")
+
+    def test_map_point_validates_coordinates_and_uploaded_pin(self):
+        points = _normalize_points([{"label": "Hall", "latitude": 38.7, "longitude": -9.1}])
+        self.assertEqual(points[0]["label"], "Hall")
+        with self.assertRaises(ValueError):
+            _normalize_points([{"latitude": 91, "longitude": 0}])
+        with self.assertRaises(ValueError):
+            _normalize_points([{"latitude": 0, "longitude": 0, "image": "data:image/svg+xml;base64,PHN2Zz4="}])
+        oversize = base64.b64encode(b"x" * (24 * 1024 + 1)).decode("ascii")
+        with self.assertRaises(ValueError):
+            _normalize_points([{"latitude": 0, "longitude": 0, "image": f"data:image/webp;base64,{oversize}"}])
+
+
+if __name__ == "__main__":
+    unittest.main()

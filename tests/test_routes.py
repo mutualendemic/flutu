@@ -87,6 +87,25 @@ class RouteTests(unittest.TestCase):
         response = app.test_client().get("/", follow_redirects=False)
         self.assertEqual(response.status_code, 200)
 
+    def test_run_module_can_start_without_gevent(self):
+        import importlib.util
+        import sys
+
+        module_path = Path(__file__).resolve().parents[1] / "run.py"
+        original_gevent = sys.modules.get("gevent")
+        sys.modules["gevent"] = None
+        try:
+            spec = importlib.util.spec_from_file_location("flutu_run_module", str(module_path))
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            self.assertTrue(hasattr(module, "app"))
+            self.assertTrue(hasattr(module, "socketio"))
+        finally:
+            if original_gevent is None:
+                sys.modules.pop("gevent", None)
+            else:
+                sys.modules["gevent"] = original_gevent
+
     def test_standard_google_env_names_are_supported_for_vercel(self):
         with patch.dict(
             os.environ,
@@ -164,7 +183,7 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(response.headers["Location"], "/dashboard")
 
     def test_private_html_redirects_without_session(self):
-        for path in ("/dashboard", "/contacts", "/decision", "/decision/info", "/map", "/profile"):
+        for path in ("/dashboard", "/contacts", "/calendar/", "/decision", "/decision/info", "/map", "/profile"):
             with self.subTest(path=path):
                 response = self.client.get(path, follow_redirects=False)
                 self.assertEqual(response.status_code, 302)
@@ -254,6 +273,7 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(dashboard.status_code, 200)
         self.assertIn(b"Quantum path selector", dashboard.data)
         self.assertIn(b"My contacts", dashboard.data)
+        self.assertIn(b"Event calendar", dashboard.data)
         self.assertIn(b"Location map", dashboard.data)
         self.assertIn(b"My profile", dashboard.data)
         self.assertIn(b"location-sharing-indicator", dashboard.data)
