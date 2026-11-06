@@ -8,6 +8,8 @@
   const graphElement = document.getElementById('graph');
   const status = document.getElementById('connection-status');
   const details = document.getElementById('details');
+  const associatedEventsPanel = document.getElementById('conversation-events-panel');
+  const associatedEventsList = document.getElementById('conversation-events-list');
   const error = document.getElementById('chat-error');
   const titleDialog = document.getElementById('edit-title-dialog');
   const titleForm = document.getElementById('edit-title-form');
@@ -160,6 +162,7 @@
     document.querySelector('label[for="member-search"]').hidden = !canManageMembers;
     document.getElementById('member-search').hidden = !canManageMembers;
     document.getElementById('member-picker').hidden = !canManageMembers;
+    renderAssociatedEvents(data.associated_events || []);
     renderMembers(data.members || []);
   }
 
@@ -341,6 +344,24 @@
   document.getElementById('graph-fit').addEventListener('click', fitGraph);
   document.getElementById('graph-zoom-in').addEventListener('click', () => zoomGraph(1.25));
   document.getElementById('graph-zoom-out').addEventListener('click', () => zoomGraph(0.8));
+
+  function renderAssociatedEvents(events) {
+    if (!associatedEventsPanel || !associatedEventsList) return;
+    associatedEventsList.replaceChildren();
+    if (!Array.isArray(events) || !events.length) {
+      associatedEventsPanel.hidden = true;
+      return;
+    }
+    associatedEventsPanel.hidden = false;
+    for (const event of events) {
+      const item = document.createElement('li');
+      const link = document.createElement('a');
+      link.href = event.url || '/calendar';
+      link.textContent = event.title || t('Event');
+      item.append(link);
+      associatedEventsList.append(item);
+    }
+  }
 
   function renderMembers(members) {
     const list = document.getElementById('member-list');

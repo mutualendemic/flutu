@@ -579,6 +579,20 @@ def delete_question(question_id, author_id):
     return str(question["conversation_id"])
 
 
+def _serialize_associated_event(event):
+    dates = event.get("dates") or []
+    start_at = None
+    if dates and isinstance(dates[0], dict):
+        start_at = dates[0].get("start_at")
+    return {
+        "id": str(event.get("_id")),
+        "title": event.get("title", "Event"),
+        "status": event.get("status", "open"),
+        "start_at": start_at,
+        "url": f"/calendar?event={event.get('_id')}",
+    }
+
+
 def graph_payload(conversation_id, viewer_id=None):
     cid = _id(conversation_id)
     conversation = get_conversation(cid) if cid else None
@@ -591,6 +605,25 @@ def graph_payload(conversation_id, viewer_id=None):
     has_root_question = any(not question.get("parent_option_id") for question in question_docs)
     option_docs = list(options.find({"conversation_id": cid}).sort([("position", ASCENDING), ("_id", ASCENDING)]))
     question_ids = [question["_id"] for question in question_docs]
+    associated_events = []
+    try:
+        event_collection = get_collection("calendar_events")
+    except RuntimeError:
+        event_collection = None
+    if event_collection is not None:
+        associated_event_docs = []
+        for event in event_collection.find({"conversation_ids": str(cid)}):
+            if viewer_id is None:
+                associated_event_docs.append(event)
+                continue
+            visible = event.get("owner_id") == viewer_id or any(
+                member.get("user_id") == viewer_id and member.get("status") == "accepted"
+                for member in event.get("members", [])
+            )
+            if visible:
+                associated_event_docs.append(event)
+        associated_events = [_serialize_associated_event(event) for event in associated_event_docs]
+        associated_events.sort(key=lambda item: (item.get("start_at") or "", item.get("title", "")))
     answered_question_ids = {
         answer["question_id"] for answer in answers.find({"question_id": {"$in": question_ids}}, {"question_id": 1})
     } if question_ids else set()
@@ -646,6 +679,7 @@ def graph_payload(conversation_id, viewer_id=None):
     return {
         "conversation_id": str(cid), "title": conversation["title"],
         "members": [_serialize_member(item) for item in member_docs], "nodes": nodes, "edges": edges,
+        "associated_events": associated_events,
         "branch_mode": "quantum_random",
         "can_create_initial_question": not has_root_question and conversation.get("created_by_user_id") == viewer_id,
         "can_manage_members": conversation.get("created_by_user_id") == viewer_id,

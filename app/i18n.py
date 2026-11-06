@@ -10,6 +10,9 @@ from flask_babel import gettext
 JS_MESSAGE_IDS = (
     "Connecting",
     "Members",
+    "Associated events",
+    "Event",
+    "No date",
     "Graph view controls",
     "Fit all",
     "Zoom out",

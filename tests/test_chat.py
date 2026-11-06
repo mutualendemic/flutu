@@ -340,6 +340,7 @@ class ChatTests(unittest.TestCase):
         self.assertIn(b'id="graph-zoom-in"', response.data)
         self.assertIn(b'id="graph-empty-state"', response.data)
         self.assertIn(b'id="graph-empty-state"', response.data)
+        self.assertIn(b'id="conversation-events-panel"', response.data)
         self.assertIn(b'src="/static/logo.svg"', response.data)
         script = self.http.get("/static/chat-conversation.js")
         self.assertIn(b'node[type="option"][?quantum_selected]', script.data)
@@ -347,6 +348,42 @@ class ChatTests(unittest.TestCase):
         self.assertIn(b"input.value = useValues ? value : ''", script.data)
         self.assertIn(b"input.reportValidity()", script.data)
         script.close()
+
+    def test_graph_payload_includes_associated_events(self):
+        conversation_id = ObjectId("65b0e7a3a6c6f166f1c3a010")
+        conversation = {"_id": conversation_id, "title": "Planning", "created_by_user_id": "google-user"}
+        question = {
+            "_id": ObjectId("65b0e7a3a6c6f166f1c3a011"),
+            "conversation_id": conversation_id,
+            "author_user_id": "google-user",
+            "text": "Where should we meet?",
+            "status": "open",
+            "parent_option_id": None,
+            "winning_option_id": None,
+            "created_at": datetime.now(timezone.utc),
+        }
+        event = {
+            "_id": ObjectId("65b0e7a3a6c6f166f1c3a012"),
+            "owner_id": "google-user",
+            "title": "Team meetup",
+            "status": "open",
+            "dates": [{"start_at": "2026-11-05T10:00:00Z", "end_at": "2026-11-05T11:00:00Z"}],
+            "conversation_ids": [str(conversation_id)],
+        }
+        members = Mock()
+        members.find.return_value = [{"user_id": "google-user", "name": "Test User", "picture": "", "left_at": None}]
+        questions = Mock(); questions.find.return_value.sort.return_value = [question]
+        options = Mock(); options.find.return_value.sort.return_value = []
+        answers = Mock(); answers.find.return_value = []
+        events = Mock(); events.find.return_value = [event]
+
+        with patch("app.services.chat.get_conversation", return_value=conversation), patch(
+            "app.services.chat._collections", return_value=(Mock(), members, questions, options, answers)
+        ), patch("app.services.chat.get_collection", return_value=events):
+            graph = graph_payload(str(conversation_id), "google-user")
+
+        self.assertEqual(graph["associated_events"][0]["title"], "Team meetup")
+        self.assertEqual(graph["associated_events"][0]["url"], "/calendar?event=65b0e7a3a6c6f166f1c3a012")
 
     def test_chat_list_uses_member_profile_photos_with_initials_fallback(self):
         self.sign_in()

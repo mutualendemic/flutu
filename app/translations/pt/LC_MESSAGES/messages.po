@@ -18,14 +18,23 @@ msgstr "Animação de partículas flutuantes"
 msgid "A calmer way to coordinate"
 msgstr "Uma forma mais tranquila de coordenar"
 
-msgid "Bring your people and plans together."
-msgstr "Junte as suas pessoas e os seus planos."
+msgid "Plan together, decide together, keep everyone aligned."
+msgstr "Planeie em conjunto, decida em conjunto e mantenha toda a gente alinhada."
 
-msgid "Flutu.eu helps you make decisions with friends, keep useful contacts together, and share location only with people you trust."
-msgstr "A Flutu.eu ajuda-o a tomar decisões com amigos, organizar contactos úteis e partilhar a localização apenas com pessoas em quem confia."
+msgid "Flutu.eu brings branching conversations, shared events, trusted contacts, and private location sharing into one calmer space for planning with friends."
+msgstr "A Flutu.eu reúne conversas ramificadas, eventos partilhados, contactos de confiança e partilha privada da localização num espaço mais calmo para planear com amigos."
 
 msgid "What you can do"
 msgstr "O que pode fazer"
+
+msgid "Event"
+msgstr "Evento"
+
+msgid "Event calendar"
+msgstr "Calendário de eventos"
+
+msgid "Create shared plans, manage recurring dates, guests, map pins, and conversation links from one place."
+msgstr "Crie planos partilhados, gere datas recorrentes, convidados, pinos no mapa e ligações a conversas num só lugar."
 
 msgid "Branching conversations"
 msgstr "Conversas ramificadas"
@@ -1469,6 +1478,12 @@ msgstr "Ainda não existem contactos guardados."
 
 msgid "No conversations yet."
 msgstr "Ainda não existem conversas."
+
+msgid "Associated events"
+msgstr "Eventos associados"
+
+msgid "No date"
+msgstr "Sem data"
 
 msgid "The event title is invalid."
 msgstr "O título do evento é inválido."

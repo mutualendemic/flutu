@@ -68,7 +68,8 @@ class RouteTests(unittest.TestCase):
     def test_root_renders_public_landing_page(self):
         response = self.client.get("/", follow_redirects=False)
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b"Bring your people and plans together", response.data)
+        self.assertIn(b"Plan together, decide together, keep everyone aligned", response.data)
+        self.assertIn(b"Event calendar", response.data)
         self.assertIn(b"Private location sharing", response.data)
         self.assertIn(b'id="landing-particles"', response.data)
         self.assertIn(b"landing-effect.js", response.data)
@@ -144,7 +145,7 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 302)
         landing = self.client.get("/")
         self.assertIn(b'lang="pt-PT"', landing.data)
-        self.assertIn("Junte as suas pessoas".encode(), landing.data)
+        self.assertIn("Planeie em conjunto, decida em conjunto e mantenha toda a gente alinhada.".encode(), landing.data)
         self.assertIn("Animação de partículas flutuantes".encode(), landing.data)
         self.sign_in()
         with self.client.session_transaction() as browser_session:

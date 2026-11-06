@@ -30,6 +30,9 @@
   .detail-panel, .composer, .members-panel { padding:18px; border:1px solid var(--border); border-radius:16px; background:var(--surface-muted); margin:12px 0; }
   .detail-panel h2 { margin:0 0 8px; font-size:1.1rem; }
   .detail-panel p { margin:6px 0; }
+  .conversation-event-list { display:grid; gap:10px; list-style:none; padding:0; margin:10px 0 0; }
+  .conversation-event-list a { display:block; padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:var(--surface-solid); color:var(--text); text-decoration:none; }
+  .conversation-event-list small { display:block; color:var(--muted); margin-top:4px; }
   .composer label, .answer-dialog label, .members-panel label { display:block; margin:10px 0 6px; font-weight:700; }
   textarea, input[type=text], input[type=search] { width:100%; padding:12px; border:1px solid var(--input-border); border-radius:10px; background:var(--input-bg); color:var(--text); font:inherit; }
   .option-editor { display:grid; grid-template-columns:1fr auto; gap:8px; margin:8px 0; }
@@ -75,6 +78,10 @@
     </div>
   </div>
   <section id="details" class="detail-panel" aria-live="polite"><h2>{{ _('Select a question or option') }}</h2><p>{{ _('Question cards identify their author. Green marks the option chosen by the quantum selector; follow-up links show which option led to each new question.') }}</p></section>
+  <section id="conversation-events-panel" class="detail-panel" hidden>
+    <h2>{{ _('Associated events') }}</h2>
+    <ul id="conversation-events-list" class="conversation-event-list"></ul>
+  </section>
   <div id="quantum-branch-banner" class="quantum-banner" aria-live="polite">{{ _('The quantum selector chooses one answer path from each question. Participants can add follow-up questions only to the selected option.') }}</div>
   <section class="composer" aria-labelledby="composer-title" hidden>
     <h2 id="composer-title">{{ _('Start the conversation') }}</h2>
