@@ -8,6 +8,7 @@
 ## Current behavior
 
 - The persisted list is specific to the Google account and is available across sessions/devices when MongoDB is configured.
+- The contact list uses the shared contact renderer and shows a profile photo or initials, name, email when available, and whether the email matches a registered Flutu.eu account. The same renderer is used by contact selectors throughout the application.
 - Users can add contacts manually, search, delete an individual contact, and clear all contacts.
 - Contacts can be imported with Contact Picker when supported by the browser and secure context. Alternatively, a `.vcf` file up to 5 MiB can be read and parsed locally, with each server request limited to 100 records.
 - For a saved contact with an email address, users can open their email app with a prefilled invitation. For a contact with a phone number, they can open their messaging app with the invitation text prepared. Users review and send the message themselves; Flutu does not send or persist invitations.

@@ -17,7 +17,9 @@
   .map-caption, .subtle { color: #667085; font-size: .88rem; }
   .stack { display: grid; gap: 16px; align-content: start; }
   .contact-form { display: grid; gap: 10px; }
-  select { width: 100%; padding: 12px; border: 1px solid #cfd7e6; border-radius: 10px; color: #14213d; font: inherit; background: white; }
+  .contact-choice-list { display:grid; gap:6px; max-height:240px; overflow:auto; }
+  .contact-choice { padding:8px; border:1px solid var(--border); border-radius:8px; }
+  .contact-choice input[type="radio"] { width:auto; flex:0 0 auto; }
   .small-button { width: auto; margin: 0; padding: 10px 12px; font-size: .9rem; }
   .user-map-avatar { display: block; width: 42px; height: 42px; border: 3px solid white; border-radius: 50%; background: #3655d4; box-shadow: 0 2px 8px #14213d66; object-fit: cover; }
   .user-map-initials { display: grid; width: 42px; height: 42px; place-items: center; border: 3px solid white; border-radius: 50%; background: #3655d4; box-shadow: 0 2px 8px #14213d66; color: white; font-size: .9rem; font-weight: 800; }
@@ -67,9 +69,9 @@
           <h2>{{ _('Request a location') }}</h2>
           <p class="subtle">{{ _('Choose a saved contact with an email address. They must have signed in to flutu.eu; they decide whether to share.') }}</p>
           <form id="request-form" class="contact-form">
-            <label for="contact-select">{{ _('Contact') }}</label>
-            <select id="contact-select" required><option value="">{{ _('Loading contacts…') }}</option></select>
-            <button class="button small-button" type="submit">{{ _('Request location sharing') }}</button>
+            <p class="contact-select-label">{{ _('Contact') }}</p>
+            <div id="contact-select" class="contact-choice-list" role="radiogroup" aria-label="{{ _('Contact') }}"><p class="empty">{{ _('Loading contacts…') }}</p></div>
+            <button id="request-location-button" class="button small-button" type="submit" disabled>{{ _('Request location sharing') }}</button>
           </form>
           <p id="request-message" class="notice" role="status" aria-live="polite"></p>
         </section>
@@ -215,16 +217,15 @@
       });
     }
 
-    function makeItem(name, detail, buttons = []) {
+    function makeItem(name, detail, buttons = [], contact = {}) {
       const li = document.createElement('li');
       li.className = 'item';
       const copy = document.createElement('div');
       copy.className = 'item-copy';
-      const strong = document.createElement('strong');
-      strong.textContent = name;
+      copy.append(window.FlutuContactList.createIdentity({name, registered: true, ...contact}));
       const span = document.createElement('span');
       span.textContent = detail;
-      copy.append(strong, span);
+      copy.append(span);
       li.append(copy);
       if (buttons.length) {
         const actions = document.createElement('div');
@@ -348,7 +349,8 @@
       renderList(sharingList, sharingContacts, t('You are not sharing your location with anyone.'), item => makeItem(
         item.requester_name,
         `${item.requester_email} · ${formatDistance(item)}`,
-        [{ label: t('Stop sharing'), action: () => revoke(item.id), danger: true }]
+        [{ label: t('Stop sharing'), action: () => revoke(item.id), danger: true }],
+        {email: item.requester_email, picture: item.requester_picture, registered: true}
       ));
     }
 
@@ -575,12 +577,14 @@
           item.requester_name, t('{name} wants to see your location.').replace('{name}', item.requester_email), [
             { label: t('Accept'), action: () => respond(item.id, 'accept') },
             { label: t('Decline'), action: () => respond(item.id, 'decline'), danger: true }
-          ]
+          ],
+          {email: item.requester_email, picture: item.requester_picture, registered: true}
         ));
         renderList(outgoingList, data.outgoing_pending, t('No outgoing requests.'), item => makeItem(
           item.recipient_name, t('Waiting for {email} to respond.').replace('{email}', item.recipient_email), [
             { label: t('Cancel'), action: () => respond(item.id, 'cancel'), danger: true }
-          ]
+          ],
+          {email: item.recipient_email, picture: item.recipient_picture, registered: true}
         ));
         sharingContacts = data.sharing_with;
         renderSharingPeople();
@@ -610,8 +614,12 @@
       event.preventDefault();
       const form = event.currentTarget;
       await window.FlutuAction.run(event.submitter || form.querySelector('[type="submit"]'), async () => {
-        const contactId = document.getElementById('contact-select').value;
+        const contactId = document.querySelector('#contact-select input[name="contact_id"]:checked')?.value;
         const notice = document.getElementById('request-message');
+        if (!contactId) {
+          message(notice, t('Choose a registered contact.'), true);
+          return;
+        }
         try {
           const result = await callApi(api.requests, { method: 'POST', body: JSON.stringify({ contact_id: contactId }) });
           message(notice, result.created ? t('Request sent. It will be visible when the contact next opens flutu.eu.') : t('A request is already pending.'));
@@ -661,26 +669,41 @@
     }, {disabledAfter: () => sharingCount === 0}));
 
     async function loadContacts() {
-      const select = document.getElementById('contact-select');
+      const list = document.getElementById('contact-select');
+      const requestButton = document.getElementById('request-location-button');
       try {
         const data = await callApi(api.contacts);
         const contacts = data.contacts.filter(contact => contact.email);
-        select.replaceChildren();
-        const option = document.createElement('option');
-        option.value = '';
-        option.textContent = t(contacts.length ? 'Select a contact…' : 'No contacts with email addresses');
-        select.append(option);
+        list.replaceChildren();
+        if (!contacts.length) {
+          const empty = document.createElement('p');
+          empty.className = 'empty';
+          empty.textContent = t('No contacts with email addresses');
+          list.append(empty);
+        }
+        let requiredAssigned = false;
         contacts.forEach(contact => {
-          const item = document.createElement('option');
-          item.value = contact.id;
-          item.textContent = `${contact.name} — ${contact.email}`;
-          select.append(item);
+          const radio = document.createElement('input');
+          radio.type = 'radio';
+          radio.name = 'contact_id';
+          radio.value = contact.id;
+          radio.disabled = !contact.registered;
+          radio.required = Boolean(contact.registered && !requiredAssigned);
+          requiredAssigned ||= contact.registered === true;
+          list.append(window.FlutuContactList.createEntry(contact, {
+            tagName: 'label',
+            className: 'contact-choice',
+            control: radio,
+          }));
         });
+        requestButton.disabled = !contacts.some(contact => contact.registered);
       } catch (error) {
-        select.replaceChildren();
-        const option = document.createElement('option');
-        option.textContent = t('Contacts are unavailable');
-        select.append(option);
+        list.replaceChildren();
+        const empty = document.createElement('p');
+        empty.className = 'empty';
+        empty.textContent = t('Contacts are unavailable');
+        list.append(empty);
+        requestButton.disabled = true;
         message(document.getElementById('request-message'), error.message, true);
       }
     }

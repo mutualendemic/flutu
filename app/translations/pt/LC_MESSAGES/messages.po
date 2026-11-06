@@ -528,6 +528,15 @@ msgstr "Não existem contactos com conta Flutu.eu disponíveis."
 msgid "Permission for {name}"
 msgstr "Permissão para {name}"
 
+msgid "Registered on Flutu.eu"
+msgstr "Registado no Flutu.eu"
+
+msgid "Not registered on Flutu.eu"
+msgstr "Não registado no Flutu.eu"
+
+msgid "Choose a registered contact."
+msgstr "Escolha um contacto registado no Flutu.eu."
+
 msgid "Event invitation: {title}"
 msgstr "Convite para o evento: {title}"
 

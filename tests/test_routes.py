@@ -417,6 +417,28 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         add_mock.assert_not_called()
 
+    def test_contact_service_includes_registered_status_and_profile_picture(self):
+        from app.services.contacts import list_contacts
+
+        contact_records = [
+            {"_id": "contact-registered", "name": "Alex", "tel": "", "email": "alex@example.com"},
+            {"_id": "contact-unregistered", "name": "Sam", "tel": "123", "email": "sam@example.com"},
+        ]
+        contacts = Mock()
+        contacts.find.return_value.sort.return_value = contact_records
+        users = Mock()
+        users.find.return_value = [{
+            "_id": "google-alex", "email": "alex@example.com", "picture": "https://example.com/alex.png",
+        }]
+        with patch("app.services.contacts.get_collection", side_effect=lambda name: contacts if name == "contacts" else users):
+            result = list_contacts("owner")
+        self.assertEqual(result[0]["registered"], True)
+        self.assertEqual(result[0]["user_id"], "google-alex")
+        self.assertEqual(result[0]["picture"], "https://example.com/alex.png")
+        self.assertEqual(result[1]["registered"], False)
+        self.assertIsNone(result[1]["user_id"])
+        self.assertEqual(result[1]["picture"], "")
+
     def test_location_request_uses_only_signed_in_users_saved_contacts(self):
         self.sign_in()
         contact = {"id": "contact-1", "name": "Alex", "tel": "", "email": "alex@example.com"}

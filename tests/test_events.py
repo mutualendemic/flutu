@@ -575,6 +575,7 @@ class CalendarTests(unittest.TestCase):
             "conversation_ids": ["507f1f77bcf86cd799439013"],
         }
         with patch("app.services.events.get_collection", return_value=contacts), \
+               patch("app.services.events.list_addable_members", return_value=[]), \
              patch("app.services.chat.is_active_member", return_value=True) as is_member:
             result = normalize_event(payload, "google-user")
         self.assertEqual(result["guest_contact_ids"], [contact_id])
@@ -582,9 +583,50 @@ class CalendarTests(unittest.TestCase):
 
         contacts.find.return_value = []
         with patch("app.services.events.get_collection", return_value=contacts), \
+               patch("app.services.events.list_addable_members", return_value=[]), \
              patch("app.services.chat.is_active_member", return_value=True), \
              self.assertRaisesRegex(ValueError, "invalid_guests"):
             normalize_event(payload, "google-user")
+
+    def test_guest_contact_linked_to_account_creates_pending_viewer_invite(self):
+        contact_id = "507f1f77bcf86cd799439019"
+        contacts = Mock()
+        contacts.find.return_value = [{"_id": ObjectId(contact_id)}]
+        linked_account = {
+            "contact_id": contact_id,
+            "user_id": "guest-user",
+            "name": "Alex Guest",
+            "email": "alex@example.com",
+        }
+        payload = {
+            "title": "Planning",
+            "dates": [{"start_at": "2026-11-07T10:00:00Z", "end_at": "2026-11-07T11:00:00Z"}],
+            "guest_contact_ids": [contact_id],
+        }
+        with patch("app.services.events.get_collection", return_value=contacts), \
+             patch("app.services.events.list_addable_members", return_value=[linked_account]):
+            normalized = normalize_event(payload, "owner-user")
+        self.assertEqual(normalized["members"], [{
+            "user_id": "guest-user",
+            "name": "Alex Guest",
+            "email": "alex@example.com",
+            "picture": "",
+            "role": "viewer",
+            "status": "pending",
+        }])
+        event = {
+            "_id": ObjectId("507f1f77bcf86cd799439020"),
+            "owner_id": "owner-user",
+            "title": "Planning",
+            "dates": payload["dates"],
+            **normalized,
+        }
+        collection = Mock()
+        collection.find.return_value = [event]
+        with patch("app.services.events.get_collection", return_value=collection):
+            guest_events = list_events("guest-user")
+        self.assertEqual(len(guest_events), 1)
+        self.assertEqual(guest_events[0]["viewer_status"], "pending")
 
     def test_event_members_are_visible_to_accepted_guest(self):
         member_user = "guest-user"
@@ -624,6 +666,7 @@ class CalendarTests(unittest.TestCase):
             "dates": [{"start_at": "2026-11-07T10:00:00Z", "end_at": "2026-11-07T11:00:00Z"}],
             "members": [{
                 "user_id": "guest-user", "name": "Alex", "email": "alex@example.com",
+                "picture": "https://example.com/alex.png",
                 "role": "editor", "status": "pending",
             }],
         }
@@ -664,7 +707,7 @@ class CalendarTests(unittest.TestCase):
             "dates": [{"start_at": "2026-11-07T10:00:00Z", "end_at": "2026-11-07T11:00:00Z"}],
             "guest_contact_ids": ["owner-contact"],
             "conversation_ids": ["owner-conversation"],
-            "members": [{"user_id": "editor-user", "name": "Editor", "email": "editor@example.com", "role": "editor", "status": "accepted"}],
+            "members": [{"user_id": "editor-user", "name": "Editor", "email": "editor@example.com", "picture": "https://example.com/editor.png", "role": "editor", "status": "accepted"}],
             "map_points": [],
         }
         normalized = {
@@ -673,7 +716,7 @@ class CalendarTests(unittest.TestCase):
             "dates": previous["dates"],
             "guest_contact_ids": ["attacker-contact"],
             "conversation_ids": ["attacker-conversation"],
-            "members": [{"user_id": "other-user", "name": "Other", "email": "other@example.com", "role": "editor", "status": "pending"}],
+            "members": [{"user_id": "other-user", "name": "Other", "email": "other@example.com", "picture": "https://example.com/other.png", "role": "editor", "status": "pending"}],
             "map_points": [],
         }
         collection = Mock()
@@ -706,7 +749,7 @@ class CalendarTests(unittest.TestCase):
             "dates": previous["dates"],
             "guest_contact_ids": [],
             "conversation_ids": [],
-            "members": [{"user_id": "new-user", "name": "New", "email": "new@example.com", "role": "editor", "status": "pending"}],
+            "members": [{"user_id": "new-user", "name": "New", "email": "new@example.com", "picture": "https://example.com/new.png", "role": "editor", "status": "pending"}],
             "map_points": [],
         }
         collection = Mock()
@@ -728,8 +771,8 @@ class CalendarTests(unittest.TestCase):
             "title": "Planning",
             "guest_contact_ids": [guest_contact_id],
             "members": [
-                {"user_id": "accepted-user", "name": "Accepted", "email": "shared@example.com", "status": "accepted"},
-                {"user_id": "pending-user", "name": "Pending", "email": "pending@example.com", "status": "pending"},
+                {"user_id": "accepted-user", "name": "Accepted", "email": "shared@example.com", "picture": "https://example.com/accepted.png", "status": "accepted"},
+                {"user_id": "pending-user", "name": "Pending", "email": "pending@example.com", "picture": "https://example.com/pending.png", "status": "pending"},
             ],
         }
         contacts = Mock()
@@ -741,6 +784,9 @@ class CalendarTests(unittest.TestCase):
             return contacts if name == "contacts" else users
 
         self.app.config["RESEND_API_KEY"] = "test-resend-key"
+        self.app.config["VAPID_PUBLIC_KEY"] = "test-public-vapid-key"
+        self.app.config["VAPID_PRIVATE_KEY"] = "test-private-vapid-key"
+        self.app.config["VAPID_CONTACT"] = "mailto:test@example.com"
         with self.app.app_context(), \
              patch("app.services.events.get_collection", side_effect=collection_for), \
              patch("app.services.push_notifications.notify_users") as notify, \

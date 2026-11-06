@@ -457,17 +457,7 @@
       guestList.className = 'detail-value-list';
       guests.forEach(guest => {
         const item = document.createElement('li');
-        const identity = document.createElement('span');
-        identity.className = 'event-person-identity';
-        const name = document.createElement('strong');
-        name.textContent = guest.name;
-        identity.append(name);
-        if (guest.email) {
-          const email = document.createElement('small');
-          email.textContent = guest.email;
-          identity.append(email);
-        }
-        item.append(identity);
+        item.append(window.FlutuContactList.createIdentity(guest));
         guestList.append(item);
       });
       section.append(guestList);
@@ -483,20 +473,7 @@
         const item = document.createElement('li');
         const role = t(member.role === 'editor' || member.role === 'admin' ? 'Editor' : 'Viewer');
         const invitationStatus = t(member.status === 'accepted' ? 'Accepted' : 'Invitation pending');
-        const identity = document.createElement('span');
-        identity.className = 'event-person-identity';
-        const name = document.createElement('strong');
-        name.textContent = member.name;
-        identity.append(name);
-        if (member.email) {
-          const email = document.createElement('small');
-          email.textContent = member.email;
-          identity.append(email);
-        }
-        const meta = document.createElement('small');
-        meta.textContent = `${role} · ${invitationStatus}`;
-        identity.append(meta);
-        item.append(identity);
+        item.append(window.FlutuContactList.createIdentity(member, {subtitle: `${role} · ${invitationStatus}`}));
         memberList.append(item);
       });
       section.append(memberList);
@@ -717,24 +694,23 @@
       return;
     }
     values.forEach(item => {
-      const label = document.createElement('label');
-      label.className = 'check-option';
       const input = document.createElement('input');
       input.type = 'checkbox';
       input.name = nameField;
       input.value = item.id;
       input.checked = selected.includes(item.id);
-      const text = document.createElement('span');
-      const name = document.createElement('strong');
-      name.textContent = item.name || item.title;
-      text.append(name);
-      if (item.email) {
-        const email = document.createElement('small');
-        email.textContent = item.email;
-        text.append(email);
+      if (item.registered !== undefined || item.email || item.user_id) {
+        container.append(window.FlutuContactList.createEntry(item, {
+          tagName: 'label', className: 'check-option', control: input,
+        }));
+      } else {
+        const label = document.createElement('label');
+        label.className = 'check-option';
+        const text = document.createElement('span');
+        text.textContent = item.name || item.title;
+        label.append(input, text);
+        container.append(label);
       }
-      label.append(input, text);
-      container.append(label);
     });
   }
 
@@ -753,19 +729,13 @@
     }
     for (const member of candidates.values()) {
       const current = existingMembers.find(item => item.user_id === member.user_id && item.status !== 'declined');
-      const label = document.createElement('label');
-      label.className = 'check-option event-member-option';
       const checkbox = document.createElement('input');
       checkbox.type = 'checkbox';
       checkbox.value = member.user_id;
       checkbox.checked = Boolean(current);
-      const identity = document.createElement('span');
-      identity.className = 'event-member-identity';
-      const name = document.createElement('strong');
-      name.textContent = member.name || member.email;
-      const email = document.createElement('small');
-      email.textContent = member.email || '';
-      identity.append(name, email);
+      const label = window.FlutuContactList.createEntry({registered: true, ...member}, {
+        tagName: 'div', className: 'check-option event-member-option', control: checkbox,
+      });
       const role = document.createElement('select');
       role.setAttribute('aria-label', t('Permission for {name}').replace('{name}', member.name || member.email));
       for (const value of ['viewer', 'editor']) {
@@ -777,11 +747,11 @@
       role.value = current?.role === 'editor' || current?.role === 'admin' ? 'editor' : 'viewer';
       role.disabled = !checkbox.checked;
       checkbox.addEventListener('change', () => { role.disabled = !checkbox.checked; });
-      label.append(checkbox, identity, role);
+      label.append(role);
       if (current?.status === 'pending') {
         const invitation = document.createElement('small');
         invitation.textContent = t('Invitation pending');
-          identity.append(invitation);
+        label.querySelector('.site-contact-details').append(invitation);
       }
       eventMemberPicker.append(label);
     }

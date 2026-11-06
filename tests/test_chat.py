@@ -385,16 +385,19 @@ class ChatTests(unittest.TestCase):
         self.assertEqual(graph["associated_events"][0]["title"], "Team meetup")
         self.assertEqual(graph["associated_events"][0]["url"], "/calendar?event=65b0e7a3a6c6f166f1c3a012")
 
-    def test_chat_list_uses_member_profile_photos_with_initials_fallback(self):
+    def test_chat_list_uses_shared_contact_identity_renderer(self):
         self.sign_in()
         response = self.http.get("/chat/")
         self.assertEqual(response.status_code, 200)
         self.assertIn(b".conversation-link { display:block; flex:1; width:100%;", response.data)
-        self.assertIn(b"member-photo", response.data)
+        self.assertIn(b"site-contact-avatar", response.data)
         script = self.http.get("/static/chat-list.js")
-        self.assertIn(b"member.picture", script.data)
-        self.assertIn(b"image.replaceWith(dot)", script.data)
+        self.assertIn(b"FlutuContactList.createEntry", script.data)
+        identity = self.http.get("/static/contact-list.js")
+        self.assertIn(b"contact.picture", identity.data)
+        self.assertIn(b"Registered on Flutu.eu", identity.data)
         script.close()
+        identity.close()
 
     def test_member_snapshot_preserves_profile_photo_for_author_avatar(self):
         member = _serialize_member({

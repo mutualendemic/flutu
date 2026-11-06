@@ -13,7 +13,8 @@
   .count { color: #687791; font-size: .9rem; }
   .search { margin: 14px 0; }
   .contact-list { display: grid; gap: 10px; padding: 0; list-style: none; }
-  .contact-card { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-width: 0; padding: 15px; border: 1px solid #e2e9f5; border-radius: 14px; background: #fbfcff; }
+  .contact-card { min-width: 0; padding: 15px; border: 1px solid #e2e9f5; border-radius: 14px; background: #fbfcff; }
+  .contact-card-entry { justify-content: space-between; }
   .contact-details { min-width: 0; overflow-wrap: anywhere; }
   .contact-card-actions { display: flex; flex: 0 0 auto; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
   .contact-card h3 { margin: 0 0 5px; font-size: 1rem; }
@@ -29,7 +30,7 @@
     .manual-form { grid-template-columns: 1fr; }
     .manual-form button { grid-column: auto; }
     .contacts { margin-top: 0; }
-    .contact-card { align-items: stretch; flex-direction: column; gap: 12px; }
+    .contact-card-entry { align-items: stretch; flex-direction: column; gap: 12px; }
     .contact-card-actions { width: 100%; justify-content: flex-start; }
     .invite-contact, .remove-contact { width: 40px; height: 40px; padding: 0; }
     .action-label { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
@@ -202,21 +203,6 @@
         visible.forEach((contact) => {
           const item = document.createElement("li");
           item.className = "contact-card";
-          const details = document.createElement("div");
-          details.className = "contact-details";
-          const name = document.createElement("h3");
-          name.textContent = contact.name;
-          details.append(name);
-          if (contact.tel) {
-            const phone = document.createElement("p");
-            phone.textContent = contact.tel;
-            details.append(phone);
-          }
-          if (contact.email) {
-            const email = document.createElement("p");
-            email.textContent = contact.email;
-            details.append(email);
-          }
           const actions = document.createElement("div");
           actions.className = "contact-card-actions";
           const message = invitationMessage(contact);
@@ -261,7 +247,11 @@
             });
           });
           actions.append(remove);
-          item.append(details, actions);
+          item.append(window.FlutuContactList.createEntry(contact, {
+            tagName: "div",
+            className: "contact-card-entry",
+            actions,
+          }));
           list.append(item);
         });
         count.textContent = contacts.length === 1

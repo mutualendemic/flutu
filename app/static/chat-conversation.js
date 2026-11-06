@@ -369,26 +369,10 @@
     const list = document.getElementById('member-list');
     list.replaceChildren();
     for (const member of members) {
-      const item = el('li', undefined, 'member-chip');
-      const initials = (member.name || '?').trim().split(/\s+/).map(part => part[0] || '').slice(0, 2).join('').toUpperCase();
-      const dot = el('span', initials, 'member-avatar');
-      dot.style.backgroundColor = member.active ? member.color : '#8a8f98';
-      if (member.picture) {
-        try {
-          const pictureUrl = new URL(member.picture, window.location.origin);
-          if (pictureUrl.protocol === 'https:') {
-            const image = document.createElement('img');
-            image.className = 'member-avatar';
-            image.src = pictureUrl.href;
-            image.alt = '';
-            image.referrerPolicy = 'no-referrer';
-            image.addEventListener('error', () => image.replaceWith(dot), {once: true});
-            item.append(image);
-          }
-        } catch (_) { /* Use initials when a profile photo URL is invalid. */ }
-      }
-      if (!item.children.length) item.append(dot);
-      item.append(el('span', `${member.name}${member.email ? ` · ${member.email}` : ''}${member.active ? '' : ` (${t('former member')})`}`));
+      const item = window.FlutuContactList.createEntry(
+        {...member, registered: true},
+        {tagName: 'li', className: 'member-chip', subtitle: member.active ? '' : t('former member')}
+      );
       if (member.active && member.role !== 'owner') {
         const remove = el('button', t('Remove')); remove.type = 'button';
         remove.addEventListener('click', () => changeMemberWithLoading(remove, member.user_id, 'DELETE'));
@@ -420,12 +404,12 @@
       host.replaceChildren();
       const query = search.value.trim().toLowerCase();
       contacts.filter(contact => `${contact.name} ${contact.email}`.toLowerCase().includes(query)).forEach(contact => {
-        const label = el('label');
         const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.value = contact.user_id || ''; checkbox.disabled = !contact.addable;
-        const text = el('span'); text.append(el('strong', contact.name));
-        if (contact.email) text.append(el('small', contact.email));
-        if (!contact.addable) text.append(el('small', t('Not on the app')));
-        label.append(checkbox, text); host.append(label);
+        host.append(window.FlutuContactList.createEntry(contact, {
+          tagName: 'label',
+          className: 'picker-contact',
+          control: checkbox,
+        }));
       });
     };
     search.addEventListener('input', draw); draw();

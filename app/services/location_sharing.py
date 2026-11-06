@@ -39,7 +39,7 @@ def find_user_by_email(email):
     user = get_collection("users").find_one({"email": email.strip().lower()})
     if not user:
         return None
-    return {"id": user["_id"], "email": user["email"], "name": user["name"]}
+    return {"id": user["_id"], "email": user["email"], "name": user["name"], "picture": user.get("picture", "")}
 
 
 def _shares():
@@ -91,9 +91,12 @@ def _serialize_request(document):
         "requester_id": document["requester_id"],
         "requester_name": document["requester_name"],
         "requester_email": document["requester_email"],
+        "requester_picture": document.get("requester_picture", ""),
         "recipient_id": document["recipient_id"],
         "recipient_name": document["recipient_name"],
         "recipient_email": document["recipient_email"],
+        "recipient_picture": document.get("recipient_picture", ""),
+        "registered": True,
         "updated_at": _isoformat_utc(document["updated_at"]),
     }
 
@@ -113,8 +116,10 @@ def request_location(requester, recipient):
             "$set": {
                 "requester_name": requester["name"],
                 "requester_email": requester["email"],
+                "requester_picture": requester.get("picture", ""),
                 "recipient_name": recipient["name"],
                 "recipient_email": recipient["email"],
+                "recipient_picture": recipient.get("picture", ""),
                 "status": "pending",
                 "updated_at": now,
             },
@@ -218,6 +223,7 @@ def get_overview(user_id):
                 "user_id": share["recipient_id"],
                 "name": share["recipient_name"],
                 "email": share["recipient_email"],
+                "registered": True,
                 "picture": location.get("picture") or user_pictures.get(share["recipient_id"]),
                 "latitude": coordinates[1],
                 "longitude": coordinates[0],

@@ -56,6 +56,15 @@
       .sharing-status.is-paused { border-color: #fedf89; background: #fffaeb; color: #93370d; }
       .sharing-status.is-paused::before { background: #f79009; }
       code { padding: 2px 5px; border-radius: 5px; background: var(--code-bg); }
+      .site-contact-entry { display:flex; min-width:0; align-items:center; gap:10px; }
+      .site-contact-identity { display:grid; min-width:0; grid-template-columns:38px minmax(0,1fr); align-items:center; gap:9px; overflow-wrap:anywhere; }
+      .site-contact-avatar { display:grid; width:38px; height:38px; place-items:center; overflow:hidden; border:1px solid var(--border); border-radius:50%; background:var(--surface-muted); color:var(--text); font-size:.78rem; font-weight:700; }
+      .site-contact-avatar img { width:100%; height:100%; object-fit:cover; }
+      .site-contact-details { display:grid; min-width:0; gap:2px; }
+      .site-contact-name { overflow-wrap:anywhere; color:var(--text); }
+      .site-contact-email, .site-contact-status { overflow-wrap:anywhere; color:var(--muted); font-size:.78rem; font-weight:400; }
+      .site-contact-status[data-registered="true"] { color:#067647; }
+      .site-contact-status[data-registered="false"] { color:var(--muted); }
       {% block styles %}{% endblock %}
       @media (prefers-color-scheme: dark) {
         :root {
@@ -120,6 +129,7 @@
     </nav>
     {% block content %}{% endblock %}
     <script>window.FlutuI18n = {{ get_ui_messages()|tojson }};</script>
+    <script src="{{ url_for('static', filename='contact-list.js') }}"></script>
     {% block scripts %}{% endblock %}
     <script src="{{ url_for('static', filename='action-loading.js') }}" defer></script>
     {% if session.get('user') %}

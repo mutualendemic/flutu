@@ -81,6 +81,7 @@ def _serialize_member(document):
         "user_id": document["user_id"],
         "name": document.get("name", "Former member"),
         "email": email,
+        "registered": bool(email),
         "picture": document.get("picture", ""),
         "color": document.get("color", "#8A8F98"),
         "role": document.get("role", "member"),
@@ -154,6 +155,8 @@ def addable_contacts(user_id, conversation_id=None):
             "email": email,
             "user_id": linked_id,
             "account_name": account.get("name") if account else None,
+            "picture": account.get("picture", "") if account else "",
+            "registered": bool(linked_id),
             "addable": bool(linked_id and linked_id not in existing),
         })
     return result

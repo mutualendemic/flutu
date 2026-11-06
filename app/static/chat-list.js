@@ -49,38 +49,16 @@
       const activeCount = conversation.members.filter(member => member.active).length;
       const questionCount = conversation.question_count ?? 0;
       meta.textContent = `${activeCount} ${t(activeCount === 1 ? 'member' : 'members')} · ${questionCount} ${t(questionCount === 1 ? 'question' : 'questions')}`;
-      const dots = document.createElement('div');
-      dots.className = 'member-dots';
-      dots.setAttribute('aria-label', conversation.members.map(member => [member.name, member.email].filter(Boolean).join(' · ')).join(', '));
-      for (const member of conversation.members.slice(0, 8)) {
-        const dot = document.createElement('span');
-        dot.className = 'member-dot';
-        dot.style.backgroundColor = member.active ? member.color : '#8a8f98';
-        dot.title = `${member.name}${member.email ? ` · ${member.email}` : ''}${member.active ? '' : ` (${t('former member')})`}`;
-        dot.textContent = initials(member.name);
-        if (member.picture) {
-          try {
-            const pictureUrl = new URL(member.picture, window.location.origin);
-            if (pictureUrl.protocol === 'https:') {
-              const image = document.createElement('img');
-              image.className = 'member-dot member-photo';
-              image.src = pictureUrl.href;
-              image.alt = '';
-              image.title = dot.title;
-              image.referrerPolicy = 'no-referrer';
-              image.addEventListener('error', () => image.replaceWith(dot), {once: true});
-              dots.append(image);
-              continue;
-            }
-          } catch (_) { /* Keep initials when a profile photo URL is invalid. */ }
-        }
-        dots.append(dot);
-      }
-      const emails = document.createElement('p');
-      emails.className = 'member-emails';
-      emails.textContent = conversation.members.map(member => [member.name, member.email].filter(Boolean).join(' · ')).join('  |  ');
-      link.append(title, meta, dots);
-      link.append(emails);
+      const identities = document.createElement('div');
+      identities.className = 'member-identities';
+      conversation.members.forEach(member => identities.append(
+        window.FlutuContactList.createEntry(member, {
+          tagName: 'div',
+          className: 'chat-member-identity',
+          subtitle: member.active ? '' : t('former member'),
+        })
+      ));
+      link.append(title, meta, identities);
       card.append(link);
       if (conversation.is_owner) {
         const deleteButton = document.createElement('button');
@@ -155,19 +133,15 @@
     const query = search.value.trim().toLowerCase();
     picker.replaceChildren();
     for (const contact of contacts.filter(item => `${item.name} ${item.email}`.toLowerCase().includes(query))) {
-      const label = document.createElement('label');
       const checkbox = document.createElement('input');
       checkbox.type = 'checkbox';
       checkbox.value = contact.user_id || '';
       checkbox.disabled = !contact.addable;
-      const text = document.createElement('span');
-      const name = document.createElement('strong');
-      name.textContent = contact.name;
-      const detail = document.createElement('small');
-      detail.textContent = [contact.email, !contact.addable ? t('Not on the app') : ''].filter(Boolean).join(' · ');
-      text.append(name, detail);
-      label.append(checkbox, text);
-      picker.append(label);
+      picker.append(window.FlutuContactList.createEntry(contact, {
+        tagName: 'label',
+        className: 'picker-contact',
+        control: checkbox,
+      }));
     }
     if (!picker.children.length) {
       const empty = document.createElement('p');
