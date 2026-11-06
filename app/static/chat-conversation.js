@@ -119,7 +119,8 @@
       if (node.type === 'option') {
         node.display = `${node.label} · ${t(node.quantum_selected ? 'QUANTUM CHOICE' : 'not selected')}`;
       } else if (node.type === 'question') {
-        node.display = `${node.label}\n${t('By {name}').replace('{name}', node.author_name || memberName(node.author_user_id))}`;
+        const authorIdentity = [node.author_name || memberName(node.author_user_id), node.author_email].filter(Boolean).join(' · ');
+        node.display = `${node.label}\n${t('By {name}').replace('{name}', authorIdentity)}`;
       }
       nodes.set(node.id, node);
       const existing = graph.getElementById(node.id);
@@ -201,7 +202,8 @@
       } catch (_) { /* Show initials when a profile photo URL is invalid. */ }
     }
     if (!authorRow.children.length) authorRow.append(avatar);
-    const author = el('p', t('Asked by {name}').replace('{name}', member?.name || memberName(node.author_user_id)));
+    const authorIdentity = [member?.name || memberName(node.author_user_id), member?.email].filter(Boolean).join(' · ');
+    const author = el('p', t('Asked by {name}').replace('{name}', authorIdentity));
     authorRow.append(author);
     details.append(title, authorRow);
     const opts = (snapshot.nodes || []).filter(item => item.type === 'option' && item.question_id === node.id.slice(1));
@@ -386,7 +388,7 @@
         } catch (_) { /* Use initials when a profile photo URL is invalid. */ }
       }
       if (!item.children.length) item.append(dot);
-      item.append(el('span', `${member.name}${member.active ? '' : ` (${t('former member')})`}`));
+      item.append(el('span', `${member.name}${member.email ? ` · ${member.email}` : ''}${member.active ? '' : ` (${t('former member')})`}`));
       if (member.active && member.role !== 'owner') {
         const remove = el('button', t('Remove')); remove.type = 'button';
         remove.addEventListener('click', () => changeMemberWithLoading(remove, member.user_id, 'DELETE'));
@@ -420,7 +422,9 @@
       contacts.filter(contact => `${contact.name} ${contact.email}`.toLowerCase().includes(query)).forEach(contact => {
         const label = el('label');
         const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.value = contact.user_id || ''; checkbox.disabled = !contact.addable;
-        const text = el('span'); text.append(el('strong', contact.name), el('small', contact.addable ? contact.email : t('Not on the app')));
+        const text = el('span'); text.append(el('strong', contact.name));
+        if (contact.email) text.append(el('small', contact.email));
+        if (!contact.addable) text.append(el('small', t('Not on the app')));
         label.append(checkbox, text); host.append(label);
       });
     };

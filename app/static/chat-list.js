@@ -51,12 +51,12 @@
       meta.textContent = `${activeCount} ${t(activeCount === 1 ? 'member' : 'members')} · ${questionCount} ${t(questionCount === 1 ? 'question' : 'questions')}`;
       const dots = document.createElement('div');
       dots.className = 'member-dots';
-      dots.setAttribute('aria-label', conversation.members.map(member => member.name).join(', '));
+      dots.setAttribute('aria-label', conversation.members.map(member => [member.name, member.email].filter(Boolean).join(' · ')).join(', '));
       for (const member of conversation.members.slice(0, 8)) {
         const dot = document.createElement('span');
         dot.className = 'member-dot';
         dot.style.backgroundColor = member.active ? member.color : '#8a8f98';
-        dot.title = `${member.name}${member.active ? '' : ` (${t('former member')})`}`;
+        dot.title = `${member.name}${member.email ? ` · ${member.email}` : ''}${member.active ? '' : ` (${t('former member')})`}`;
         dot.textContent = initials(member.name);
         if (member.picture) {
           try {
@@ -76,7 +76,11 @@
         }
         dots.append(dot);
       }
+      const emails = document.createElement('p');
+      emails.className = 'member-emails';
+      emails.textContent = conversation.members.map(member => [member.name, member.email].filter(Boolean).join(' · ')).join('  |  ');
       link.append(title, meta, dots);
+      link.append(emails);
       card.append(link);
       if (conversation.is_owner) {
         const deleteButton = document.createElement('button');
@@ -160,7 +164,7 @@
       const name = document.createElement('strong');
       name.textContent = contact.name;
       const detail = document.createElement('small');
-      detail.textContent = contact.addable ? contact.email : t('Not on the app');
+      detail.textContent = [contact.email, !contact.addable ? t('Not on the app') : ''].filter(Boolean).join(' · ');
       text.append(name, detail);
       label.append(checkbox, text);
       picker.append(label);

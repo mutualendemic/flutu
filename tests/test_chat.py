@@ -563,7 +563,7 @@ class ChatTests(unittest.TestCase):
             {"_id": option_id_a, "question_id": question_id, "conversation_id": conversation_id, "label": "Left", "position": 0},
             {"_id": option_id_b, "question_id": question_id, "conversation_id": conversation_id, "label": "Right", "position": 1},
         ]
-        members = [{"user_id": "google-user", "name": "Test User", "picture": "https://example.com/a.png", "left_at": None}]
+        members = [{"user_id": "google-user", "name": "Test User", "email": "user@example.com", "picture": "https://example.com/a.png", "left_at": None}]
 
         members_collection = Mock()
         members_collection.find.return_value = members
@@ -586,6 +586,8 @@ class ChatTests(unittest.TestCase):
         self.assertFalse(graph["can_create_initial_question"])
         self.assertTrue(graph["can_manage_members"])
         question_node = next(node for node in graph["nodes"] if node["type"] == "question")
+        self.assertEqual(question_node["author_email"], "user@example.com")
+        self.assertEqual(graph["members"][0]["email"], "user@example.com")
         self.assertEqual(question_node["lane"], 0)
         option_nodes = [node for node in graph["nodes"] if node["type"] == "option"]
         self.assertEqual({node["lane"] for node in option_nodes}, {1})

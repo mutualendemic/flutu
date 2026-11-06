@@ -217,6 +217,7 @@ def get_overview(user_id):
             {
                 "user_id": share["recipient_id"],
                 "name": share["recipient_name"],
+                "email": share["recipient_email"],
                 "picture": location.get("picture") or user_pictures.get(share["recipient_id"]),
                 "latitude": coordinates[1],
                 "longitude": coordinates[0],

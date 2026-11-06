@@ -501,6 +501,63 @@ msgstr "Aceitar"
 msgid "Decline"
 msgstr "Recusar"
 
+msgid "Event invitations"
+msgstr "Convites para eventos"
+
+msgid "Event members"
+msgstr "Membros do evento"
+
+msgid "Editor"
+msgstr "Editor"
+
+msgid "Viewer"
+msgstr "Leitor"
+
+msgid "Invitation pending"
+msgstr "Convite pendente"
+
+msgid "Accepted"
+msgstr "Aceite"
+
+msgid "Invitation for {role}"
+msgstr "Convite com permissão de {role}"
+
+msgid "No linked contacts available."
+msgstr "Não existem contactos com conta Flutu.eu disponíveis."
+
+msgid "Permission for {name}"
+msgstr "Permissão para {name}"
+
+msgid "Event invitation: {title}"
+msgstr "Convite para o evento: {title}"
+
+msgid "You were invited to {title}."
+msgstr "Foi convidado para o evento {title}."
+
+msgid "You have been added as a guest to {title}."
+msgstr "Foi adicionado como convidado ao evento {title}."
+
+msgid "Please contact the event organizer for details."
+msgstr "Contacte o organizador do evento para obter mais informações."
+
+msgid "Event update: {title}"
+msgstr "Atualização do evento: {title}"
+
+msgid "An event where you are listed as a guest was updated: {title}."
+msgstr "Um evento em que consta como convidado foi atualizado: {title}."
+
+msgid "Event updated: {title}"
+msgstr "Evento atualizado: {title}"
+
+msgid "An event you are a member of was updated: {title}."
+msgstr "Um evento de que é membro foi atualizado: {title}."
+
+msgid "Hello {name},"
+msgstr "Olá {name},"
+
+msgid "Open the calendar to review it."
+msgstr "Abra o calendário para consultar os detalhes."
+
 msgid "No outgoing requests."
 msgstr "Não existem pedidos enviados."
 
@@ -1442,6 +1499,15 @@ msgstr "Escolha um estado válido para o evento."
 
 msgid "One or more selected guests are not in your contacts."
 msgstr "Um ou mais convidados selecionados não constam dos seus contactos."
+
+msgid "Choose event members from contacts linked to Flutu accounts."
+msgstr "Escolha membros do evento entre os contactos com conta Flutu.eu associada."
+
+msgid "Choose whether to accept or decline the invitation."
+msgstr "Escolha se pretende aceitar ou recusar o convite."
+
+msgid "This event invitation is no longer available."
+msgstr "Este convite para o evento já não está disponível."
 
 msgid "One or more selected conversations are unavailable."
 msgstr "Uma ou mais conversas selecionadas não estão disponíveis."

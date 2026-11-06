@@ -4,8 +4,10 @@
 
   const t = key => window.FlutuI18n?.[key] || key;
   const locale = config.dataset.locale;
+  const calendarPageUrl = config.dataset.calendarUrl;
   const api = {
     events: config.dataset.eventsUrl,
+    eventMembers: config.dataset.eventMembersUrl,
     occurrences: config.dataset.occurrencesUrl,
     contacts: config.dataset.contactsUrl,
     conversations: config.dataset.conversationsUrl,
@@ -21,7 +23,11 @@
   const form = document.getElementById('event-form');
   const dateList = document.getElementById('date-list');
   const guestPicker = document.getElementById('guest-picker');
+  const eventMemberPicker = document.getElementById('event-member-picker');
   const conversationPicker = document.getElementById('conversation-picker');
+  const eventInvitations = document.getElementById('event-invitations');
+  const eventInvitationsList = document.getElementById('event-invitations-list');
+  const eventOwnerFields = document.getElementById('event-owner-fields');
   const pointList = document.getElementById('point-list');
   const formError = document.getElementById('form-error');
   const titleInput = document.getElementById('event-title');
@@ -44,6 +50,7 @@
   let occurrences = [];
   let contacts = [];
   let conversations = [];
+  let eventMemberCandidates = [];
   let mapPoints = [];
   let editorMap;
   let pointMarkers = [];
@@ -421,7 +428,7 @@
       eventDetail.append(section);
     }
 
-    const guests = event.guest_contact_ids.map(id => contacts.find(contact => contact.id === id)?.name).filter(Boolean);
+    const guests = event.guest_contact_ids.map(id => contacts.find(contact => contact.id === id)).filter(Boolean);
     const linkedConversations = event.conversation_ids.map(id => conversations.find(item => item.id === id)).filter(Boolean);
     const points = event.map_points || [];
 
@@ -448,12 +455,28 @@
       const section = createDetailSection(t('Guests'));
       const guestList = document.createElement('ul');
       guestList.className = 'detail-value-list';
-      guests.forEach(name => {
+      guests.forEach(guest => {
         const item = document.createElement('li');
-        item.textContent = name;
+        item.textContent = [guest.name, guest.email].filter(Boolean).join(' · ');
         guestList.append(item);
       });
       section.append(guestList);
+      eventDetail.append(section);
+    }
+
+    const eventMembers = (event.members || []).filter(member => member.status !== 'declined');
+    if (eventMembers.length) {
+      const section = createDetailSection(t('Event members'));
+      const memberList = document.createElement('ul');
+      memberList.className = 'detail-value-list';
+      eventMembers.forEach(member => {
+        const item = document.createElement('li');
+        const role = t(member.role === 'editor' || member.role === 'admin' ? 'Editor' : 'Viewer');
+        const invitationStatus = t(member.status === 'accepted' ? 'Accepted' : 'Invitation pending');
+        item.textContent = [member.name, member.email, role, invitationStatus].filter(Boolean).join(' · ');
+        memberList.append(item);
+      });
+      section.append(memberList);
       eventDetail.append(section);
     }
 
@@ -473,20 +496,27 @@
       eventDetail.append(section);
     }
 
-    const actions = document.createElement('div');
-    actions.className = 'detail-actions';
-    const edit = document.createElement('button');
-    edit.type = 'button';
-    edit.className = 'button button-secondary';
-    edit.textContent = t('Edit');
-    edit.addEventListener('click', () => openEditor(event));
-    const remove = document.createElement('button');
-    remove.type = 'button';
-    remove.className = 'button button-secondary';
-    remove.textContent = t('Delete');
-    remove.addEventListener('click', () => deleteEvent(event));
-    actions.append(edit, remove);
-    eventDetail.append(actions);
+    if (event.can_edit || event.can_delete) {
+      const actions = document.createElement('div');
+      actions.className = 'detail-actions';
+      if (event.can_edit) {
+        const edit = document.createElement('button');
+        edit.type = 'button';
+        edit.className = 'button button-secondary';
+        edit.textContent = t('Edit');
+        edit.addEventListener('click', () => openEditor(event));
+        actions.append(edit);
+      }
+      if (event.can_delete) {
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'button button-secondary';
+        remove.textContent = t('Delete');
+        remove.addEventListener('click', () => deleteEvent(event));
+        actions.append(remove);
+      }
+      eventDetail.append(actions);
+    }
   }
 
   function createDetailSection(title) {
@@ -522,15 +552,56 @@
     window.setTimeout(() => eventDetailMap?.invalidateSize(), 50);
   }
 
+  function renderEventInvitations() {
+    const pending = events.filter(event => event.viewer_status === 'pending');
+    eventInvitations.hidden = pending.length === 0;
+    eventInvitationsList.replaceChildren();
+    pending.forEach(event => {
+      const item = document.createElement('li');
+      const meta = document.createElement('div');
+      meta.className = 'event-invitation-meta';
+      const title = document.createElement('a');
+      const eventUrl = new URL(calendarPageUrl, window.location.origin);
+      eventUrl.searchParams.set('event', event.id);
+      title.href = eventUrl.toString();
+      title.textContent = event.title;
+      const role = t(event.viewer_role === 'editor' ? 'Editor' : 'Viewer');
+      const detail = document.createElement('small');
+      detail.textContent = t('Invitation for {role}').replace('{role}', role);
+      meta.append(title, detail);
+      const actions = document.createElement('div');
+      actions.className = 'event-invitation-actions';
+      for (const [action, label] of [['accept', 'Accept'], ['decline', 'Decline']]) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'button button-secondary';
+        button.textContent = t(label);
+        button.addEventListener('click', async () => {
+          await window.FlutuAction.run(button, async () => {
+            await callApi(`${api.events}/${encodeURIComponent(event.id)}/invitation`, {
+              method: 'POST', body: JSON.stringify({action})
+            });
+            await loadCalendar();
+          });
+        });
+        actions.append(button);
+      }
+      item.append(meta, actions);
+      eventInvitationsList.append(item);
+    });
+  }
+
   async function loadCalendar() {
     setStatus(t('Loading events…'));
     try {
-      const [eventData, contactData, conversationData] = await Promise.all([
-        callApi(api.events), callApi(api.contacts), callApi(api.conversations)
+      const [eventData, contactData, conversationData, memberData] = await Promise.all([
+        callApi(api.events), callApi(api.contacts), callApi(api.conversations), callApi(api.eventMembers)
       ]);
       events = eventData.events;
       contacts = contactData.contacts;
       conversations = conversationData.conversations;
+      eventMemberCandidates = memberData.members;
+      renderEventInvitations();
       const target = linkedEventTarget();
       const linkedEvent = target && events.find(item => item.id === target.eventId);
       const linkedStartAt = target?.startAt || (linkedEvent?.dates?.[0]?.start_at ? new Date(linkedEvent.dates[0].start_at) : null);
@@ -631,10 +702,59 @@
       input.value = item.id;
       input.checked = selected.includes(item.id);
       const text = document.createElement('span');
-      text.textContent = item.name || item.title;
+      text.textContent = [item.name || item.title, item.email].filter(Boolean).join(' · ');
       label.append(input, text);
       container.append(label);
     });
+  }
+
+  function renderEventMemberPicker(existingMembers = []) {
+    eventMemberPicker.replaceChildren();
+    const candidates = new Map(eventMemberCandidates.map(item => [item.user_id, item]));
+    existingMembers.forEach(member => {
+      if (!candidates.has(member.user_id)) candidates.set(member.user_id, member);
+    });
+    if (!candidates.size) {
+      const empty = document.createElement('p');
+      empty.className = 'calendar-empty';
+      empty.textContent = t('No linked contacts available.');
+      eventMemberPicker.append(empty);
+      return;
+    }
+    for (const member of candidates.values()) {
+      const current = existingMembers.find(item => item.user_id === member.user_id && item.status !== 'declined');
+      const label = document.createElement('label');
+      label.className = 'check-option event-member-option';
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.value = member.user_id;
+      checkbox.checked = Boolean(current);
+      const identity = document.createElement('span');
+      identity.className = 'event-member-identity';
+      const name = document.createElement('strong');
+      name.textContent = member.name || member.email;
+      const email = document.createElement('small');
+      email.textContent = member.email || '';
+      identity.append(name, email);
+      const role = document.createElement('select');
+      role.setAttribute('aria-label', t('Permission for {name}').replace('{name}', member.name || member.email));
+      for (const value of ['viewer', 'editor']) {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = t(value === 'editor' ? 'Editor' : 'Viewer');
+        role.append(option);
+      }
+      role.value = current?.role === 'editor' || current?.role === 'admin' ? 'editor' : 'viewer';
+      role.disabled = !checkbox.checked;
+      checkbox.addEventListener('change', () => { role.disabled = !checkbox.checked; });
+      label.append(checkbox, identity, role);
+      if (current?.status === 'pending') {
+        const invitation = document.createElement('small');
+        invitation.textContent = t('Invitation pending');
+        label.append(invitation);
+      }
+      eventMemberPicker.append(label);
+    }
   }
 
   function renderPointList() {
@@ -846,6 +966,7 @@
     formError.textContent = '';
     document.getElementById('event-id').value = event?.id || '';
     document.getElementById('dialog-title').textContent = t(event ? 'Edit event' : 'New event');
+    eventOwnerFields.hidden = Boolean(event && !event.can_delete);
     titleInput.value = event?.title || '';
     descriptionInput.value = event?.description || '';
     coverImageId = event?.cover_image_id || null;
@@ -854,6 +975,7 @@
     updateCoverPreview(event?.cover_image_url || '');
     dateList.replaceChildren(...(event?.dates || [{}]).map(createDateRow));
     renderPicker(guestPicker, contacts, event?.guest_contact_ids || [], 'guest', 'No contacts saved yet.');
+    renderEventMemberPicker(event?.members || []);
     renderPicker(conversationPicker, conversations, event?.conversation_ids || [], 'conversation', 'No conversations yet.');
     mapPoints = structuredClone(event?.map_points || []);
     draftCoordinates = null;
@@ -899,6 +1021,10 @@
       cover_image_id: coverImageId,
       dates,
       guest_contact_ids: [...guestPicker.querySelectorAll('input:checked')].map(input => input.value),
+      members: [...eventMemberPicker.querySelectorAll('input[type="checkbox"]:checked')].map(input => ({
+        user_id: input.value,
+        role: input.closest('.event-member-option').querySelector('select').value
+      })),
       conversation_ids: [...conversationPicker.querySelectorAll('input:checked')].map(input => input.value),
       map_points: mapPoints
     };

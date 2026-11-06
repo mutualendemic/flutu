@@ -78,6 +78,32 @@ def api_list_events():
         return jsonify(error="calendar_unavailable"), 503
 
 
+@calendar_bp.get("/api/event-members")
+def api_event_members():
+    try:
+        return jsonify(members=events.list_addable_members(_user_id()))
+    except (PyMongoError, RuntimeError):
+        current_app.logger.exception("Could not load event members")
+        return jsonify(error="calendar_unavailable"), 503
+
+
+@calendar_bp.post("/api/events/<event_id>/invitation")
+def api_respond_event_invitation(event_id):
+    try:
+        payload = request.get_json(silent=True) or {}
+        if not isinstance(payload, dict):
+            return jsonify(error="invalid_invitation_action"), 400
+        event = events.respond_to_invitation(_user_id(), event_id, payload.get("action"))
+        if not event:
+            return jsonify(error="invitation_not_found"), 404
+        return jsonify(event=_event_response(event))
+    except ValueError as error:
+        return jsonify(error=str(error)), 400
+    except (PyMongoError, RuntimeError):
+        current_app.logger.exception("Could not respond to event invitation")
+        return jsonify(error="calendar_unavailable"), 503
+
+
 @calendar_bp.post("/api/events")
 def api_create_event():
     try:

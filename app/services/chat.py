@@ -70,9 +70,17 @@ def validate_question(text, labels):
 
 
 def _serialize_member(document):
+    email = document.get("email", "")
+    if not email:
+        try:
+            profile = get_collection("users").find_one({"_id": document["user_id"]}, {"email": 1}) or {}
+        except RuntimeError:
+            profile = {}
+        email = profile.get("email", "")
     return {
         "user_id": document["user_id"],
         "name": document.get("name", "Former member"),
+        "email": email,
         "picture": document.get("picture", ""),
         "color": document.get("color", "#8A8F98"),
         "role": document.get("role", "member"),
@@ -157,6 +165,7 @@ def _member_snapshot(user_id):
     ) or {}
     return {
         "name": user.get("name") or user.get("email") or "Flutu member",
+        "email": user.get("email", ""),
         "picture": user.get("picture", ""),
     }
 
@@ -653,6 +662,7 @@ def graph_payload(conversation_id, viewer_id=None):
             "id": f"q{qid}", "type": "question", "label": question["text"],
             "status": question["status"], "author_user_id": question["author_user_id"],
             "author_name": member_by_id.get(question["author_user_id"], {}).get("name", "Former member"),
+            "author_email": member_by_id.get(question["author_user_id"], {}).get("email", ""),
             "author_picture": member_by_id.get(question["author_user_id"], {}).get("picture", ""),
             "lane": lane, "row": row, "winning_option_id": str(question["winning_option_id"]) if question.get("winning_option_id") else None,
             "created_at": question["created_at"].isoformat(), "allow_vote_change": question.get("allow_vote_change", True),

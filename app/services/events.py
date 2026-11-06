@@ -1,5 +1,6 @@
 import base64
 import binascii
+from html import escape as html_escape
 import json
 import math
 import re
@@ -9,6 +10,7 @@ from urllib import request as urllib_request
 
 from bson import ObjectId
 from dateutil.rrule import DAILY, MONTHLY, WEEKLY, YEARLY, MO, TU, WE, TH, FR, SA, SU, rrule
+from flask_babel import gettext
 from pymongo import ASCENDING, DESCENDING
 from pymongo import ReturnDocument
 
@@ -178,27 +180,57 @@ def _normalize_contacts(values, owner_id):
     return ids
 
 
-def _normalize_event_members(values, owner_id):
-    if values in (None, []):
+def list_addable_members(owner_id):
+    from app.services.chat import addable_contacts
+
+    return [
+        {
+            "user_id": item["user_id"],
+            "name": item.get("account_name") or item.get("name") or item["email"],
+            "email": item["email"],
+        }
+        for item in addable_contacts(owner_id)
+        if item.get("user_id") and item.get("email")
+    ]
+
+
+def _normalize_event_members(values, owner_id, existing_members=None):
+    if values is None:
+        return list(existing_members or [])
+    if values == []:
         return []
     if not isinstance(values, list) or len(values) > 50:
         raise ValueError("invalid_event_members")
+    eligible = {item["user_id"]: item for item in list_addable_members(owner_id)}
+    existing = {item.get("user_id"): item for item in existing_members or []}
     normalized = []
     seen = set()
     for value in values:
         if not isinstance(value, dict):
             raise ValueError("invalid_event_members")
         user_id = value.get("user_id")
-        role = value.get("role", "viewer")
-        status = value.get("status", "pending")
         if user_id == owner_id:
             continue
-        if not isinstance(user_id, str) or not user_id or role not in EVENT_MEMBER_ROLES or status not in EVENT_MEMBER_STATUSES:
+        previous = existing.get(user_id) if isinstance(user_id, str) else None
+        role = value.get("role", previous.get("role", "viewer") if previous else "viewer")
+        if role == "admin" and previous and previous.get("role") == "admin":
+            role = "editor"
+        if not isinstance(user_id, str) or not user_id or not isinstance(role, str) or role not in {"editor", "viewer"}:
             raise ValueError("invalid_event_members")
+        account = eligible.get(user_id)
+        if not account and not previous:
+            raise ValueError("invalid_event_members")
+        profile = account or previous
         if user_id in seen:
             continue
         seen.add(user_id)
-        normalized.append({"user_id": user_id, "role": role, "status": status})
+        normalized.append({
+            "user_id": user_id,
+            "name": profile.get("name") or profile.get("email", ""),
+            "email": profile.get("email", ""),
+            "role": role,
+            "status": previous.get("status") if previous and previous.get("status") in {"pending", "accepted"} else "pending",
+        })
     return normalized
 
 
@@ -312,7 +344,7 @@ def _normalize_cover_image(value, existing_cover_image=None):
     return {}
 
 
-def normalize_event(payload, owner_id, existing_points=None, existing_cover_image=None):
+def normalize_event(payload, owner_id, existing_points=None, existing_cover_image=None, existing_members=None):
     if not isinstance(payload, dict):
         raise ValueError("invalid_payload")
     title = payload.get("title")
@@ -321,7 +353,7 @@ def normalize_event(payload, owner_id, existing_points=None, existing_cover_imag
         raise ValueError("invalid_event_title")
     if not isinstance(description, str) or len(description) > 5000:
         raise ValueError("invalid_description")
-    members = _normalize_event_members(payload.get("members", []), owner_id)
+    members = _normalize_event_members(payload.get("members", existing_members), owner_id, existing_members)
     deduped = []
     seen = set()
     for member in members:
@@ -341,21 +373,38 @@ def normalize_event(payload, owner_id, existing_points=None, existing_cover_imag
     }
 
 
-def _serialize(document, now=None):
+def _serialize(document, now=None, user_id=None):
     private_fields = {"_id", "owner_id", "cover_image_data", "cover_image_path", "cover_image_content_type"}
     result = {key: value for key, value in document.items() if key not in private_fields}
     result["id"] = str(document["_id"])
     result["status"] = _event_status(document, now)
     result["cover_image_id"] = document.get("cover_image_id")
     result["has_cover_image"] = bool(document.get("cover_image_path"))
+    member_documents = document.get("members", [])
+    missing_profile_ids = [member.get("user_id") for member in member_documents if member.get("user_id") and not member.get("email")]
+    profiles = {}
+    if missing_profile_ids:
+        profiles = {
+            profile["_id"]: profile
+            for profile in get_collection("users").find(
+                {"_id": {"$in": missing_profile_ids}}, {"name": 1, "email": 1}
+            )
+        }
     result["members"] = [
         {
             "user_id": member.get("user_id"),
+            "name": member.get("name") or profiles.get(member.get("user_id"), {}).get("name", ""),
+            "email": member.get("email") or profiles.get(member.get("user_id"), {}).get("email", ""),
             "role": member.get("role", "viewer"),
             "status": member.get("status", "pending"),
         }
-        for member in document.get("members", [])
+        for member in member_documents
     ]
+    member = _event_member_for_user(document, user_id) if user_id else None
+    result["viewer_role"] = "owner" if document.get("owner_id") == user_id else member.get("role") if member else None
+    result["viewer_status"] = "accepted" if document.get("owner_id") == user_id else member.get("status") if member else None
+    result["can_edit"] = can_manage_event(document, user_id) if user_id else False
+    result["can_delete"] = document.get("owner_id") == user_id if user_id else False
     result["map_points"] = [
         {
             "label": point["label"],
@@ -425,6 +474,23 @@ def can_manage_event(event, user_id):
     return bool(member and member.get("status") == "accepted" and member.get("role") in {"admin", "editor"})
 
 
+def _event_access_query(user_id):
+    return {
+        "$or": [
+            {"owner_id": user_id},
+            {"members": {"$elemMatch": {"user_id": user_id, "status": {"$in": ["pending", "accepted"]}}}},
+        ]
+    }
+
+
+def _can_view_event(event, user_id):
+    return bool(
+        event.get("owner_id") == user_id
+        or any(member.get("user_id") == user_id and member.get("status") in {"pending", "accepted"}
+               for member in event.get("members", []))
+    )
+
+
 def _pending_event_invite_recipients(event):
     owner_id = event.get("owner_id")
     return [
@@ -434,21 +500,37 @@ def _pending_event_invite_recipients(event):
     ]
 
 
-def _send_event_email(app, event, recipient_user_id):
+def _send_event_email(app, event, recipient_email, recipient_name="", invitation=False, guest=False):
     if not app or not app.config.get("RESEND_API_KEY"):
         return
-    user = get_collection("users").find_one({"_id": recipient_user_id}, {"email": 1, "name": 1})
-    if not user or not user.get("email"):
+    if not isinstance(recipient_email, str) or "@" not in recipient_email:
         return
-    subject = f"You are invited to {event.get('title', 'an event')}"
+    event_title = event.get("title", "an event")
+    name = recipient_name or "there"
+    if guest and invitation:
+        subject = gettext("Event invitation: {title}").format(title=event_title)
+        message = gettext("You have been added as a guest to {title}.").format(title=event_title)
+        next_step = gettext("Please contact the event organizer for details.")
+    elif guest:
+        subject = gettext("Event update: {title}").format(title=event_title)
+        message = gettext("An event where you are listed as a guest was updated: {title}.").format(title=event_title)
+        next_step = gettext("Please contact the event organizer for details.")
+    elif invitation:
+        subject = gettext("Event invitation: {title}").format(title=event_title)
+        message = gettext("You were invited to {title}.").format(title=event_title)
+        next_step = gettext("Open the calendar to review it.")
+    else:
+        subject = gettext("Event updated: {title}").format(title=event_title)
+        message = gettext("An event you are a member of was updated: {title}.").format(title=event_title)
+        next_step = gettext("Open the calendar to review it.")
     body = (
-        f"<p>Hello {user.get('name') or 'there'},</p>"
-        f"<p>You were invited to <strong>{event.get('title', 'an event')}</strong>.</p>"
-        f"<p>Open the calendar to review it.</p>"
+        f"<p>{html_escape(gettext('Hello {name},').format(name=name))}</p>"
+        f"<p>{html_escape(message)}</p>"
+        f"<p>{html_escape(next_step)}</p>"
     )
     payload = json.dumps({
         "from": app.config.get("EMAIL_FROM", "Flutu <noreply@flutu.app>"),
-        "to": [user["email"]],
+        "to": [recipient_email],
         "subject": subject,
         "html": body,
     }).encode("utf-8")
@@ -468,55 +550,127 @@ def _send_event_email(app, event, recipient_user_id):
         pass
 
 
-def _notify_event_members(event):
+def _event_guest_contacts(event):
+    contact_ids = [value for value in event.get("guest_contact_ids", []) if ObjectId.is_valid(value)]
+    if not contact_ids:
+        return []
+    return list(get_collection("contacts").find(
+        {"owner_id": event.get("owner_id"), "_id": {"$in": [ObjectId(value) for value in contact_ids]}},
+        {"name": 1, "email": 1},
+    ))
+
+
+def _event_member_profile(member):
+    profile = {}
+    if not member.get("email") and member.get("user_id"):
+        profile = get_collection("users").find_one({"_id": member["user_id"]}, {"name": 1, "email": 1}) or {}
+    return member.get("email") or profile.get("email", ""), member.get("name") or profile.get("name", "")
+
+
+def _notify_event_members(event, actor_id=None, invitation_ids=(), created=False):
     try:
         from flask import current_app
         app = current_app._get_current_object() if current_app else None
         if app is None:
             return
-        recipients = _pending_event_invite_recipients(event)
-        if not recipients:
-            return
+        owner_id = event.get("owner_id")
+        invitation_ids = list(dict.fromkeys(
+            user_id for user_id in invitation_ids
+            if user_id and user_id != actor_id and user_id != owner_id
+        ))
+        update_ids = list(dict.fromkeys(
+            member.get("user_id")
+            for member in event.get("members", [])
+            if member.get("user_id") and member.get("status") == "accepted"
+            and member.get("user_id") not in invitation_ids
+            and member.get("user_id") != actor_id
+        ))
+        if owner_id and owner_id != actor_id and owner_id not in update_ids:
+            update_ids.append(owner_id)
         from app.services.push_notifications import notify_users
-        notify_users(
-            app,
-            recipients,
-            title="Event invitation",
-            body=f"You were invited to {event.get('title', 'an event')}",
-            url=f"/calendar?event={event.get('id')}",
-            exclude_ids={event.get("owner_id")},
-        )
-        for user_id in recipients:
-            _send_event_email(app, event, user_id)
+        event_url = f"/calendar?event={event.get('id')}"
+        if invitation_ids:
+            notify_users(
+                app, invitation_ids, title="Event invitation",
+                body="You have a new event invitation.", url=event_url,
+                exclude_ids={actor_id},
+            )
+        if update_ids:
+            notify_users(
+                app, update_ids, title="Event updated",
+                body="An event you are a member of was updated.", url=event_url,
+                exclude_ids={actor_id},
+            )
+
+        member_ids = set(invitation_ids) | set(update_ids)
+        member_emails = set()
+        notification_members = list(event.get("members", []))
+        if owner_id in update_ids and not any(member.get("user_id") == owner_id for member in notification_members):
+            notification_members.append({"user_id": owner_id})
+        for member in notification_members:
+            user_id = member.get("user_id")
+            if not user_id or user_id not in member_ids:
+                continue
+            email, name = _event_member_profile(member)
+            if email:
+                member_emails.add(email.casefold())
+                _send_event_email(app, event, email, name, invitation=user_id in invitation_ids)
+
+        actor_email = ""
+        if actor_id:
+            actor = get_collection("users").find_one({"_id": actor_id}, {"email": 1}) or {}
+            actor_email = (actor.get("email") or "").casefold()
+        for contact in _event_guest_contacts(event):
+            email = (contact.get("email") or "").strip()
+            if not email or email.casefold() == actor_email or email.casefold() in member_emails:
+                continue
+            _send_event_email(
+                app, event, email, contact.get("name", ""),
+                invitation=created, guest=not created,
+            )
     except Exception:
-        return
+        current_app.logger.exception("Event notification dispatch failed")
+
+def _event_payload_changed(previous, normalized):
+    fields = (
+        "title", "description", "dates", "guest_contact_ids", "conversation_ids",
+        "map_points", "members", "cover_image_id", "cover_image_path",
+    )
+    return any(previous.get(field, [] if field in {"dates", "guest_contact_ids", "conversation_ids", "map_points", "members"} else "")
+               != normalized.get(field, [] if field in {"dates", "guest_contact_ids", "conversation_ids", "map_points", "members"} else "")
+               for field in fields)
 
 
 def list_events(user_id):
-    query = {
-        "$or": [
-            {"owner_id": user_id},
-            {"members": {"$elemMatch": {"user_id": user_id, "status": "accepted"}}},
-        ]
-    }
-    rows = _collection().find(query)
+    rows = _collection().find(_event_access_query(user_id))
     if hasattr(rows, "sort") and not isinstance(rows, list):
         rows = rows.sort("updated_at", DESCENDING)
-    return [_serialize(item) for item in rows]
+    return [_serialize(item, user_id=user_id) for item in rows]
 
 
 def get_event(user_id, event_id):
     if not ObjectId.is_valid(event_id):
         return None
-    query = {
-        "_id": ObjectId(event_id),
-        "$or": [
-            {"owner_id": user_id},
-            {"members": {"$elemMatch": {"user_id": user_id, "status": "accepted"}}},
-        ],
-    }
+    query = {"_id": ObjectId(event_id), **_event_access_query(user_id)}
     item = _collection().find_one(query)
-    return _serialize(item) if item else None
+    return _serialize(item, user_id=user_id) if item else None
+
+
+def respond_to_invitation(user_id, event_id, action):
+    if not ObjectId.is_valid(event_id):
+        return None
+    if not isinstance(action, str) or action not in {"accept", "decline"}:
+        raise ValueError("invalid_invitation_action")
+    status = "accepted" if action == "accept" else "declined"
+    result = _collection().find_one_and_update(
+        {
+            "_id": ObjectId(event_id),
+            "members": {"$elemMatch": {"user_id": user_id, "status": "pending"}},
+        },
+        {"$set": {"members.$.status": status, "updated_at": datetime.now(timezone.utc)}},
+        return_document=ReturnDocument.AFTER,
+    )
+    return _serialize(result, user_id=user_id) if result else None
 
 
 def create_event(owner_id, payload):
@@ -529,11 +683,14 @@ def create_event(owner_id, payload):
         uploaded_paths.extend(_store_cover_image(str(event_id), normalized))
         document = {**normalized, "_id": event_id, "owner_id": owner_id, "created_at": now, "updated_at": now}
         _collection().insert_one(document)
-        _notify_event_members({**document, "id": str(event_id)})
+        _notify_event_members(
+            {**document, "id": str(event_id)}, owner_id,
+            _pending_event_invite_recipients(document), created=True,
+        )
     except Exception:
         _cleanup_images(uploaded_paths)
         raise
-    return _serialize(document)
+    return _serialize(document, user_id=owner_id)
 
 
 def update_event(owner_id, event_id, payload):
@@ -545,10 +702,19 @@ def update_event(owner_id, event_id, payload):
         return None
     if not can_manage_event(previous, owner_id):
         raise PermissionError("forbidden")
+    is_owner = previous.get("owner_id") == owner_id
+    event_owner_id = previous.get("owner_id") or owner_id
     normalized = normalize_event(
-        payload, owner_id, previous.get("map_points", []),
+        payload, event_owner_id, previous.get("map_points", []),
         {key: previous.get(key) for key in ("cover_image_id", "cover_image_path", "cover_image_content_type")},
+        previous.get("members", []),
     )
+    if not is_owner:
+        normalized["guest_contact_ids"] = previous.get("guest_contact_ids", [])
+        normalized["conversation_ids"] = previous.get("conversation_ids", [])
+        normalized["members"] = previous.get("members", [])
+    changed = _event_payload_changed(previous, normalized)
+    previous_pending = set(_pending_event_invite_recipients(previous))
     old_paths = {point.get("image_path") for point in previous.get("map_points", []) if point.get("image_path")}
     if previous.get("cover_image_path"):
         old_paths.add(previous["cover_image_path"])
@@ -561,8 +727,9 @@ def update_event(owner_id, event_id, payload):
             {"$set": {**normalized, "updated_at": datetime.now(timezone.utc)}, "$unset": {"status": ""}},
             return_document=ReturnDocument.AFTER,
         )
-        if result:
-            _notify_event_members({**result, "id": str(event_id)})
+        if result and changed:
+            new_pending = set(_pending_event_invite_recipients(result)) - previous_pending
+            _notify_event_members({**result, "id": str(event_id)}, owner_id, new_pending)
     except Exception:
         _cleanup_images(uploaded_paths)
         raise
@@ -573,7 +740,7 @@ def update_event(owner_id, event_id, payload):
     if result.get("cover_image_path"):
         new_paths.add(result["cover_image_path"])
     _cleanup_images(old_paths - new_paths)
-    return _serialize(result) if result else None
+    return _serialize(result, user_id=owner_id) if result else None
 
 
 def delete_event(owner_id, event_id):
@@ -581,7 +748,7 @@ def delete_event(owner_id, event_id):
         return False
     collection = _collection()
     document = collection.find_one({"_id": ObjectId(event_id)})
-    if not document or not can_manage_event(document, owner_id):
+    if not document or document.get("owner_id") != owner_id:
         return False
     result = collection.delete_one({"_id": ObjectId(event_id)})
     if result.deleted_count != 1:
@@ -599,10 +766,7 @@ def get_event_image(owner_id, event_id, image_id):
         normalized_image_id = str(uuid.UUID(image_id))
     except (ValueError, TypeError, AttributeError):
         return None
-    event = _collection().find_one(
-        {"_id": ObjectId(event_id), "owner_id": owner_id},
-        {"map_points": 1},
-    )
+    event = _collection().find_one({"_id": ObjectId(event_id), **_event_access_query(owner_id)}, {"map_points": 1})
     if not event:
         return None
     point = next((item for item in event.get("map_points", []) if item.get("image_id") == normalized_image_id), None)
@@ -614,10 +778,7 @@ def get_event_image(owner_id, event_id, image_id):
 def get_event_cover_image(owner_id, event_id):
     if not ObjectId.is_valid(event_id):
         return None
-    event = _collection().find_one(
-        {"_id": ObjectId(event_id), "owner_id": owner_id},
-        {"cover_image_path": 1},
-    )
+    event = _collection().find_one({"_id": ObjectId(event_id), **_event_access_query(owner_id)}, {"cover_image_path": 1})
     if not event or not event.get("cover_image_path"):
         return None
     return blob_storage.download_image(event["cover_image_path"])
@@ -655,7 +816,7 @@ def list_occurrences(owner_id, range_start, range_end):
     if end <= start or end - start > timedelta(days=62):
         raise ValueError("invalid_range")
     occurrences = []
-    for event in _collection().find({"owner_id": owner_id}):
+    for event in _collection().find(_event_access_query(owner_id)):
         status = _event_status(event)
         for date in event.get("dates", []):
             base_start = _parse_datetime(date["start_at"])

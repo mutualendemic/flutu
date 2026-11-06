@@ -7,6 +7,18 @@
   .calendar-header h1 { margin-bottom:4px; }
   .calendar-header p { margin:0; }
   .calendar-header .button { width:auto; margin:0; }
+  .event-invitations { margin:0 0 20px; padding:14px 0; border-top:1px solid var(--border); border-bottom:1px solid var(--border); }
+  .event-invitations h2 { margin:0 0 8px; font-size:1rem; }
+  .event-invitations-list { display:grid; gap:8px; margin:0; padding:0; list-style:none; }
+  .event-invitations-list li { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 16px; padding:8px 0; border-bottom:1px solid var(--border); }
+  .event-invitations-list li:last-child { border-bottom:0; }
+  .event-invitation-meta { display:grid; gap:3px; }
+  .event-invitation-actions { display:flex; gap:8px; }
+  .event-invitation-actions .button { width:auto; margin:0; }
+  .event-member-option { display:grid!important; grid-template-columns:auto minmax(0,1fr) minmax(105px,140px); align-items:center!important; gap:8px!important; }
+  .event-member-option input[type="checkbox"] { width:auto; }
+  .event-member-identity { display:grid; min-width:0; overflow-wrap:anywhere; }
+  .event-member-identity small { color:var(--muted); font-weight:400; }
   .calendar-layout { display:grid; grid-template-columns:minmax(0, 1fr); gap:24px; align-items:start; }
   .month-area { min-width:0; }
   .today-button { width:auto; margin:0; padding:9px 12px; }
@@ -98,6 +110,7 @@
   @media(min-width:851px) { .event-detail { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); column-gap:22px; } .event-detail-header, .event-detail-description, .detail-actions { grid-column:1 / -1; } }
   @media(max-width:850px) { .calendar-layout { grid-template-columns:1fr; } }
   @media(max-width:560px) { .event-detail { padding:14px; } .event-detail-header { grid-template-columns:64px minmax(0, 1fr) auto; gap:10px; } .event-detail-cover, .event-detail-cover-placeholder { width:64px; min-height:64px; } .event-detail h3, .status-label { min-height:64px; } .event-detail h3 { font-size:1.2rem; } .event-detail-map { height:170px; } }
+  @media(max-width:560px) { .event-member-option { grid-template-columns:auto minmax(0,1fr); } .event-member-option select { grid-column:2; } .event-invitation-actions { width:100%; } .event-invitation-actions .button { flex:1; } }
   @media(max-width:560px) { body { padding:10px; } .calendar-header { align-items:flex-start; flex-wrap:wrap; } .calendar-header > div { flex:1 1 100%; } .calendar-header .button { width:100%; height:auto; min-height:44px; flex:none; padding:10px 14px; } .calendar-header .new-event-label { display:inline; } .day-cell { min-height:82px; } .day-select { padding:4px; } .day-number { width:26px; height:26px; } .day-events { padding:34px 4px 4px; } .event-chip { font-size:.68rem; padding:3px; } .form-grid, .recurrence-fields { grid-template-columns:1fr; gap:4px; } .point-controls { grid-template-columns:1fr 1fr; } .point-controls .button { grid-column:1 / -1; } .today-button { padding:8px; } }
 {% endblock %}
 {% block content %}
@@ -105,6 +118,7 @@
   <div id="calendar-config"
        data-csrf="{{ calendar_csrf_token() }}"
        data-events-url="{{ url_for('calendar.api_list_events') }}"
+      data-event-members-url="{{ url_for('calendar.api_event_members') }}"
        data-occurrences-url="{{ url_for('calendar.api_occurrences') }}"
        data-contacts-url="{{ url_for('main.api_contacts') }}"
       data-conversations-url="{{ url_for('chat.api_conversations') }}"
@@ -117,6 +131,10 @@
     <div><p class="eyebrow">{{ _('Make plans together') }}</p><h1>{{ _('Event calendar') }}</h1><p>{{ _('Your events, dates, places and conversations.') }}</p></div>
     <button id="new-event" class="button" type="button" aria-label="{{ _('New event') }}" title="{{ _('Create event') }}"><span class="new-event-icon" aria-hidden="true">＋</span><span class="new-event-label">{{ _('New event') }}</span></button>
   </header>
+  <section id="event-invitations" class="event-invitations" aria-labelledby="event-invitations-title" hidden>
+    <h2 id="event-invitations-title">{{ _('Event invitations') }}</h2>
+    <ul id="event-invitations-list" class="event-invitations-list"></ul>
+  </section>
   <div class="calendar-layout">
     <section class="month-area" aria-label="{{ _('Monthly calendar') }}">
       <div id="month-grid" class="month-grid" role="grid" aria-label="{{ _('Monthly calendar') }}"></div>
@@ -143,8 +161,11 @@
     <button id="remove-event-cover" class="button button-secondary today-button" type="button" hidden>{{ _('Remove event image') }}</button>
     <div class="section-heading"><h3>{{ _('Dates and times') }}</h3><button id="add-date" class="button button-secondary today-button" type="button">{{ _('Add date') }}</button></div>
     <div id="date-list"></div>
-    <h3>{{ _('Guests from Contacts') }}</h3><div id="guest-picker" class="check-grid"><p>{{ _('Loading contacts…') }}</p></div>
-    <h3>{{ _('Branching conversations') }}</h3><div id="conversation-picker" class="check-grid"><p>{{ _('Loading conversations…') }}</p></div>
+    <section id="event-owner-fields">
+      <h3>{{ _('Guests from Contacts') }}</h3><div id="guest-picker" class="check-grid"><p>{{ _('Loading contacts…') }}</p></div>
+      <h3>{{ _('Event members') }}</h3><div id="event-member-picker" class="check-grid"><p>{{ _('Loading contacts…') }}</p></div>
+      <h3>{{ _('Branching conversations') }}</h3><div id="conversation-picker" class="check-grid"><p>{{ _('Loading conversations…') }}</p></div>
+    </section>
     <h3>{{ _('Map locations') }}</h3>
     <div id="event-location-map" role="application" aria-label="{{ _('Select event locations on the map') }}"></div>
     <div class="location-search">

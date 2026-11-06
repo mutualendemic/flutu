@@ -43,6 +43,8 @@ class Config:
     VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY", "")
     VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "")
     VAPID_CONTACT = os.environ.get("VAPID_CONTACT", "")
+    RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
+    EMAIL_FROM = os.environ.get("EMAIL_FROM", "Flutu <noreply@flutu.app>")
     SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
     SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY", "")
     SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")

@@ -333,7 +333,8 @@
 
     function popupContent(location) {
       const detail = t('Updated {date} · accuracy ±{accuracy} m').replace('{date}', new Date(location.updated_at).toLocaleString(locale)).replace('{accuracy}', new Intl.NumberFormat(locale).format(Math.round(location.accuracy)));
-      return `<strong>${escapeHtml(location.name)}</strong><br>${escapeHtml(detail)}<br>${escapeHtml(formatDistanceToLocation(location))}`;
+      const email = location.email ? `<br>${escapeHtml(location.email)}` : '';
+      return `<strong>${escapeHtml(location.name)}</strong>${email}<br>${escapeHtml(detail)}<br>${escapeHtml(formatDistanceToLocation(location))}`;
     }
 
     function refreshMarkerPopups() {

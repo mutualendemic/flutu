@@ -8,7 +8,7 @@ from bson import ObjectId
 from app import create_app
 from app.services.blob_storage import BlobStorageError, delete_image, download_image, upload_image
 from app.services.location_search import search_locations
-from app.services.events import _event_status, _nearest_event_occurrence, _normalize_dates, _normalize_points, create_event, delete_event, list_events, list_map_points, list_occurrences, normalize_event
+from app.services.events import _event_status, _nearest_event_occurrence, _normalize_dates, _normalize_points, _notify_event_members, _send_event_email, can_manage_event, create_event, delete_event, get_event, list_events, list_map_points, list_occurrences, normalize_event, respond_to_invitation, update_event
 
 
 class CalendarTests(unittest.TestCase):
@@ -76,6 +76,35 @@ class CalendarTests(unittest.TestCase):
         self.assertIn(b"event-location-map", response.data)
         self.assertIn(b"calendar.js", response.data)
         self.assertIn(b"__id__", response.data)
+        self.assertIn(b'id="event-invitations"', response.data)
+        self.assertIn(b'id="event-member-picker"', response.data)
+
+    def test_event_member_picker_returns_linked_account_email(self):
+        self.sign_in()
+        linked_member = {"user_id": "member-1", "name": "Alex", "email": "alex@example.com"}
+        with patch("app.calendar.routes.events.list_addable_members", return_value=[linked_member]):
+            response = self.client.get("/calendar/api/event-members")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json(), {"members": [linked_member]})
+
+    def test_event_invitation_response_requires_csrf_and_updates_current_member(self):
+        self.sign_in()
+        denied = self.client.post("/calendar/api/events/event-1/invitation", json={"action": "accept"})
+        self.assertEqual(denied.status_code, 400)
+        with self.client.session_transaction() as browser_session:
+            browser_session["_calendar_csrf_token"] = "calendar-csrf"
+        accepted = {"id": "event-1", "title": "Planning", "members": [], "map_points": []}
+        with patch("app.calendar.routes.events.respond_to_invitation", return_value=accepted) as respond:
+            response = self.client.post(
+                "/calendar/api/events/event-1/invitation", json={"action": "accept"},
+                headers={"X-CSRF-Token": "calendar-csrf", "Origin": "http://localhost"},
+            )
+        self.assertEqual(response.status_code, 200)
+        respond.assert_called_once_with("google-user", "event-1", "accept")
+
+    def test_event_invitation_requires_authentication(self):
+        response = self.client.post("/calendar/api/events/event-1/invitation", json={"action": "accept"})
+        self.assertEqual(response.status_code, 401)
 
     def test_calendar_page_is_translated_into_portuguese(self):
         self.client.post("/language/pt_PT", data={"next": "/"})
@@ -91,6 +120,8 @@ class CalendarTests(unittest.TestCase):
         messages = json.loads(catalogue)
         self.assertEqual(messages["Monday"], "segunda-feira")
         self.assertEqual(messages["Sunday"], "domingo")
+        self.assertEqual(messages["Event members"], "Membros do evento")
+        self.assertEqual(messages["Invitation pending"], "Convite pendente")
         self.assertIn(".weekday-picker[hidden] { display:none; }", page)
 
     def test_location_map_renders_event_marker_layer_endpoint(self):
@@ -104,6 +135,7 @@ class CalendarTests(unittest.TestCase):
         self.assertIn(b"...markers.values(), ...eventMarkers.values()", response.data)
         self.assertIn(b"await loadEventMapPoints();\n      fitMapToMarkers();", response.data)
         self.assertIn(b"Open event calendar", response.data)
+        self.assertIn(b"location.email", response.data)
 
     def test_private_blob_image_requires_authentication_and_sets_safe_headers(self):
         event_id = "507f1f77bcf86cd799439011"
@@ -290,6 +322,7 @@ class CalendarTests(unittest.TestCase):
         ]
         collection = Mock()
         collection.find_one.return_value = {
+            "owner_id": "google-user",
             "map_points": [
                 {"image_path": image_paths[0]},
                 {"image_path": image_paths[1]},
@@ -569,13 +602,179 @@ class CalendarTests(unittest.TestCase):
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["members"][0]["user_id"], member_user)
 
-        normalized = normalize_event({
-            "title": "Planning",
-            "dates": [{"start_at": "2026-11-05T10:00:00Z", "end_at": "2026-11-05T11:00:00Z"}],
-            "members": [{"user_id": member_user, "role": "admin", "status": "accepted"}],
-        }, "google-user")
+        with patch("app.services.events.list_addable_members", return_value=[{
+            "user_id": member_user, "name": "Guest", "email": "guest@example.com",
+        }]):
+            normalized = normalize_event({
+                "title": "Planning",
+                "dates": [{"start_at": "2026-11-05T10:00:00Z", "end_at": "2026-11-05T11:00:00Z"}],
+                "members": [{"user_id": member_user, "role": "editor", "status": "accepted"}],
+            }, "google-user")
         self.assertEqual(normalized["members"][0]["user_id"], member_user)
-        self.assertEqual(normalized["members"][0]["role"], "admin")
+        self.assertEqual(normalized["members"][0]["role"], "editor")
+        self.assertEqual(normalized["members"][0]["status"], "pending")
+
+    def test_pending_event_invitation_is_listed_and_can_be_accepted(self):
+        event_id = ObjectId("507f1f77bcf86cd799439015")
+        event = {
+            "_id": event_id,
+            "owner_id": "owner-user",
+            "title": "Planning",
+            "dates": [{"start_at": "2026-11-07T10:00:00Z", "end_at": "2026-11-07T11:00:00Z"}],
+            "members": [{
+                "user_id": "guest-user", "name": "Alex", "email": "alex@example.com",
+                "role": "editor", "status": "pending",
+            }],
+        }
+        accepted_event = {**event, "members": [{**event["members"][0], "status": "accepted"}]}
+        collection = Mock()
+        collection.find.return_value = [event]
+        collection.find_one.return_value = event
+        collection.find_one_and_update.return_value = accepted_event
+        with patch("app.services.events.get_collection", return_value=collection):
+            listed = list_events("guest-user")
+            fetched = get_event("guest-user", str(event_id))
+            accepted = respond_to_invitation("guest-user", str(event_id), "accept")
+        self.assertEqual(listed[0]["viewer_status"], "pending")
+        self.assertEqual(listed[0]["members"][0]["email"], "alex@example.com")
+        self.assertEqual(fetched["viewer_role"], "editor")
+        self.assertEqual(accepted["viewer_status"], "accepted")
+        self.assertTrue(can_manage_event(accepted_event, "guest-user"))
+        self.assertIn("pending", str(collection.find.call_args.args[0]))
+        self.assertEqual(collection.find_one_and_update.call_args.args[1]["$set"]["members.$.status"], "accepted")
+
+    def test_viewer_role_cannot_manage_or_delete_event(self):
+        viewer_event = {
+            "owner_id": "owner-user",
+            "members": [{"user_id": "viewer-user", "role": "viewer", "status": "accepted"}],
+        }
+        self.assertFalse(can_manage_event(viewer_event, "viewer-user"))
+        collection = Mock()
+        collection.find_one.return_value = viewer_event
+        with patch("app.services.events.get_collection", return_value=collection):
+            self.assertFalse(delete_event("viewer-user", "507f1f77bcf86cd799439015"))
+
+    def test_editor_update_preserves_owner_managed_associations(self):
+        event_id = "507f1f77bcf86cd799439016"
+        previous = {
+            "_id": ObjectId(event_id),
+            "owner_id": "owner-user",
+            "title": "Planning",
+            "dates": [{"start_at": "2026-11-07T10:00:00Z", "end_at": "2026-11-07T11:00:00Z"}],
+            "guest_contact_ids": ["owner-contact"],
+            "conversation_ids": ["owner-conversation"],
+            "members": [{"user_id": "editor-user", "name": "Editor", "email": "editor@example.com", "role": "editor", "status": "accepted"}],
+            "map_points": [],
+        }
+        normalized = {
+            "title": "Updated planning",
+            "description": "",
+            "dates": previous["dates"],
+            "guest_contact_ids": ["attacker-contact"],
+            "conversation_ids": ["attacker-conversation"],
+            "members": [{"user_id": "other-user", "name": "Other", "email": "other@example.com", "role": "editor", "status": "pending"}],
+            "map_points": [],
+        }
+        collection = Mock()
+        collection.find_one.return_value = previous
+        collection.find_one_and_update.side_effect = lambda _query, update, **_kwargs: {**previous, **update["$set"]}
+        with patch("app.services.events.get_collection", return_value=collection), \
+             patch("app.services.events.normalize_event", return_value=normalized), \
+             patch("app.services.events._notify_event_members") as notify:
+            result = update_event("editor-user", event_id, {"title": "Updated planning"})
+        self.assertEqual(result["guest_contact_ids"], ["owner-contact"])
+        self.assertEqual(result["conversation_ids"], ["owner-conversation"])
+        self.assertEqual(result["members"][0]["user_id"], "editor-user")
+        notify.assert_called_once()
+        self.assertEqual(notify.call_args.args[1], "editor-user")
+        self.assertEqual(notify.call_args.args[2], set())
+
+    def test_owner_save_notifies_new_pending_event_member(self):
+        event_id = "507f1f77bcf86cd799439018"
+        previous = {
+            "_id": ObjectId(event_id),
+            "owner_id": "owner-user",
+            "title": "Planning",
+            "dates": [{"start_at": "2026-11-07T10:00:00Z", "end_at": "2026-11-07T11:00:00Z"}],
+            "members": [],
+            "map_points": [],
+        }
+        normalized = {
+            "title": "Planning updated",
+            "description": "",
+            "dates": previous["dates"],
+            "guest_contact_ids": [],
+            "conversation_ids": [],
+            "members": [{"user_id": "new-user", "name": "New", "email": "new@example.com", "role": "editor", "status": "pending"}],
+            "map_points": [],
+        }
+        collection = Mock()
+        collection.find_one.return_value = previous
+        collection.find_one_and_update.side_effect = lambda _query, update, **_kwargs: {**previous, **update["$set"]}
+        with patch("app.services.events.get_collection", return_value=collection), \
+             patch("app.services.events.normalize_event", return_value=normalized), \
+             patch("app.services.events._notify_event_members") as notify:
+            update_event("owner-user", event_id, {"title": "Planning updated"})
+        notify.assert_called_once()
+        self.assertEqual(notify.call_args.args[1], "owner-user")
+        self.assertEqual(notify.call_args.args[2], {"new-user"})
+
+    def test_event_save_notifies_members_and_emails_guest_without_duplicate(self):
+        guest_contact_id = "507f1f77bcf86cd799439017"
+        event = {
+            "id": "event-1",
+            "owner_id": "owner-user",
+            "title": "Planning",
+            "guest_contact_ids": [guest_contact_id],
+            "members": [
+                {"user_id": "accepted-user", "name": "Accepted", "email": "shared@example.com", "status": "accepted"},
+                {"user_id": "pending-user", "name": "Pending", "email": "pending@example.com", "status": "pending"},
+            ],
+        }
+        contacts = Mock()
+        contacts.find.return_value = [{"name": "Guest", "email": "guest@example.com"}]
+        users = Mock()
+        users.find_one.return_value = {"email": "owner@example.com"}
+
+        def collection_for(name):
+            return contacts if name == "contacts" else users
+
+        self.app.config["RESEND_API_KEY"] = "test-resend-key"
+        with self.app.app_context(), \
+             patch("app.services.events.get_collection", side_effect=collection_for), \
+             patch("app.services.push_notifications.notify_users") as notify, \
+             patch("app.services.events._send_event_email") as send_email:
+            _notify_event_members(event, "owner-user", ["pending-user"])
+
+        self.assertEqual(notify.call_count, 2)
+        self.assertEqual(notify.call_args_list[0].args[1], ["pending-user"])
+        self.assertEqual(notify.call_args_list[1].args[1], ["accepted-user"])
+        self.assertEqual(notify.call_args_list[0].kwargs["exclude_ids"], {"owner-user"})
+        self.assertEqual(notify.call_args_list[1].kwargs["exclude_ids"], {"owner-user"})
+        self.assertEqual(send_email.call_count, 3)
+        self.assertEqual(send_email.call_args_list[0].args[2], "shared@example.com")
+        self.assertEqual(send_email.call_args_list[1].args[2], "pending@example.com")
+        self.assertEqual(send_email.call_args_list[2].args[2], "guest@example.com")
+        self.assertTrue(send_email.call_args_list[2].kwargs["guest"])
+
+    def test_guest_email_uses_resend_and_does_not_link_to_private_calendar(self):
+        self.app.config["RESEND_API_KEY"] = "test-resend-key"
+        self.app.config["EMAIL_FROM"] = "Flutu <events@example.com>"
+        response = Mock()
+        response.__enter__ = Mock(return_value=response)
+        response.__exit__ = Mock(return_value=False)
+        with self.app.test_request_context("/calendar/"), patch("app.services.events.urllib_request.urlopen", return_value=response) as send:
+            _send_event_email(
+                self.app, {"title": "Planning <private>"}, "guest@example.com", "Guest",
+                invitation=True, guest=True,
+            )
+        request = send.call_args.args[0]
+        payload = json.loads(request.data)
+        self.assertEqual(payload["to"], ["guest@example.com"])
+        self.assertEqual(payload["from"], "Flutu <events@example.com>")
+        self.assertIn("Planning &lt;private&gt;", payload["html"])
+        self.assertIn("contact the event organizer", payload["html"])
+        self.assertNotIn("Open the calendar", payload["html"])
 
     def test_map_point_validates_coordinates_and_uploaded_pin(self):
         points = _normalize_points([{"label": "Hall", "latitude": 38.7, "longitude": -9.1}])
