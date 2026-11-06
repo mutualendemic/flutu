@@ -136,7 +136,6 @@
     <input id="event-id" type="hidden">
     <div class="form-grid">
       <div><label for="event-title">{{ _('Title') }}</label><input id="event-title" maxlength="160" required></div>
-      <div><label for="event-status">{{ _('Status') }}</label><select id="event-status"><option value="open">{{ _('Open') }}</option><option value="closed">{{ _('Closed') }}</option></select></div>
     </div>
     <label for="event-description">{{ _('Description (optional)') }}</label><textarea id="event-description" maxlength="5000"></textarea>
     <label for="event-cover-image">{{ _('Event image (optional)') }}</label><input id="event-cover-image" type="file" accept="image/png,image/jpeg,image/webp"><small>{{ _('Image is resized and compressed to at most 64 KB.') }}</small>

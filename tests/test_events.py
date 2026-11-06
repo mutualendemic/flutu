@@ -8,7 +8,7 @@ from bson import ObjectId
 from app import create_app
 from app.services.blob_storage import BlobStorageError, delete_image, download_image, upload_image
 from app.services.location_search import search_locations
-from app.services.events import _nearest_event_occurrence, _normalize_dates, _normalize_points, create_event, delete_event, list_events, list_map_points, list_occurrences, normalize_event
+from app.services.events import _event_status, _nearest_event_occurrence, _normalize_dates, _normalize_points, create_event, delete_event, list_events, list_map_points, list_occurrences, normalize_event
 
 
 class CalendarTests(unittest.TestCase):
@@ -85,6 +85,7 @@ class CalendarTests(unittest.TestCase):
         self.assertIn("Calendário de eventos".encode(), response.data)
         self.assertIn("Datas e horas".encode(), response.data)
         self.assertIn("Diariamente".encode(), response.data)
+        self.assertNotIn(b'id="event-status"', response.data)
         page = response.get_data(as_text=True)
         catalogue = page.split("window.FlutuI18n = ", 1)[1].split(";</script>", 1)[0]
         messages = json.loads(catalogue)
@@ -180,6 +181,32 @@ class CalendarTests(unittest.TestCase):
         with patch("app.services.events.get_collection", return_value=collection):
             points = list_map_points("google-user", open_only=True)
         self.assertEqual(points[0]["start_at"], start_at.isoformat(timespec="seconds").replace("+00:00", "Z"))
+
+    def test_open_map_points_filter_uses_date_derived_status(self):
+        now = datetime.now(timezone.utc).replace(microsecond=0)
+        events = [
+            {
+                "_id": ObjectId("507f1f77bcf86cd799439011"),
+                "title": "Future event",
+                "status": "closed",
+                "dates": [{"start_at": (now + timedelta(days=1)).isoformat(), "end_at": (now + timedelta(days=1, hours=1)).isoformat()}],
+                "map_points": [{"label": "Future", "latitude": 38.7, "longitude": -9.1}],
+            },
+            {
+                "_id": ObjectId("507f1f77bcf86cd799439012"),
+                "title": "Past event",
+                "status": "open",
+                "dates": [{"start_at": (now - timedelta(days=2)).isoformat(), "end_at": (now - timedelta(days=2) + timedelta(hours=1)).isoformat()}],
+                "map_points": [{"label": "Past", "latitude": 38.8, "longitude": -9.2}],
+            },
+        ]
+        collection = Mock()
+        collection.find.return_value = events
+        with patch("app.services.events.get_collection", return_value=collection):
+            points = list_map_points("google-user", open_only=True)
+        self.assertEqual([point["title"] for point in points], ["Future event"])
+        self.assertEqual(points[0]["status"], "open")
+        self.assertNotIn("status", collection.find.call_args.args[0])
 
     def test_map_points_choose_the_next_matching_recurrence(self):
         event = {"dates": [{
@@ -469,13 +496,39 @@ class CalendarTests(unittest.TestCase):
             "2026-11-09T10:00:00Z", "2026-11-11T10:00:00Z",
         ])
 
-    def test_event_status_rejects_in_progress(self):
-        with self.assertRaisesRegex(ValueError, "invalid_status"):
-            normalize_event({
-                "title": "Planning",
-                "status": "in_progress",
-                "dates": [{"start_at": "2026-11-05T10:00:00Z", "end_at": "2026-11-05T11:00:00Z"}],
-            }, "google-user")
+    def test_event_status_is_derived_from_all_dates_and_occurrence_end(self):
+        now = datetime(2026, 11, 6, 12, tzinfo=timezone.utc)
+        self.assertEqual(_event_status({"dates": [
+            {"start_at": "2026-11-05T10:00:00Z", "end_at": "2026-11-05T11:00:00Z"},
+            {"start_at": "2026-11-06T11:30:00Z", "end_at": "2026-11-06T12:30:00Z"},
+        ]}, now), "open")
+        self.assertEqual(_event_status({"dates": [
+            {"start_at": "2026-11-05T10:00:00Z", "end_at": "2026-11-05T11:00:00Z"},
+        ]}, now), "closed")
+
+    def test_recurring_event_status_stays_open_until_last_occurrence_ends(self):
+        now = datetime(2026, 11, 6, 12, tzinfo=timezone.utc)
+        event = {"dates": [{
+            "start_at": "2026-11-02T10:00:00Z",
+            "end_at": "2026-11-02T11:00:00Z",
+            "recurrence": {
+                "frequency": "weekly",
+                "interval": 1,
+                "weekdays": [0],
+                "until": "2026-11-30T10:00:00Z",
+            },
+        }]}
+        self.assertEqual(_event_status(event, now), "open")
+        event["dates"][0]["recurrence"]["until"] = "2026-11-02T10:00:00Z"
+        self.assertEqual(_event_status(event, now), "closed")
+
+    def test_event_status_input_is_ignored(self):
+        normalized = normalize_event({
+            "title": "Planning",
+            "status": "closed",
+            "dates": [{"start_at": "2026-11-07T10:00:00Z", "end_at": "2026-11-07T11:00:00Z"}],
+        }, "google-user")
+        self.assertNotIn("status", normalized)
 
     def test_guests_and_conversations_must_belong_to_existing_relationships(self):
         contact_id = "507f1f77bcf86cd799439012"

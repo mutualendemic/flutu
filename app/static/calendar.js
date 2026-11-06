@@ -25,7 +25,6 @@
   const pointList = document.getElementById('point-list');
   const formError = document.getElementById('form-error');
   const titleInput = document.getElementById('event-title');
-  const statusInput = document.getElementById('event-status');
   const descriptionInput = document.getElementById('event-description');
   const pinImageInput = document.getElementById('point-image');
   const pointLabelInput = document.getElementById('point-label');
@@ -848,7 +847,6 @@
     document.getElementById('event-id').value = event?.id || '';
     document.getElementById('dialog-title').textContent = t(event ? 'Edit event' : 'New event');
     titleInput.value = event?.title || '';
-    statusInput.value = event?.status || 'open';
     descriptionInput.value = event?.description || '';
     coverImageId = event?.cover_image_id || null;
     coverImageData = '';
@@ -896,7 +894,6 @@
     });
     return {
       title: titleInput.value,
-      status: statusInput.value,
       description: descriptionInput.value,
       cover_image: coverImageData,
       cover_image_id: coverImageId,

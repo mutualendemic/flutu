@@ -16,7 +16,6 @@ from app.services import blob_storage
 from app.services.mongodb import get_collection
 
 
-STATUSES = {"open", "closed"}
 FREQUENCIES = {"daily": DAILY, "weekly": WEEKLY, "monthly": MONTHLY, "yearly": YEARLY}
 WEEKDAYS = (MO, TU, WE, TH, FR, SA, SU)
 EVENT_MEMBER_ROLES = {"owner", "admin", "editor", "viewer"}
@@ -83,6 +82,25 @@ def _nearest_event_occurrence(event, now=None):
             previous.append(start)
     nearest = min(upcoming) if upcoming else max(previous, default=None)
     return _isoformat(nearest) if nearest else None
+
+
+def _event_status(event, now=None):
+    now = now or datetime.now(timezone.utc)
+    for date in event.get("dates", []):
+        start = _parse_datetime(date["start_at"])
+        end = _parse_datetime(date["end_at"])
+        duration = end - start
+        rule = _recurrence_rule(date, start)
+        if not rule:
+            if end >= now:
+                return "open"
+            continue
+        if rule.after(now, inc=True) is not None:
+            return "open"
+        previous = rule.before(now, inc=True)
+        if previous is not None and previous + duration >= now:
+            return "open"
+    return "closed"
 
 
 def _normalize_recurrence(value, start_at):
@@ -299,13 +317,10 @@ def normalize_event(payload, owner_id, existing_points=None, existing_cover_imag
         raise ValueError("invalid_payload")
     title = payload.get("title")
     description = payload.get("description", "")
-    status = payload.get("status", "open")
     if not isinstance(title, str) or not title.strip() or len(title.strip()) > 160:
         raise ValueError("invalid_event_title")
     if not isinstance(description, str) or len(description) > 5000:
         raise ValueError("invalid_description")
-    if not isinstance(status, str) or status not in STATUSES:
-        raise ValueError("invalid_status")
     members = _normalize_event_members(payload.get("members", []), owner_id)
     deduped = []
     seen = set()
@@ -317,7 +332,6 @@ def normalize_event(payload, owner_id, existing_points=None, existing_cover_imag
     return {
         "title": title.strip(),
         "description": description.strip(),
-        "status": status,
         "dates": _normalize_dates(payload.get("dates")),
         "guest_contact_ids": _normalize_contacts(payload.get("guest_contact_ids", []), owner_id),
         "conversation_ids": _normalize_conversations(payload.get("conversation_ids", []), owner_id),
@@ -327,12 +341,11 @@ def normalize_event(payload, owner_id, existing_points=None, existing_cover_imag
     }
 
 
-def _serialize(document):
+def _serialize(document, now=None):
     private_fields = {"_id", "owner_id", "cover_image_data", "cover_image_path", "cover_image_content_type"}
     result = {key: value for key, value in document.items() if key not in private_fields}
     result["id"] = str(document["_id"])
-    if result.get("status") not in STATUSES:
-        result["status"] = "open"
+    result["status"] = _event_status(document, now)
     result["cover_image_id"] = document.get("cover_image_id")
     result["has_cover_image"] = bool(document.get("cover_image_path"))
     result["members"] = [
@@ -545,7 +558,7 @@ def update_event(owner_id, event_id, payload):
         uploaded_paths.extend(_store_cover_image(event_id, normalized))
         result = collection.find_one_and_update(
             {"_id": ObjectId(event_id)},
-            {"$set": {**normalized, "updated_at": datetime.now(timezone.utc)}},
+            {"$set": {**normalized, "updated_at": datetime.now(timezone.utc)}, "$unset": {"status": ""}},
             return_document=ReturnDocument.AFTER,
         )
         if result:
@@ -612,11 +625,12 @@ def get_event_cover_image(owner_id, event_id):
 
 def list_map_points(owner_id, open_only=False):
     query = {"owner_id": owner_id, "map_points.0": {"$exists": True}}
-    if open_only:
-        query["status"] = {"$in": ["open", "in_progress"]}
     events = _collection().find(query)
     points = []
     for event in events:
+        status = _event_status(event)
+        if open_only and status != "open":
+            continue
         start_at = _nearest_event_occurrence(event)
         for point_index, point in enumerate(event.get("map_points", [])):
             points.append({
@@ -625,7 +639,7 @@ def list_map_points(owner_id, open_only=False):
                 "point_index": point_index,
                 "title": event["title"],
                 "description": event.get("description", ""),
-                "status": event.get("status") if event.get("status") in STATUSES else "open",
+                "status": status,
                 "label": point["label"],
                 "latitude": point["latitude"],
                 "longitude": point["longitude"],
@@ -642,6 +656,7 @@ def list_occurrences(owner_id, range_start, range_end):
         raise ValueError("invalid_range")
     occurrences = []
     for event in _collection().find({"owner_id": owner_id}):
+        status = _event_status(event)
         for date in event.get("dates", []):
             base_start = _parse_datetime(date["start_at"])
             base_end = _parse_datetime(date["end_at"])
@@ -655,7 +670,7 @@ def list_occurrences(owner_id, range_start, range_end):
                     "event_id": str(event["_id"]),
                     "title": event["title"],
                     "description": event.get("description", ""),
-                    "status": event.get("status", "open"),
+                    "status": status,
                     "start_at": _isoformat(occurrence_start),
                     "end_at": _isoformat(occurrence_start + (base_end - base_start)),
                 })

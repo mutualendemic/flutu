@@ -8,7 +8,7 @@
 
 ## Event model and calendar view
 
-- An event has a title (required, up to 160 characters), optional description (up to 5,000 characters), and status: `open` or `closed`. Older stored statuses are presented as `open`.
+- An event has a title (required, up to 160 characters) and optional description (up to 5,000 characters). Status is derived from all date entries and is not editable or authoritative in storage: it is `open` if any occurrence is in progress or in the future, and `closed` only when every occurrence has ended. A recurring date keeps the event open while another occurrence remains. Legacy stored values are ignored. The status continues to appear in the calendar and event details.
 - Each event has 1–50 date entries. Each entry has a timezone-aware start and end; end must follow start and a single occurrence cannot exceed 31 days.
 - A date entry can optionally repeat daily, weekly, monthly, or yearly. Weekly rules can select one or more weekdays; when omitted, the start weekday is used. The interval is 1–30, the end date is required, the horizon is at most ten years, and each rule may produce at most 500 occurrences.
 - The month view requests a bounded range of up to 62 days. Recurrences are expanded by `python-dateutil` on the server. The stored timestamps are UTC; display and edit inputs use the browser's local timezone.
@@ -22,7 +22,7 @@
 - Conversations are selected from the existing branching-chat list. The API validates active membership through `app.services.chat.is_active_member`; inaccessible or deleted conversations cannot be attached. Calendar detail links open the existing conversation page.
 - An event may contain up to 20 map points. Each point has a label, latitude, longitude, and optional custom pin image. When editing an event, existing pins are restored on the editor map and the map fits them into view. The editor supports map selection, place/address search through Nominatim, and editing or removing existing pins.
 - Source images must be PNG/JPEG/WebP under 10 MiB. Pin images are resized to at most 256×256 px and compressed to no larger than 24 KiB. Optional event cover images are resized and compressed to no larger than 64 KiB and displayed in the event detail. The server enforces both limits. With 20 pins and a cover, custom image storage is capped at 544 KiB per event. Images are uploaded to a **private** Vercel Blob store. The browser receives only same-origin authenticated image URLs. Image routes check event ownership and return `Cache-Control: private, no-cache` plus `X-Content-Type-Options: nosniff`.
-- The `/map` page has an opt-in “Show open events” toggle, off by default. When enabled it displays the owner's open event pins from `GET /calendar/api/map-points?status=open` in a dedicated layer, separate from consent-based location-sharing markers. Event pins are private to their owner and do not depend on GPS sharing permission. Popups link back to the calendar.
+- The `/map` page has an opt-in “Show open events” toggle, off by default. When enabled it displays the owner's event pins whose date-derived status is `open` from `GET /calendar/api/map-points?status=open` in a dedicated layer, separate from consent-based location-sharing markers. Event pins are private to their owner and do not depend on GPS sharing permission. Popups link back to the calendar.
 
 ## API
 
