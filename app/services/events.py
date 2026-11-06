@@ -185,13 +185,48 @@ def list_addable_members(owner_id):
 
     return [
         {
+            "contact_id": item["id"],
             "user_id": item["user_id"],
             "name": item.get("account_name") or item.get("name") or item["email"],
             "email": item["email"],
+            "picture": item.get("picture", ""),
+            "registered": True,
         }
         for item in addable_contacts(owner_id)
         if item.get("user_id") and item.get("email")
     ]
+
+
+def _event_members_from_guest_contacts(contact_ids, owner_id, existing_members=None):
+    if not contact_ids:
+        return []
+    candidates = {
+        item["contact_id"]: item
+        for item in list_addable_members(owner_id)
+    }
+    existing_by_user = {member.get("user_id"): member for member in existing_members or []}
+    members = []
+    for contact_id in contact_ids:
+        candidate = candidates.get(contact_id)
+        if not candidate:
+            continue
+        previous = existing_by_user.get(candidate["user_id"])
+        if previous:
+            members.append({
+                **previous,
+                "picture": previous.get("picture") or candidate.get("picture", ""),
+                "status": previous.get("status") if previous.get("status") in {"pending", "accepted"} else "pending",
+            })
+        else:
+            members.append({
+                "user_id": candidate["user_id"],
+                "name": candidate["name"],
+                "email": candidate["email"],
+                "picture": candidate.get("picture", ""),
+                "role": "viewer",
+                "status": "pending",
+            })
+    return members
 
 
 def _normalize_event_members(values, owner_id, existing_members=None):
@@ -228,6 +263,7 @@ def _normalize_event_members(values, owner_id, existing_members=None):
             "user_id": user_id,
             "name": profile.get("name") or profile.get("email", ""),
             "email": profile.get("email", ""),
+            "picture": profile.get("picture", ""),
             "role": role,
             "status": previous.get("status") if previous and previous.get("status") in {"pending", "accepted"} else "pending",
         })
@@ -353,7 +389,13 @@ def normalize_event(payload, owner_id, existing_points=None, existing_cover_imag
         raise ValueError("invalid_event_title")
     if not isinstance(description, str) or len(description) > 5000:
         raise ValueError("invalid_description")
+    guest_contact_ids = _normalize_contacts(payload.get("guest_contact_ids", []), owner_id)
     members = _normalize_event_members(payload.get("members", existing_members), owner_id, existing_members)
+    member_ids = {member["user_id"] for member in members}
+    for guest_member in _event_members_from_guest_contacts(guest_contact_ids, owner_id, existing_members):
+        if guest_member["user_id"] not in member_ids:
+            member_ids.add(guest_member["user_id"])
+            members.append(guest_member)
     deduped = []
     seen = set()
     for member in members:
@@ -365,7 +407,7 @@ def normalize_event(payload, owner_id, existing_points=None, existing_cover_imag
         "title": title.strip(),
         "description": description.strip(),
         "dates": _normalize_dates(payload.get("dates")),
-        "guest_contact_ids": _normalize_contacts(payload.get("guest_contact_ids", []), owner_id),
+        "guest_contact_ids": guest_contact_ids,
         "conversation_ids": _normalize_conversations(payload.get("conversation_ids", []), owner_id),
         "map_points": _normalize_points(payload.get("map_points", []), existing_points),
         "members": deduped,
@@ -381,13 +423,16 @@ def _serialize(document, now=None, user_id=None):
     result["cover_image_id"] = document.get("cover_image_id")
     result["has_cover_image"] = bool(document.get("cover_image_path"))
     member_documents = document.get("members", [])
-    missing_profile_ids = [member.get("user_id") for member in member_documents if member.get("user_id") and not member.get("email")]
+    missing_profile_ids = [
+        member.get("user_id") for member in member_documents
+        if member.get("user_id") and (not member.get("email") or not member.get("picture") or not member.get("name"))
+    ]
     profiles = {}
     if missing_profile_ids:
         profiles = {
             profile["_id"]: profile
             for profile in get_collection("users").find(
-                {"_id": {"$in": missing_profile_ids}}, {"name": 1, "email": 1}
+                {"_id": {"$in": missing_profile_ids}}, {"name": 1, "email": 1, "picture": 1}
             )
         }
     result["members"] = [
@@ -395,6 +440,8 @@ def _serialize(document, now=None, user_id=None):
             "user_id": member.get("user_id"),
             "name": member.get("name") or profiles.get(member.get("user_id"), {}).get("name", ""),
             "email": member.get("email") or profiles.get(member.get("user_id"), {}).get("email", ""),
+            "picture": member.get("picture") or profiles.get(member.get("user_id"), {}).get("picture", ""),
+            "registered": True,
             "role": member.get("role", "viewer"),
             "status": member.get("status", "pending"),
         }
@@ -501,7 +548,10 @@ def _pending_event_invite_recipients(event):
 
 
 def _send_event_email(app, event, recipient_email, recipient_name="", invitation=False, guest=False):
-    if not app or not app.config.get("RESEND_API_KEY"):
+    if not app:
+        return
+    if not app.config.get("RESEND_API_KEY"):
+        app.logger.info("Calendar email skipped because Resend is not configured")
         return
     if not isinstance(recipient_email, str) or "@" not in recipient_email:
         return
@@ -547,7 +597,7 @@ def _send_event_email(app, event, recipient_email, recipient_name="", invitation
         with urllib_request.urlopen(request, timeout=5):
             pass
     except Exception:
-        pass
+        app.logger.warning("Calendar event email delivery failed")
 
 
 def _event_guest_contacts(event):
@@ -565,6 +615,22 @@ def _event_member_profile(member):
     if not member.get("email") and member.get("user_id"):
         profile = get_collection("users").find_one({"_id": member["user_id"]}, {"name": 1, "email": 1}) or {}
     return member.get("email") or profile.get("email", ""), member.get("name") or profile.get("name", "")
+
+
+def _notify_event_push(app, recipient_ids, title, body, event_url, actor_id):
+    required_keys = ("VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY", "VAPID_CONTACT")
+    if not all(app.config.get(key) for key in required_keys):
+        app.logger.warning("Calendar Web Push skipped because VAPID configuration is incomplete")
+        return
+    from app.services.push_notifications import notify_users
+    result = notify_users(
+        app, recipient_ids, title=title, body=body, url=event_url,
+        exclude_ids={actor_id},
+    ) or {}
+    if result.get("failed"):
+        app.logger.warning("Calendar Web Push delivery failed for %s subscription(s)", result["failed"])
+    elif not result.get("sent") and not result.get("expired"):
+        app.logger.info("Calendar Web Push had no active recipient subscriptions")
 
 
 def _notify_event_members(event, actor_id=None, invitation_ids=(), created=False):
@@ -587,19 +653,16 @@ def _notify_event_members(event, actor_id=None, invitation_ids=(), created=False
         ))
         if owner_id and owner_id != actor_id and owner_id not in update_ids:
             update_ids.append(owner_id)
-        from app.services.push_notifications import notify_users
         event_url = f"/calendar?event={event.get('id')}"
         if invitation_ids:
-            notify_users(
-                app, invitation_ids, title="Event invitation",
-                body="You have a new event invitation.", url=event_url,
-                exclude_ids={actor_id},
+            _notify_event_push(
+                app, invitation_ids, "Event invitation",
+                "You have a new event invitation.", event_url, actor_id,
             )
         if update_ids:
-            notify_users(
-                app, update_ids, title="Event updated",
-                body="An event you are a member of was updated.", url=event_url,
-                exclude_ids={actor_id},
+            _notify_event_push(
+                app, update_ids, "Event updated",
+                "An event you are a member of was updated.", event_url, actor_id,
             )
 
         member_ids = set(invitation_ids) | set(update_ids)
