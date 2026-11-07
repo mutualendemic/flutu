@@ -90,14 +90,22 @@
       .site-contact-entry > .site-contact-remove:hover { background: #f0f4ff; }
       .site-contact-entry > .site-contact-message .contact-action-icon,
       .site-contact-entry > .site-contact-remove .contact-action-icon {
+        display: block;
         width: 18px;
         height: 18px;
         flex: 0 0 auto;
-        fill: none;
         stroke: currentColor;
+        fill: none;
         stroke-linecap: round;
         stroke-linejoin: round;
         stroke-width: 1.8;
+      }
+      .site-contact-entry > .site-contact-message .contact-action-icon path,
+      .site-contact-entry > .site-contact-remove .contact-action-icon path {
+        stroke: currentColor;
+        fill: none;
+        stroke-linecap: round;
+        stroke-linejoin: round;
       }
       .flutu-global-message-form { display: grid; gap: 12px; }
       .flutu-global-message-form label { display: grid; gap: 6px; font-weight: 700; }
