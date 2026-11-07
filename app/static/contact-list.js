@@ -262,7 +262,7 @@
     return identity;
   }
 
-  function createEntry(contact, {tagName = 'div', className = '', control = null, actions = null, subtitle = '', showStatus = true, includeMessageAction = !actions} = {}) {
+  function createEntry(contact, {tagName = 'div', className = '', control = null, actions = null, subtitle = '', showStatus = true, includeMessageAction = false} = {}) {
     const entry = document.createElement(tagName);
     entry.className = `site-contact-entry${className ? ` ${className}` : ''}`;
     if (control) entry.append(control);
