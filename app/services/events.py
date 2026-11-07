@@ -725,6 +725,98 @@ def get_event(user_id, event_id):
     return _serialize(item, user_id=user_id) if item else None
 
 
+def invite_event_member(owner_id, event_id, user_id):
+    if not ObjectId.is_valid(event_id) or not isinstance(user_id, str) or not user_id or user_id == owner_id:
+        raise ValueError("invalid_event_members")
+    collection = _collection()
+    event_object_id = ObjectId(event_id)
+    event = collection.find_one({"_id": event_object_id, "owner_id": owner_id})
+    if not event:
+        if collection.find_one({"_id": event_object_id}, {"_id": 1}):
+            raise PermissionError("forbidden")
+        raise ValueError("not_found")
+    profile = get_collection("users").find_one(
+        {"_id": user_id}, {"name": 1, "email": 1, "picture": 1}
+    )
+    if not profile:
+        raise ValueError("invalid_event_members")
+    member = {
+        "user_id": user_id,
+        "name": profile.get("name") or profile.get("email", ""),
+        "email": profile.get("email", ""),
+        "picture": profile.get("picture", ""),
+        "role": "viewer",
+        "status": "pending",
+    }
+    existing = next(
+        (item for item in event.get("members", []) if item.get("user_id") == user_id),
+        None,
+    )
+    if existing and existing.get("status") in {"pending", "accepted"}:
+        return event, False
+    now_value = datetime.now(timezone.utc)
+    if existing:
+        updated = collection.find_one_and_update(
+            {"_id": event_object_id, "owner_id": owner_id, "members.user_id": user_id},
+            {"$set": {"members.$": member, "updated_at": now_value}},
+            return_document=ReturnDocument.AFTER,
+        )
+    else:
+        updated = collection.find_one_and_update(
+            {
+                "_id": event_object_id,
+                "owner_id": owner_id,
+                "members.user_id": {"$ne": user_id},
+            },
+            {"$push": {"members": member}, "$set": {"updated_at": now_value}},
+            return_document=ReturnDocument.AFTER,
+        )
+    if updated:
+        return updated, True
+    current = collection.find_one({"_id": event_object_id, "owner_id": owner_id})
+    if current and _event_member_for_user(current, user_id):
+        return current, False
+    raise RuntimeError("calendar_unavailable")
+
+
+def add_guest_contact(owner_id, event_id, contact_id):
+    if not ObjectId.is_valid(event_id) or not ObjectId.is_valid(contact_id):
+        raise ValueError("invalid_guests")
+    collection = _collection()
+    event_object_id = ObjectId(event_id)
+    event = collection.find_one({"_id": event_object_id, "owner_id": owner_id})
+    if not event:
+        if collection.find_one({"_id": event_object_id}, {"_id": 1}):
+            raise PermissionError("forbidden")
+        raise ValueError("not_found")
+    contact = get_collection("contacts").find_one(
+        {"_id": ObjectId(contact_id), "owner_id": owner_id}, {"email": 1}
+    )
+    if not contact or not (contact.get("email") or "").strip():
+        raise ValueError("invalid_guests")
+    contact_key = str(contact_id)
+    if contact_key in event.get("guest_contact_ids", []):
+        return event, False
+    updated = collection.find_one_and_update(
+        {
+            "_id": event_object_id,
+            "owner_id": owner_id,
+            "guest_contact_ids": {"$ne": contact_key},
+        },
+        {
+            "$addToSet": {"guest_contact_ids": contact_key},
+            "$set": {"updated_at": datetime.now(timezone.utc)},
+        },
+        return_document=ReturnDocument.AFTER,
+    )
+    if updated:
+        return updated, True
+    current = collection.find_one({"_id": event_object_id, "owner_id": owner_id})
+    if current and contact_key in current.get("guest_contact_ids", []):
+        return current, False
+    raise RuntimeError("calendar_unavailable")
+
+
 def respond_to_invitation(user_id, event_id, action):
     if not ObjectId.is_valid(event_id):
         return None

@@ -5,6 +5,7 @@ This directory records decisions implemented in the current code. It is not a pr
 ## Cross-cutting specifications
 
 - [Architecture and shared decisions](architecture.md)
+- [Contact invitation flow](contact-invitations.md)
 
 ## Pages
 

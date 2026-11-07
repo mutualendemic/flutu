@@ -288,6 +288,107 @@ class RouteTests(unittest.TestCase):
         with self.client.session_transaction() as browser_session:
             self.assertTrue(browser_session.get("_push_csrf_token"))
 
+    def test_contact_invitation_endpoint_requires_auth_and_csrf_and_allows_no_context(self):
+        self.assertEqual(self.client.get("/api/contact-invitations/contexts").status_code, 401)
+        self.assertEqual(self.client.post("/api/contact-invitations", json={}).status_code, 401)
+        self.sign_in()
+        denied = self.client.post("/api/contact-invitations", json={"contact_id": "contact-id"})
+        self.assertEqual(denied.status_code, 400)
+        self.assertEqual(denied.get_json(), {"error": "csrf_failed"})
+        with self.client.session_transaction() as browser_session:
+            browser_session["_contact_invitation_csrf_token"] = "contacts-csrf"
+        headers = {"X-CSRF-Token": "contacts-csrf", "Origin": "http://localhost"}
+        with patch(
+            "app.main.routes.contact_invitations.list_invitation_contexts",
+            return_value={"events": [], "chats": []},
+        ), patch(
+            "app.main.routes.contact_invitations.send_contact_invitation",
+            return_value={"delivery": "email", "delivered": True, "context_added": False, "new_chat_member": None},
+        ) as send:
+            contexts = self.client.get("/api/contact-invitations/contexts")
+            response = self.client.post(
+                "/api/contact-invitations",
+                json={"contact_id": "contact-id", "delivery": "email", "message": "Hello"},
+                headers=headers,
+            )
+        self.assertEqual(contexts.status_code, 200)
+        self.assertEqual(contexts.get_json(), {"events": [], "chats": []})
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()["delivered"])
+        send.assert_called_once()
+        self.assertEqual(send.call_args.args[1:3], ("google-user", "contact-id"))
+        self.assertIsNone(send.call_args.kwargs["context_type"])
+        self.assertIsNone(send.call_args.kwargs["context_id"])
+
+    def test_contact_invitation_chat_context_broadcasts_new_member(self):
+        self.sign_in()
+        with self.client.session_transaction() as browser_session:
+            browser_session["_contact_invitation_csrf_token"] = "contacts-csrf"
+        member = {"user_id": "new-member", "name": "New Member"}
+        result = {
+            "delivery": "push", "delivered": True, "context_type": "chat",
+            "context_id": "chat-id", "context_added": True, "new_chat_member": member,
+        }
+        with patch("app.main.routes.contact_invitations.send_contact_invitation", return_value=result), patch(
+            "app.main.routes.contact_invitations.chat_service.get_conversation",
+            return_value={"title": "Planning"},
+        ), patch("app.chat.sockets.emit_to_user") as emit_user, patch(
+            "app.chat.sockets.emit_to_active_members"
+        ) as emit_members:
+            response = self.client.post(
+                "/api/contact-invitations",
+                json={"contact_id": "contact-id", "delivery": "push", "message": "Join", "context_type": "chat", "context_id": "chat-id"},
+                headers={"X-CSRF-Token": "contacts-csrf", "Origin": "http://localhost"},
+            )
+        self.assertEqual(response.status_code, 200)
+        emit_user.assert_called_once_with("conversation_added", {"id": "chat-id", "title": "Planning"}, "new-member")
+        emit_members.assert_called_once_with("member_added", member, "chat-id")
+
+    def test_persistent_record_removals_require_confirmation(self):
+        self.sign_in()
+        contacts = self.client.get("/contacts").get_data(as_text=True)
+        self.assertIn('window.confirm(t("Remove {name} from your contacts?")', contacts)
+        self.assertIn('window.confirm(t("Remove all your saved contacts?")', contacts)
+
+        location_map = self.client.get("/map").get_data(as_text=True)
+        self.assertIn("window.confirm(t('Revoke access to {name}?')", location_map)
+        self.assertIn("window.confirm(t('Revoke location access for everyone and stop sharing?'))", location_map)
+        push_script_response = self.client.get("/static/push-notifications.js")
+        push_script = push_script_response.get_data(as_text=True)
+        push_script_response.close()
+        self.assertIn("window.confirm(t('Disable notifications on this device?'))", push_script)
+
+        chat_script_response = self.client.get("/static/chat-conversation.js")
+        chat_script = chat_script_response.get_data(as_text=True)
+        chat_script_response.close()
+        self.assertIn("window.confirm(t('Remove {name} from this conversation?')", chat_script)
+        chat_list_response = self.client.get("/static/chat-list.js")
+        chat_list_script = chat_list_response.get_data(as_text=True)
+        chat_list_response.close()
+        self.assertIn('window.confirm(', chat_list_script)
+        calendar_response = self.client.get("/static/calendar.js")
+        calendar_script = calendar_response.get_data(as_text=True)
+        calendar_response.close()
+        self.assertIn("window.confirm(t('Delete this event?'))", calendar_script)
+
+    def test_contact_invitation_dialog_is_localized(self):
+        self.client.post("/language/pt_PT", data={"next": "/"})
+        self.sign_in()
+        response = self.client.get("/contacts")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Enviar uma mensagem".encode(), response.data)
+        self.assertIn("Método de envio".encode(), response.data)
+        page = response.get_data(as_text=True)
+        catalogue = page.split("window.FlutuI18n = ", 1)[1].split(";</script>", 1)[0]
+        messages = json.loads(catalogue)
+        self.assertEqual(messages["Send message"], "Enviar mensagem")
+        self.assertEqual(messages["Message limit: {count} characters"], "Limite da mensagem: {count} caracteres")
+        self.assertEqual(messages["push_requires_account"], "As notificações Push só podem ser enviadas a contactos com conta Flutu.")
+        self.assertEqual(messages["Remove {name} from your contacts?"], "Remover {name} dos seus contactos?")
+        self.assertEqual(messages["Remove {name} from this conversation?"], "Remover {name} desta conversa?")
+        self.assertEqual(messages["Revoke access to {name}?"], "Revogar o acesso de {name}?")
+        self.assertEqual(messages["Disable notifications on this device?"], "Desativar as notificações neste dispositivo?")
+
     def test_authenticated_dashboard_and_child_navigation(self):
         self.sign_in()
         dashboard = self.client.get("/dashboard")
@@ -326,11 +427,16 @@ class RouteTests(unittest.TestCase):
         self.assertIn(b'const inviteUrl = "http://localhost/auth/login"', contacts.data)
         self.assertIn(b"Invite by email", contacts.data)
         self.assertIn(b"Invite by text", contacts.data)
+        self.assertIn(b'id="contact-invitation-dialog"', contacts.data)
+        self.assertIn(b'data-invitation-csrf=', contacts.data)
         self.assertIn(b"contact-card-actions { width: 100%; justify-content: flex-start; }", contacts.data)
         self.assertIn(b"classList.add(\"contact-action-icon\")", contacts.data)
         self.assertIn(b"aria-label", contacts.data)
         self.assertIn(b"mailto:${encodeURIComponent(contact.email)}", contacts.data)
         self.assertIn(b"sms:${encodeURIComponent(contact.tel)}", contacts.data)
+        self.assertIn(b'id="contact-invitation-dialog"', contacts.data)
+        self.assertIn(b'data-invitation-csrf=', contacts.data)
+        self.assertIn(b"window.FlutuAction.run(sendButton", contacts.data)
 
         decision = self.client.get("/decision")
         self.assertEqual(decision.status_code, 200)

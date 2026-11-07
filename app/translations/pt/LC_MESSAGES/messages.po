@@ -843,6 +843,108 @@ msgstr "Convidar {name} por email"
 msgid "Invite {name} by text message"
 msgstr "Convidar {name} por SMS"
 
+msgid "Send a message to {name}"
+msgstr "Enviar uma mensagem a {name}"
+
+msgid "Send message"
+msgstr "Enviar mensagem"
+
+msgid "Send a message"
+msgstr "Enviar uma mensagem"
+
+msgid "Delivery method"
+msgstr "Método de envio"
+
+msgid "Push notification"
+msgstr "Notificação Push"
+
+msgid "Context (optional)"
+msgstr "Contexto (opcional)"
+
+msgid "No context"
+msgstr "Sem contexto"
+
+msgid "Choose a context"
+msgstr "Escolha um contexto"
+
+msgid "Message"
+msgstr "Mensagem"
+
+msgid "Write your message"
+msgstr "Escreva a sua mensagem"
+
+msgid "Message limit: {count} characters"
+msgstr "Limite da mensagem: {count} caracteres"
+
+msgid "Message to {name}"
+msgstr "Mensagem para {name}"
+
+msgid "Message sent."
+msgstr "Mensagem enviada."
+
+msgid "Access updated, but Push could not be delivered."
+msgstr "O acesso foi atualizado, mas não foi possível entregar a notificação Push."
+
+msgid "Push notification could not be delivered."
+msgstr "Não foi possível entregar a notificação Push."
+
+msgid "Could not load invitation contexts."
+msgstr "Não foi possível carregar eventos e conversas disponíveis."
+
+msgid "Could not send this message."
+msgstr "Não foi possível enviar esta mensagem."
+
+msgid "Remove {name} from your contacts?"
+msgstr "Remover {name} dos seus contactos?"
+
+msgid "Remove {name} from this conversation?"
+msgstr "Remover {name} desta conversa?"
+
+msgid "Revoke access to {name}?"
+msgstr "Revogar o acesso de {name}?"
+
+msgid "Disable notifications on this device?"
+msgstr "Desativar as notificações neste dispositivo?"
+
+msgid "Invitation to event: {title}"
+msgstr "Convite para o evento: {title}"
+
+msgid "You have a pending invitation to the event {title} on Flutu."
+msgstr "Tem um convite pendente para o evento {title} na Flutu."
+
+msgid "Your contact shared the event {title} with you on Flutu."
+msgstr "O seu contacto partilhou consigo o evento {title} na Flutu."
+
+msgid "Invitation to branching chat: {title}"
+msgstr "Convite para a conversa ramificada: {title}"
+
+msgid "You were added to the branching chat {title} on Flutu."
+msgstr "Foi adicionado à conversa ramificada {title} na Flutu."
+
+msgid "Your contact shared a message about the branching chat {title} on Flutu."
+msgstr "O seu contacto enviou uma mensagem sobre a conversa ramificada {title} na Flutu."
+
+msgid "A message about branching chat: {title}"
+msgstr "Uma mensagem sobre a conversa ramificada: {title}"
+
+msgid "Your contact shared a message about the branching chat {title} on Flutu. Sign in and ask them to add you."
+msgstr "O seu contacto enviou uma mensagem sobre a conversa ramificada {title} na Flutu. Inicie sessão e peça-lhe para o adicionar."
+
+msgid "A message from {name} on Flutu"
+msgstr "Uma mensagem de {name} na Flutu"
+
+msgid "Your contact sent you a message on Flutu."
+msgstr "O seu contacto enviou-lhe uma mensagem na Flutu."
+
+msgid "Open Flutu"
+msgstr "Abrir Flutu"
+
+msgid "Message from {name}"
+msgstr "Mensagem de {name}"
+
+msgid "a Flutu friend"
+msgstr "um amigo da Flutu"
+
 msgid "A small decision"
 msgstr "Uma pequena decisão"
 
@@ -1259,6 +1361,33 @@ msgstr "Não foi possível encontrar o contacto."
 
 msgid "contact_limit"
 msgstr "Foi atingido o limite de contactos."
+
+msgid "invalid_invitation"
+msgstr "Os dados da mensagem ou do contexto são inválidos."
+
+msgid "invalid_invitation_message"
+msgstr "A mensagem excede o limite permitido para o método de envio escolhido."
+
+msgid "contact_email_required"
+msgstr "Este contacto precisa de um endereço de email."
+
+msgid "context_not_found"
+msgstr "O evento ou a conversa selecionados já não estão disponíveis."
+
+msgid "push_requires_account"
+msgstr "As notificações Push só podem ser enviadas a contactos com conta Flutu."
+
+msgid "email_not_configured"
+msgstr "O envio de email não está configurado."
+
+msgid "email_delivery_failed"
+msgstr "Não foi possível enviar o email."
+
+msgid "invitation_unavailable"
+msgstr "Não foi possível enviar a comunicação neste momento."
+
+msgid "invitation_contexts_unavailable"
+msgstr "Não foi possível carregar eventos e conversas."
 
 msgid "Could not get your device location."
 msgstr "Não foi possível obter a localização do dispositivo."

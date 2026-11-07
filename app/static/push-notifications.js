@@ -65,6 +65,10 @@
   }
 
   async function disablePush() {
+    if (!window.confirm(t('Disable notifications on this device?'))) {
+      setStatus(t('Notifications are enabled on this device.'));
+      return;
+    }
     const registration = await navigator.serviceWorker.getRegistration('/');
     const subscription = await registration?.pushManager.getSubscription();
     if (!subscription) {

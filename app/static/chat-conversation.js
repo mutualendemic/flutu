@@ -382,7 +382,10 @@
       );
       if (member.active && member.role !== 'owner') {
         const remove = el('button', t('Remove'), 'button button-secondary small-button member-remove'); remove.type = 'button';
-        remove.addEventListener('click', () => changeMemberWithLoading(remove, member.user_id, 'DELETE'));
+        remove.addEventListener('click', () => {
+          if (!window.confirm(t('Remove {name} from this conversation?').replace('{name}', () => member.name))) return;
+          changeMemberWithLoading(remove, member.user_id, 'DELETE');
+        });
         item.append(remove);
       }
       list.append(item);

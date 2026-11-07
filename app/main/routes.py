@@ -3,7 +3,7 @@ import hmac
 import secrets
 from urllib.parse import urlsplit
 
-from flask import Blueprint, current_app, jsonify, redirect, render_template, request, send_from_directory, session
+from flask import Blueprint, current_app, jsonify, redirect, render_template, request, send_from_directory, session, url_for
 
 from app.auth.decorators import login_required
 from app.services.quantum_random import choose_direction
@@ -21,6 +21,7 @@ from app.services.location_sharing import (
 )
 from app.services.push_notifications import remove_subscription, save_subscription
 from app.services.push_notifications import notify_users
+from app.services import contact_invitations
 
 
 main_bp = Blueprint("main", __name__)
@@ -114,7 +115,87 @@ def api_push_unsubscribe():
 @main_bp.get("/contacts")
 @login_required
 def contacts():
-    return render_template("contacts.html", user=session["user"])
+    token = session.get("_contact_invitation_csrf_token")
+    if not token:
+        token = secrets.token_urlsafe(32)
+        session["_contact_invitation_csrf_token"] = token
+    return render_template(
+        "contacts.html", user=session["user"],
+        contact_invitation_csrf_token=token,
+    )
+
+
+def _valid_contact_invitation_csrf():
+    expected = session.get("_contact_invitation_csrf_token", "")
+    supplied = request.headers.get("X-CSRF-Token", "")
+    if not expected or not supplied or not hmac.compare_digest(expected, supplied):
+        return False
+    origin = request.headers.get("Origin")
+    if origin:
+        return origin == request.host_url.rstrip("/")
+    referer = request.headers.get("Referer")
+    return bool(referer and referer.startswith(request.host_url))
+
+
+@main_bp.get("/api/contact-invitations/contexts")
+@login_required
+def api_contact_invitation_contexts():
+    try:
+        return jsonify(contact_invitations.list_invitation_contexts(session["user"]["sub"]))
+    except (PyMongoError, RuntimeError):
+        current_app.logger.exception("Could not load contact invitation contexts")
+        return jsonify(error="invitation_contexts_unavailable"), 503
+
+
+@main_bp.post("/api/contact-invitations")
+@login_required
+def api_send_contact_invitation():
+    if not _valid_contact_invitation_csrf():
+        return jsonify(error="csrf_failed"), 400
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify(error="invalid_invitation"), 400
+    user = session["user"]
+    context_type = payload.get("context_type") or None
+    context_id = payload.get("context_id") or None
+    try:
+        result = contact_invitations.send_contact_invitation(
+            current_app._get_current_object(),
+            user["sub"],
+            payload.get("contact_id"),
+            context_type=context_type,
+            context_id=context_id,
+            delivery=payload.get("delivery"),
+            message=payload.get("message"),
+            sender_name=user.get("name") or user.get("email", ""),
+            login_url=url_for("auth.login", _external=True),
+            event_path=url_for("calendar.page", event=context_id) if context_type == "event" and context_id else url_for("calendar.page"),
+            event_url=url_for("calendar.page", event=context_id, _external=True) if context_type == "event" and context_id else url_for("calendar.page", _external=True),
+            chat_path=url_for("chat.conversation_page", conversation_id=context_id) if context_type == "chat" and context_id else url_for("chat.conversation_list_page"),
+            chat_url=url_for("chat.conversation_page", conversation_id=context_id, _external=True) if context_type == "chat" and context_id else url_for("chat.conversation_list_page", _external=True),
+        )
+        if result.get("new_chat_member"):
+            from app.chat.sockets import emit_to_active_members, emit_to_user
+
+            conversation = contact_invitations.chat_service.get_conversation(context_id) or {}
+            member = result["new_chat_member"]
+            emit_to_user("conversation_added", {"id": context_id, "title": conversation.get("title", "")}, member["user_id"])
+            emit_to_active_members("member_added", member, context_id)
+        return jsonify(result)
+    except PermissionError:
+        return jsonify(error="forbidden"), 403
+    except ValueError as error:
+        code = str(error)
+        return jsonify(error=code), 404 if code in {"contact_not_found", "context_not_found", "not_found"} else 400
+    except RuntimeError as error:
+        code = str(error)
+        status = 503
+        if code == "email_delivery_failed":
+            status = 502
+        return jsonify(error=code if code in {"email_not_configured", "email_delivery_failed", "calendar_unavailable", "chat_unavailable"} else "invitation_unavailable"), status
+    except (PyMongoError, OSError):
+        current_app.logger.exception("Could not send contact invitation")
+        return jsonify(error="invitation_unavailable"), 503
 
 
 @main_bp.get("/map")

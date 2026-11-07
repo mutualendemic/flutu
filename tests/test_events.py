@@ -8,7 +8,7 @@ from bson import ObjectId
 from app import create_app
 from app.services.blob_storage import BlobStorageError, delete_image, download_image, upload_image
 from app.services.location_search import search_locations
-from app.services.events import _event_status, _nearest_event_occurrence, _normalize_dates, _normalize_points, _notify_event_members, _send_event_email, can_manage_event, create_event, delete_event, get_event, list_events, list_map_points, list_occurrences, normalize_event, respond_to_invitation, update_event
+from app.services.events import _event_status, _nearest_event_occurrence, _normalize_dates, _normalize_points, _notify_event_members, _send_event_email, add_guest_contact, can_manage_event, create_event, delete_event, get_event, invite_event_member, list_events, list_map_points, list_occurrences, normalize_event, respond_to_invitation, update_event
 
 
 class CalendarTests(unittest.TestCase):
@@ -41,6 +41,55 @@ class CalendarTests(unittest.TestCase):
         ):
             self.assertEqual(response.status_code, 401)
             self.assertEqual(response.get_json(), {"error": "Authentication required."})
+
+    def test_invite_event_member_creates_pending_viewer(self):
+        event_id = ObjectId("65b0e7a3a6c6f166f1c3a099")
+        event = {"_id": event_id, "owner_id": "owner", "members": []}
+        updated = {**event, "members": [{"user_id": "invitee", "status": "pending", "role": "viewer"}]}
+        events = Mock()
+        events.find_one.return_value = event
+        events.find_one_and_update.return_value = updated
+        users = Mock()
+        users.find_one.return_value = {"name": "Invitee", "email": "invitee@example.com", "picture": ""}
+
+        with patch("app.services.events._collection", return_value=events), patch(
+            "app.services.events.get_collection", return_value=users
+        ):
+            result, added = invite_event_member("owner", str(event_id), "invitee")
+
+        self.assertTrue(added)
+        self.assertEqual(result["members"][0]["status"], "pending")
+        update = events.find_one_and_update.call_args.args[1]
+        self.assertEqual(update["$push"]["members"]["role"], "viewer")
+        self.assertEqual(update["$push"]["members"]["user_id"], "invitee")
+
+    def test_invite_event_member_rejects_non_owner(self):
+        event_id = ObjectId("65b0e7a3a6c6f166f1c3a09a")
+        events = Mock()
+        events.find_one.side_effect = [None, {"_id": event_id, "owner_id": "other"}]
+        with patch("app.services.events._collection", return_value=events):
+            with self.assertRaises(PermissionError):
+                invite_event_member("owner", str(event_id), "invitee")
+
+    def test_add_guest_contact_requires_owned_contact_with_email(self):
+        event_id = ObjectId("65b0e7a3a6c6f166f1c3a09b")
+        contact_id = ObjectId("65b0e7a3a6c6f166f1c3a09c")
+        event = {"_id": event_id, "owner_id": "owner", "guest_contact_ids": []}
+        updated = {**event, "guest_contact_ids": [str(contact_id)]}
+        events = Mock()
+        events.find_one.return_value = event
+        events.find_one_and_update.return_value = updated
+        contacts = Mock()
+        contacts.find_one.return_value = {"email": "external@example.com"}
+        with patch("app.services.events._collection", return_value=events), patch(
+            "app.services.events.get_collection", return_value=contacts
+        ):
+            result, added = add_guest_contact("owner", str(event_id), str(contact_id))
+        self.assertTrue(added)
+        self.assertEqual(result["guest_contact_ids"], [str(contact_id)])
+        contacts.find_one.assert_called_once_with(
+            {"_id": contact_id, "owner_id": "owner"}, {"email": 1}
+        )
 
     def test_mutations_require_calendar_csrf_token(self):
         self.sign_in()

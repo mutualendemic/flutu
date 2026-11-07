@@ -309,7 +309,8 @@
       } catch (error) { message(shareMessage, error.message, true); }
     }
 
-    async function revoke(id) {
+    async function revoke(id, name) {
+      if (!window.confirm(t('Revoke access to {name}?').replace('{name}', () => name))) return;
       try {
         await callApi(`${api.shares}/${encodeURIComponent(id)}`, { method: 'DELETE' });
         message(shareMessage, 'Location access revoked for that person.');
@@ -393,7 +394,7 @@
       renderList(sharingList, sharingContacts, t('You are not sharing your location with anyone.'), item => makeItem(
         item.requester_name,
         `${item.requester_email} · ${formatDistance(item)}`,
-        [{ label: t('Stop sharing'), action: () => revoke(item.id), danger: true }],
+        [{ label: t('Stop sharing'), action: () => revoke(item.id, item.requester_name), danger: true }],
         {email: item.requester_email, picture: item.requester_picture, registered: true}
       ));
     }

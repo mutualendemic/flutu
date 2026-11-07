@@ -26,6 +26,14 @@
   .contact-action-icon { width: 18px; height: 18px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
   .notice { min-height: 24px; margin: 8px 0; color: #53627b; font-size: .9rem; }
   .empty { padding: 22px 12px; border: 1px dashed #cbd6e8; border-radius: 14px; text-align: center; }
+  .contact-invitation-dialog { width:min(100% - 24px, 520px); max-height:90vh; overflow:auto; border:1px solid var(--border); border-radius:16px; background:var(--surface); color:var(--text); padding:22px; }
+  .contact-invitation-dialog::backdrop { background:#10182899; }
+  .contact-invitation-dialog label { display:grid; gap:6px; margin:12px 0; font-weight:700; }
+  .contact-invitation-dialog select, .contact-invitation-dialog textarea { width:100%; padding:11px; border:1px solid var(--input-border); border-radius:8px; background:var(--input-bg); color:var(--text); font:inherit; }
+  .contact-invitation-dialog textarea { min-height:120px; resize:vertical; }
+  .contact-invitation-dialog small { color:var(--muted); font-weight:400; }
+  .invitation-dialog-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:14px; }
+  .invitation-dialog-actions .button { width:auto; margin:0; }
   @media (max-width: 520px) {
     .manual-form { grid-template-columns: 1fr; }
     .manual-form button { grid-column: auto; }
@@ -37,7 +45,7 @@
   }
 {% endblock %}
 {% block content %}
-  <main class="card contacts">
+  <main class="card contacts" data-invitation-csrf="{{ contact_invitation_csrf_token }}">
     <p class="eyebrow">{{ _('Your address book') }}</p>
     <h1>{{ _('My contacts') }}</h1>
     <p>{{ _('Your contacts are saved to your Flutu.eu account. Import contacts from your phone when your browser supports it, or add someone manually.') }}</p>
@@ -66,6 +74,37 @@
     <ul class="contact-list" id="contact-list"></ul>
     <p class="empty" id="empty-state">{{ _('No contacts yet. Import from your phone or add a contact above.') }}</p>
   </main>
+  <dialog id="contact-invitation-dialog" class="contact-invitation-dialog" aria-labelledby="contact-invitation-title">
+    <form id="contact-invitation-form">
+      <h2 id="contact-invitation-title">{{ _('Send a message') }}</h2>
+      <p id="invitation-recipient"></p>
+      <label for="invitation-delivery">{{ _('Delivery method') }}
+        <select id="invitation-delivery">
+          <option value="email">{{ _('Email') }}</option>
+          <option value="push">{{ _('Push notification') }}</option>
+        </select>
+      </label>
+      <label for="invitation-context-type">{{ _('Context (optional)') }}
+        <select id="invitation-context-type">
+          <option value="">{{ _('No context') }}</option>
+          <option value="event">{{ _('Event') }}</option>
+          <option value="chat">{{ _('Branching chat') }}</option>
+        </select>
+      </label>
+      <label id="invitation-context-label" for="invitation-context-id" hidden>{{ _('Choose a context') }}
+        <select id="invitation-context-id"></select>
+      </label>
+      <label for="invitation-message">{{ _('Message') }}
+        <textarea id="invitation-message" maxlength="1000" required placeholder="{{ _('Write your message') }}"></textarea>
+        <small id="invitation-message-limit"></small>
+      </label>
+      <p id="invitation-error" class="error" role="alert"></p>
+      <div class="invitation-dialog-actions">
+        <button id="send-contact-invitation" class="button" type="submit">{{ _('Send message') }}</button>
+        <button id="cancel-contact-invitation" class="button button-secondary" type="button">{{ _('Cancel') }}</button>
+      </div>
+    </form>
+  </dialog>
 {% endblock %}
 {% block scripts %}
   <script>
@@ -81,6 +120,18 @@
       const importContactsButton = document.getElementById("import-contacts");
       const importVcfButton = document.getElementById("import-vcf");
       const clearContactsButton = document.getElementById("clear-contacts");
+      const invitationDialog = document.getElementById("contact-invitation-dialog");
+      const invitationForm = document.getElementById("contact-invitation-form");
+      const invitationDelivery = document.getElementById("invitation-delivery");
+      const invitationContextType = document.getElementById("invitation-context-type");
+      const invitationContextLabel = document.getElementById("invitation-context-label");
+      const invitationContextId = document.getElementById("invitation-context-id");
+      const invitationMessageInput = document.getElementById("invitation-message");
+      const invitationMessageLimit = document.getElementById("invitation-message-limit");
+      const invitationError = document.getElementById("invitation-error");
+      const invitationCsrf = document.querySelector(".contacts").dataset.invitationCsrf;
+      let invitationContexts;
+      let invitationContact;
       let contacts = [];
 
       async function request(url, options = {}) {
@@ -181,6 +232,74 @@
         return link;
       }
 
+      async function loadInvitationContexts() {
+        if (invitationContexts) return;
+        invitationContexts = await request("/api/contact-invitations/contexts");
+      }
+
+      function renderInvitationContexts() {
+        const type = invitationContextType.value;
+        const entries = type === "event" ? invitationContexts?.events : type === "chat" ? invitationContexts?.chats : [];
+        invitationContextId.replaceChildren();
+        const placeholder = document.createElement("option");
+        placeholder.value = "";
+        placeholder.textContent = t("Choose a context");
+        invitationContextId.append(placeholder);
+        (entries || []).forEach((entry) => {
+          const option = document.createElement("option");
+          option.value = entry.id;
+          option.textContent = entry.title;
+          invitationContextId.append(option);
+        });
+        invitationContextLabel.hidden = !type;
+        invitationContextId.required = Boolean(type);
+        invitationContextId.disabled = !type;
+      }
+
+      function updateInvitationLimit() {
+        const limit = invitationDelivery.value === "push" ? 180 : 1000;
+        invitationMessageInput.maxLength = limit;
+        invitationMessageLimit.textContent = t("Message limit: {count} characters").replace("{count}", limit);
+      }
+
+      async function openInvitation(contact) {
+        invitationContact = contact;
+        invitationError.textContent = "";
+        document.getElementById("invitation-recipient").textContent = t("Message to {name}").replace("{name}", contact.name);
+        invitationMessageInput.value = "";
+        const pushOption = invitationDelivery.querySelector('option[value="push"]');
+        pushOption.hidden = !contact.registered;
+        invitationDelivery.disabled = !contact.registered;
+        invitationDelivery.value = contact.registered ? "push" : "email";
+        invitationContextType.value = "";
+        renderInvitationContexts();
+        updateInvitationLimit();
+        invitationDialog.showModal();
+        invitationMessageInput.focus();
+        try {
+          await loadInvitationContexts();
+          renderInvitationContexts();
+        } catch (loadError) {
+          invitationError.textContent = t(loadError.message || "Could not load invitation contexts.");
+        }
+      }
+
+      function messageInvitation(contact) {
+        const button = document.createElement("button");
+        button.className = "invite-contact";
+        button.type = "button";
+        const label = t("Send a message to {name}").replace("{name}", contact.name);
+        button.setAttribute("aria-label", label);
+        button.title = label;
+        button.append(actionIcon("M22 2 11 13 M22 2 15 22 11 13 2 9Z"));
+        const text = document.createElement("span");
+        text.className = "action-label";
+        text.textContent = t("Send message");
+        button.append(text);
+        button.addEventListener("click", () => openInvitation(contact));
+        return button;
+      }
+
       async function createContacts(values) {
         const additions = uniqueContacts(values);
         if (!additions.length) return 0;
@@ -222,6 +341,7 @@
               "M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6a7.5 7.5 0 1 1 17-3.5Z M8 11h.01 M12 11h.01 M16 11h.01",
             ));
           }
+          if (contact.email) actions.append(messageInvitation(contact));
           const remove = document.createElement("button");
           remove.className = "remove-contact";
           remove.type = "button";
@@ -234,6 +354,7 @@
           removeText.textContent = t("Remove");
           remove.append(removeText);
           remove.addEventListener("click", async () => {
+            if (!window.confirm(t("Remove {name} from your contacts?").replace("{name}", contact.name))) return;
             await window.FlutuAction.run(remove, async () => {
               try {
                 await request(`${contactsApi}/${encodeURIComponent(contact.id)}`, { method: "DELETE" });
@@ -337,6 +458,41 @@
           status.textContent = error.message;
         }
       }));
+
+      invitationContextType.addEventListener("change", renderInvitationContexts);
+      invitationDelivery.addEventListener("change", updateInvitationLimit);
+      document.getElementById("cancel-contact-invitation").addEventListener("click", () => invitationDialog.close());
+      invitationForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (!invitationForm.reportValidity() || !invitationContact) return;
+        const sendButton = document.getElementById("send-contact-invitation");
+        invitationError.textContent = "";
+        await window.FlutuAction.run(sendButton, async () => {
+          try {
+            const response = await fetch("/api/contact-invitations", {
+              method: "POST",
+              headers: {"Content-Type": "application/json", "X-CSRF-Token": invitationCsrf},
+              body: JSON.stringify({
+                contact_id: invitationContact.id,
+                delivery: invitationDelivery.value,
+                message: invitationMessageInput.value,
+                context_type: invitationContextType.value || null,
+                context_id: invitationContextId.value || null,
+              }),
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(t(result.error || "Could not send this message."));
+            status.textContent = result.delivered
+              ? t("Message sent.")
+              : result.context_added
+                ? t("Access updated, but Push could not be delivered.")
+                : t("Push notification could not be delivered.");
+            invitationDialog.close();
+          } catch (sendError) {
+            invitationError.textContent = sendError.message || t("Could not send this message.");
+          }
+        });
+      });
 
       search.addEventListener("input", render);
       request(contactsApi)
