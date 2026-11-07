@@ -213,6 +213,7 @@ JS_MESSAGE_IDS = (
     "Message sent.",
     "Access updated, but Push could not be delivered.",
     "Push notification could not be delivered.",
+    "Email delivery failed. Please try again or choose a different delivery method.",
     "Push notifications only work when the recipient has notifications enabled.",
     "Could not load invitation contexts.",
     "Could not send this message.",

@@ -44,7 +44,7 @@
   @media (max-width: 800px) { .columns { grid-template-columns: 1fr; } #map { height: 48vh; min-height: 300px; } }
 {% endblock %}
 {% block content %}
-  <main class="card map-page">
+  <main class="card map-page" data-invitation-csrf="{{ contact_invitation_csrf_token }}">
     <header class="map-header">
       <div>
         <p class="eyebrow">{{ _('Private location sharing') }}</p>
@@ -218,6 +218,19 @@
       });
     }
 
+    function resolveMessageContact(contact = {}) {
+      if (!contact || typeof contact !== 'object') return null;
+      const normalizedEmail = typeof contact.email === 'string' ? contact.email.trim().toLowerCase() : '';
+      const normalizedUserId = typeof contact.user_id === 'string' ? contact.user_id : '';
+      const direct = savedContacts.find(saved => {
+        if (contact.id && saved.id === contact.id) return true;
+        if (normalizedUserId && saved.user_id === normalizedUserId) return true;
+        if (normalizedEmail && typeof saved.email === 'string' && saved.email.trim().toLowerCase() === normalizedEmail) return true;
+        return false;
+      });
+      return direct || null;
+    }
+
     function makeItem(name, detail, buttons = [], contact = {}, includeMessageAction = false) {
       const li = document.createElement('li');
       li.className = 'item';
@@ -232,12 +245,13 @@
       if (buttons.length || includeMessageAction) {
         const actions = document.createElement('div');
         actions.className = 'item-actions';
-        if (includeMessageAction && contact && (contact.id || contact.user_id || contact.email)) {
+        const messageContact = includeMessageAction ? resolveMessageContact(contact) : null;
+        if (messageContact) {
           const message = window.FlutuContactList.createMessageAction({
-            id: contact.id || contact.user_id,
-            name,
-            email: contact.email,
-            registered: contact.registered !== false,
+            id: messageContact.id,
+            name: messageContact.name || name,
+            email: messageContact.email || contact.email,
+            registered: messageContact.registered !== false,
           }, { label: t('Send message') });
           actions.append(message);
         }

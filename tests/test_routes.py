@@ -508,9 +508,14 @@ class RouteTests(unittest.TestCase):
         self.assertIn(b"Location requires HTTPS", location_map.data)
         self.assertIn(b"Location permission was denied", location_map.data)
         self.assertIn(b"could not determine its location", location_map.data)
+        self.assertIn(b'data-invitation-csrf=', location_map.data)
 
         with open("app/static/contact-list.js", "r", encoding="utf-8") as js_file:
-            self.assertIn(".item-actions > .site-contact-message", js_file.read())
+            js_contents = js_file.read()
+            self.assertIn(".item-actions > .site-contact-message", js_contents)
+            self.assertIn("push_requires_active_notifications", js_contents)
+            self.assertIn("Email delivery failed. Please try again or choose a different delivery method.", js_contents)
+            self.assertIn("Push notifications only work when the recipient has notifications enabled.", js_contents)
 
         profile = self.client.get("/profile")
         self.assertEqual(profile.status_code, 200)

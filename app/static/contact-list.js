@@ -60,6 +60,11 @@
     dialog.className = 'flutu-global-message-dialog';
     const sendTitle = window.FlutuI18n?.['Send message'] || 'Send message';
     const deliveryTitle = window.FlutuI18n?.['Delivery method'] || 'Delivery method';
+    const contextTypeTitle = window.FlutuI18n?.['Context (optional)'] || 'Context (optional)';
+    const noContextLabel = window.FlutuI18n?.['No context'] || 'No context';
+    const chooseContextLabel = window.FlutuI18n?.['Choose a context'] || 'Choose a context';
+    const eventLabel = window.FlutuI18n?.['Event'] || 'Event';
+    const chatLabel = window.FlutuI18n?.['Branching chat'] || 'Branching chat';
     const messageLabel = window.FlutuI18n?.['Message'] || 'Message';
     const emailLabel = window.FlutuI18n?.['Email'] || 'Email';
     const pushLabel = window.FlutuI18n?.['Push notification'] || 'Push notification';
@@ -74,6 +79,18 @@
             <option value="email">${emailLabel}</option>
             <option value="push">${pushLabel}</option>
           </select>
+        </label>
+        <label>
+          <span>${contextTypeTitle}</span>
+          <select class="flutu-global-message-context-type">
+            <option value="">${noContextLabel}</option>
+            <option value="event">${eventLabel}</option>
+            <option value="chat">${chatLabel}</option>
+          </select>
+        </label>
+        <label class="flutu-global-message-context-label" hidden>
+          <span>${chooseContextLabel}</span>
+          <select class="flutu-global-message-context-id"></select>
         </label>
         <label>
           <span>${messageLabel}</span>
@@ -150,11 +167,48 @@
     document.head.append(style);
     const form = dialog.querySelector('.flutu-global-message-form');
     const delivery = dialog.querySelector('.flutu-global-message-delivery');
+    const contextType = dialog.querySelector('.flutu-global-message-context-type');
+    const contextId = dialog.querySelector('.flutu-global-message-context-id');
+    const contextLabel = dialog.querySelector('.flutu-global-message-context-label');
     const input = dialog.querySelector('.flutu-global-message-input');
     const recipient = dialog.querySelector('.flutu-global-message-recipient');
     const error = dialog.querySelector('.flutu-global-message-error');
     const cancel = dialog.querySelector('.flutu-global-message-cancel');
 
+    function updateMessageLimit() {
+      const limit = delivery.value === 'push' ? 180 : 1000;
+      input.maxLength = limit;
+    }
+
+    function renderInvitationContexts() {
+      const type = contextType.value;
+      const entries = type === 'event' ? (window.FlutuContactList._invitationContexts?.events || []) : type === 'chat' ? (window.FlutuContactList._invitationContexts?.chats || []) : [];
+      contextId.replaceChildren();
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = window.FlutuI18n?.['Choose a context'] || 'Choose a context';
+      contextId.append(placeholder);
+      entries.forEach((entry) => {
+        const option = document.createElement('option');
+        option.value = entry.id;
+        option.textContent = entry.title;
+        contextId.append(option);
+      });
+      contextLabel.hidden = !type;
+      contextId.required = Boolean(type);
+      contextId.disabled = !type;
+    }
+
+    async function loadInvitationContexts() {
+      if (window.FlutuContactList._invitationContexts) return window.FlutuContactList._invitationContexts;
+      const response = await fetch('/api/contact-invitations/contexts');
+      if (!response.ok) throw new Error(window.FlutuI18n?.['Could not load invitation contexts.'] || 'Could not load invitation contexts.');
+      window.FlutuContactList._invitationContexts = await response.json();
+      return window.FlutuContactList._invitationContexts;
+    }
+
+    delivery.addEventListener('change', updateMessageLimit);
+    contextType.addEventListener('change', renderInvitationContexts);
     cancel.addEventListener('click', () => dialog.close());
     form.addEventListener('submit', async event => {
       event.preventDefault();
@@ -174,8 +228,8 @@
             contact_id: contact.id,
             delivery: delivery.value,
             message,
-            context_type: dialog.dataset.contextType || null,
-            context_id: dialog.dataset.contextId || null,
+            context_type: contextType.value || null,
+            context_id: contextId.value || null,
           }),
         });
         const result = await response.json();
@@ -185,16 +239,25 @@
           window.dispatchEvent(new CustomEvent('flutu-message-sent', {detail: {name: contact.name}}));
         }
       } catch (err) {
-        error.textContent = err.message || (window.FlutuI18n?.['Could not send this message.'] || 'Could not send this message.');
+        const code = err?.message || 'Could not send this message.';
+        const friendly = code === 'email_delivery_failed'
+          ? (window.FlutuI18n?.['Email delivery failed. Please try again or choose a different delivery method.'] || 'Email delivery failed. Please try again or choose a different delivery method.')
+          : code === 'push_requires_active_notifications'
+            ? (window.FlutuI18n?.['Push notifications only work when the recipient has notifications enabled.'] || 'Push notifications only work when the recipient has notifications enabled.')
+            : err.message || (window.FlutuI18n?.['Could not send this message.'] || 'Could not send this message.');
+        error.textContent = friendly;
       }
     });
     document.body.append(dialog);
     return dialog;
   }
 
-  function openMessageDialog(contact, {contextType = '', contextId = '', delivery = 'push'} = {}) {
+  async function openMessageDialog(contact, {contextType = '', contextId = '', delivery = 'push'} = {}) {
     const dialog = ensureMessageDialog();
     const deliverySelect = dialog.querySelector('.flutu-global-message-delivery');
+    const contextTypeSelect = dialog.querySelector('.flutu-global-message-context-type');
+    const contextIdSelect = dialog.querySelector('.flutu-global-message-context-id');
+    const contextLabel = dialog.querySelector('.flutu-global-message-context-label');
     const input = dialog.querySelector('.flutu-global-message-input');
     const recipient = dialog.querySelector('.flutu-global-message-recipient');
     const error = dialog.querySelector('.flutu-global-message-error');
@@ -203,15 +266,43 @@
     dialog.dataset.contactName = contact?.name || '';
     dialog.dataset.contactEmail = contact?.email || '';
     dialog.dataset.contactRegistered = contact?.registered ? 'true' : 'false';
-    dialog.dataset.contextType = contextType || '';
-    dialog.dataset.contextId = contextId || '';
     dialog.dataset.csrf = csrf;
     const label = window.FlutuI18n?.['Send a message to {name}'] || 'Send a message to {name}';
     recipient.textContent = label.replace('{name}', contact?.name || 'this contact');
     deliverySelect.value = contact?.registered ? delivery : 'email';
     deliverySelect.disabled = !contact?.registered;
+    contextTypeSelect.value = contextType || '';
+    contextIdSelect.value = contextId || '';
+    contextLabel.hidden = !contextType;
+    contextIdSelect.required = Boolean(contextType);
+    contextIdSelect.disabled = !contextType;
     input.value = '';
     error.textContent = '';
+    input.maxLength = deliverySelect.value === 'push' ? 180 : 1000;
+    try {
+      await loadInvitationContexts();
+      const type = contextTypeSelect.value;
+      const entries = type === 'event' ? (window.FlutuContactList._invitationContexts?.events || []) : type === 'chat' ? (window.FlutuContactList._invitationContexts?.chats || []) : [];
+      contextIdSelect.replaceChildren();
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = window.FlutuI18n?.['Choose a context'] || 'Choose a context';
+      contextIdSelect.append(placeholder);
+      entries.forEach((entry) => {
+        const option = document.createElement('option');
+        option.value = entry.id;
+        option.textContent = entry.title;
+        contextIdSelect.append(option);
+      });
+      if (contextId) contextIdSelect.value = contextId;
+      contextLabel.hidden = !type;
+      contextIdSelect.required = Boolean(type);
+      contextIdSelect.disabled = !type;
+    } catch (_error) {
+      contextLabel.hidden = true;
+      contextIdSelect.disabled = true;
+      contextIdSelect.required = false;
+    }
     dialog.showModal();
     input.focus();
   }

@@ -891,8 +891,8 @@ msgstr "Não foi possível entregar a notificação Push."
 msgid "Push notifications only work when the recipient has notifications enabled."
 msgstr "As notificações Push só funcionam quando o destinatário tem as notificações ativas."
 
-msgid "Email delivery failed. Push notifications only work when the recipient has notifications enabled."
-msgstr "O envio de email falhou. As notificações Push só funcionam quando o destinatário tem as notificações ativas."
+msgid "Email delivery failed. Please try again or choose a different delivery method."
+msgstr "O envio do email falhou. Tente novamente ou escolha outro método de envio."
 
 msgid "Could not load invitation contexts."
 msgstr "Não foi possível carregar eventos e conversas disponíveis."

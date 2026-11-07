@@ -484,7 +484,7 @@
             if (!response.ok) {
               const errorCode = result.error || "Could not send this message.";
               const friendlyMessage = errorCode === "email_delivery_failed"
-                ? t("Email delivery failed. Push notifications only work when the recipient has notifications enabled.")
+                ? t("Email delivery failed. Please try again or choose a different delivery method.")
                 : errorCode === "push_requires_active_notifications"
                   ? t("Push notifications only work when the recipient has notifications enabled.")
                   : t(errorCode || "Could not send this message.");

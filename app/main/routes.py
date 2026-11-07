@@ -206,7 +206,15 @@ def api_send_contact_invitation():
 @main_bp.get("/map")
 @login_required
 def location_map():
-    return render_template("location_map.html", user=session["user"])
+    token = session.get("_contact_invitation_csrf_token")
+    if not token:
+        token = secrets.token_urlsafe(32)
+        session["_contact_invitation_csrf_token"] = token
+    return render_template(
+        "location_map.html",
+        user=session["user"],
+        contact_invitation_csrf_token=token,
+    )
 
 
 @main_bp.get("/profile")
