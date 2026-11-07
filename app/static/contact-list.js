@@ -12,8 +12,21 @@
     icon.classList.add('contact-action-icon');
     icon.setAttribute('viewBox', '0 0 24 24');
     icon.setAttribute('aria-hidden', 'true');
+    icon.style.display = 'block';
+    icon.style.width = '18px';
+    icon.style.height = '18px';
+    icon.style.flex = '0 0 auto';
+    icon.style.stroke = 'currentColor';
+    icon.style.fill = 'none';
+    icon.style.strokeLinecap = 'round';
+    icon.style.strokeLinejoin = 'round';
+    icon.style.strokeWidth = '1.8';
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     path.setAttribute('d', pathData);
+    path.style.stroke = 'currentColor';
+    path.style.fill = 'none';
+    path.style.strokeLinecap = 'round';
+    path.style.strokeLinejoin = 'round';
     icon.append(path);
     return icon;
   }
@@ -24,6 +37,16 @@
     button.className = 'site-contact-message';
     button.title = label;
     button.setAttribute('aria-label', label);
+    button.style.display = 'inline-flex';
+    button.style.alignItems = 'center';
+    button.style.justifyContent = 'center';
+    button.style.width = '40px';
+    button.style.height = '40px';
+    button.style.padding = '0';
+    button.style.border = '1px solid #d5deef';
+    button.style.borderRadius = '9px';
+    button.style.background = 'white';
+    button.style.color = '#3655d4';
     button.append(actionIcon('M22 2 11 13 M22 2 15 22 11 13 2 9Z'));
     button.addEventListener('click', () => window.FlutuContactList.openMessageDialog(contact, {contextType, contextId, delivery}));
     return button;
