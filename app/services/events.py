@@ -389,10 +389,16 @@ def normalize_event(payload, owner_id, existing_points=None, existing_cover_imag
         raise ValueError("invalid_event_title")
     if not isinstance(description, str) or len(description) > 5000:
         raise ValueError("invalid_description")
-    guest_contact_ids = _normalize_contacts(payload.get("guest_contact_ids", []), owner_id)
+    raw_guest_contact_ids = _normalize_contacts(payload.get("guest_contact_ids", []), owner_id)
+    linked_guest_ids = {item["contact_id"] for item in list_addable_members(owner_id) if item.get("contact_id")}
+    guest_contact_ids = [contact_id for contact_id in raw_guest_contact_ids if contact_id not in linked_guest_ids]
     members = _normalize_event_members(payload.get("members", existing_members), owner_id, existing_members)
     member_ids = {member["user_id"] for member in members}
-    for guest_member in _event_members_from_guest_contacts(guest_contact_ids, owner_id, existing_members):
+    for guest_member in _event_members_from_guest_contacts(
+        [contact_id for contact_id in raw_guest_contact_ids if contact_id in linked_guest_ids],
+        owner_id,
+        existing_members,
+    ):
         if guest_member["user_id"] not in member_ids:
             member_ids.add(guest_member["user_id"])
             members.append(guest_member)

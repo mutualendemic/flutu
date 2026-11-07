@@ -974,7 +974,7 @@
     coverImageInput.value = '';
     updateCoverPreview(event?.cover_image_url || '');
     dateList.replaceChildren(...(event?.dates || [{}]).map(createDateRow));
-    renderPicker(guestPicker, contacts, event?.guest_contact_ids || [], 'guest', 'No contacts saved yet.');
+    renderPicker(guestPicker, contacts.filter(contact => !contact.registered), event?.guest_contact_ids || [], 'guest', 'No contacts saved yet.');
     renderEventMemberPicker(event?.members || []);
     renderPicker(conversationPicker, conversations, event?.conversation_ids || [], 'conversation', 'No conversations yet.');
     mapPoints = structuredClone(event?.map_points || []);

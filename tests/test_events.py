@@ -628,6 +628,32 @@ class CalendarTests(unittest.TestCase):
         self.assertEqual(len(guest_events), 1)
         self.assertEqual(guest_events[0]["viewer_status"], "pending")
 
+    def test_registered_contact_is_removed_from_guests_and_added_as_member(self):
+        contact_id = "507f1f77bcf86cd799439021"
+        contacts = Mock()
+        contacts.find.return_value = [{"_id": ObjectId(contact_id)}]
+        with patch("app.services.events.get_collection", return_value=contacts), \
+             patch("app.services.events.list_addable_members", return_value=[{
+                 "contact_id": contact_id,
+                 "user_id": "guest-user",
+                 "name": "Alex Guest",
+                 "email": "alex@example.com",
+             }]):
+            normalized = normalize_event({
+                "title": "Planning",
+                "dates": [{"start_at": "2026-11-07T10:00:00Z", "end_at": "2026-11-07T11:00:00Z"}],
+                "guest_contact_ids": [contact_id],
+            }, "owner-user")
+        self.assertEqual(normalized["guest_contact_ids"], [])
+        self.assertEqual(normalized["members"], [{
+            "user_id": "guest-user",
+            "name": "Alex Guest",
+            "email": "alex@example.com",
+            "picture": "",
+            "role": "viewer",
+            "status": "pending",
+        }])
+
     def test_event_members_are_visible_to_accepted_guest(self):
         member_user = "guest-user"
         event = {
