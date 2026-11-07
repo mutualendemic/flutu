@@ -509,6 +509,9 @@ class RouteTests(unittest.TestCase):
         self.assertIn(b"Location permission was denied", location_map.data)
         self.assertIn(b"could not determine its location", location_map.data)
 
+        with open("app/static/contact-list.js", "r", encoding="utf-8") as js_file:
+            self.assertIn(".item-actions > .site-contact-message", js_file.read())
+
         profile = self.client.get("/profile")
         self.assertEqual(profile.status_code, 200)
         self.assertIn(b"Your map marker", profile.data)

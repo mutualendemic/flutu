@@ -69,7 +69,9 @@
       .flutu-global-message-dialog::backdrop { background: rgba(16, 24, 40, .5); }
       .site-contact-entry { justify-content: space-between; }
       .site-contact-entry > .site-contact-message,
-      .site-contact-entry > .site-contact-remove {
+      .item-actions > .site-contact-message,
+      .site-contact-entry > .site-contact-remove,
+      .item-actions > .site-contact-remove {
         margin-left: auto;
         display: inline-flex;
         align-items: center;
@@ -87,9 +89,13 @@
         cursor: pointer;
       }
       .site-contact-entry > .site-contact-message:hover,
-      .site-contact-entry > .site-contact-remove:hover { background: #f0f4ff; }
+      .item-actions > .site-contact-message:hover,
+      .site-contact-entry > .site-contact-remove:hover,
+      .item-actions > .site-contact-remove:hover { background: #f0f4ff; }
       .site-contact-entry > .site-contact-message .contact-action-icon,
-      .site-contact-entry > .site-contact-remove .contact-action-icon {
+      .item-actions > .site-contact-message .contact-action-icon,
+      .site-contact-entry > .site-contact-remove .contact-action-icon,
+      .item-actions > .site-contact-remove .contact-action-icon {
         display: block;
         width: 18px;
         height: 18px;
@@ -101,7 +107,9 @@
         stroke-width: 1.8;
       }
       .site-contact-entry > .site-contact-message .contact-action-icon path,
-      .site-contact-entry > .site-contact-remove .contact-action-icon path {
+      .item-actions > .site-contact-message .contact-action-icon path,
+      .site-contact-entry > .site-contact-remove .contact-action-icon path,
+      .item-actions > .site-contact-remove .contact-action-icon path {
         stroke: currentColor;
         fill: none;
         stroke-linecap: round;
