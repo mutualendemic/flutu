@@ -378,7 +378,7 @@
     for (const member of window.FlutuContactList.sortByName(members)) {
       const item = window.FlutuContactList.createEntry(
         {...member, registered: true},
-        {tagName: 'li', className: 'member-chip', subtitle: member.active ? '' : t('former member')}
+        {tagName: 'li', className: 'member-chip', subtitle: member.active ? '' : t('former member'), includeMessageAction: true}
       );
       if (member.active && member.role !== 'owner') {
         const remove = el('button', t('Remove'), 'button button-secondary small-button member-remove'); remove.type = 'button';

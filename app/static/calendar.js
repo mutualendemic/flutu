@@ -535,7 +535,12 @@
         const item = document.createElement('li');
         const role = t(member.role === 'editor' || member.role === 'admin' ? 'Editor' : 'Viewer');
         const invitationStatus = t(member.status === 'accepted' ? 'Accepted' : 'Invitation pending');
-        item.append(window.FlutuContactList.createIdentity(member, {subtitle: `${role} · ${invitationStatus}`}));
+        item.append(window.FlutuContactList.createEntry(member, {
+          tagName: 'div',
+          className: 'member-row',
+          subtitle: `${role} · ${invitationStatus}`,
+          includeMessageAction: true,
+        }));
         memberList.append(item);
       });
       section.append(memberList);
