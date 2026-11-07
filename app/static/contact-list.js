@@ -71,12 +71,13 @@
       .flutu-global-message-dialog { width: min(100% - 24px, 480px); border: 1px solid var(--border, #dfe8ff); border-radius: 16px; background: var(--surface, #fff); color: var(--text, #14213d); padding: 20px; }
       .flutu-global-message-dialog::backdrop { background: rgba(16, 24, 40, .5); }
       .site-contact-entry { justify-content: space-between; }
-      .site-contact-entry > .site-contact-message {
+      .site-contact-entry > .site-contact-message,
+      .site-contact-entry > .site-contact-remove {
         margin-left: auto;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 6px;
+        gap: 7px;
         padding: 8px 10px;
         border: 1px solid #d5deef;
         border-radius: 9px;
@@ -84,9 +85,13 @@
         color: #3655d4;
         font: inherit;
         font-weight: 700;
+        text-decoration: none;
         cursor: pointer;
       }
-      .site-contact-entry > .site-contact-message .contact-action-icon {
+      .site-contact-entry > .site-contact-message:hover,
+      .site-contact-entry > .site-contact-remove:hover { background: #f0f4ff; }
+      .site-contact-entry > .site-contact-message .contact-action-icon,
+      .site-contact-entry > .site-contact-remove .contact-action-icon {
         width: 18px;
         height: 18px;
         flex: 0 0 auto;
@@ -96,7 +101,26 @@
         stroke-linejoin: round;
         stroke-width: 1.8;
       }
-      .site-contact-entry > .site-contact-message:hover { background: #f0f4ff; }
+      @media (max-width: 520px) {
+        .site-contact-entry > .site-contact-message,
+        .site-contact-entry > .site-contact-remove {
+          width: 40px;
+          height: 40px;
+          padding: 0;
+        }
+        .site-contact-entry > .site-contact-message span,
+        .site-contact-entry > .site-contact-remove span {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          padding: 0;
+          margin: -1px;
+          overflow: hidden;
+          clip: rect(0, 0, 0, 0);
+          white-space: nowrap;
+          border: 0;
+        }
+      }
       .flutu-global-message-form { display: grid; gap: 12px; }
       .flutu-global-message-form label { display: grid; gap: 6px; font-weight: 700; }
       .flutu-global-message-form select, .flutu-global-message-form textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--input-border, #cfd7e6); border-radius: 10px; background: var(--input-bg, #fff); color: var(--text, #14213d); font: inherit; }
