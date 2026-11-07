@@ -1,7 +1,11 @@
 {% extends "base.html" %}
+{% from "macros/brand.html" import flutu_brand %}
 {% block title %}Flutu.eu | {{ _('Dashboard') }}{% endblock %}
 {% block styles %}
   .dashboard { margin-top: 8vh; }
+  .dashboard-welcome { display:flex; flex-wrap:wrap; align-items:center; gap:0 10px; }
+  .dashboard-brand-lockup img { width:38px; height:38px; }
+  .dashboard-brand-lockup .brand-wordmark { width:82px; height:34px; }
   .badge { display: inline-block; padding: 8px 12px; border-radius: 999px; background: #e8f8f1; color: #0f7c5d; font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
   .actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-top: 24px; }
   .actions .button { margin-top: 0; }
@@ -15,7 +19,7 @@
   <main class="card dashboard">
     <span class="badge">{{ _('Active session') }}</span>
     <p id="location-sharing-indicator" class="sharing-status" role="status" aria-live="polite" hidden>{{ _('Checking location sharing…') }}</p>
-    <h1>{{ _('Welcome to Flutu.eu') }}</h1>
+    <h1 class="dashboard-welcome">{{ _('Welcome to') }} {{ flutu_brand('brand-lockup dashboard-brand-lockup') }}</h1>
     <p>{{ _('Signed in as:') }} <strong>{{ user.name }}</strong> ({{ user.email }})</p>
     <nav class="actions" aria-label="{{ _('Dashboard pages') }}">
       <a class="button" href="{{ url_for('main.decision') }}">{{ _('Quantum path selector') }}</a>

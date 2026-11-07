@@ -165,6 +165,9 @@ class RouteTests(unittest.TestCase):
         self.sign_in()
         with self.client.session_transaction() as browser_session:
             self.assertEqual(browser_session["locale"], "pt_PT")
+        dashboard = self.client.get("/dashboard")
+        self.assertIn("Bem-vindo à".encode(), dashboard.data)
+        self.assertIn(b'class="brand-lockup dashboard-brand-lockup"', dashboard.data)
         denied = self.client.post("/language/fr", data={"next": "/"})
         self.assertEqual(denied.status_code, 400)
 
@@ -297,8 +300,10 @@ class RouteTests(unittest.TestCase):
         self.assertIn(b'id="site-menu"', dashboard.data)
         self.assertIn(b'href="/static/logo.svg"', dashboard.data)
         self.assertIn(b'aria-label="Flutu"', dashboard.data)
+        self.assertIn(b'class="brand-lockup dashboard-brand-lockup"', dashboard.data)
         self.assertIn(b'class="brand-lockup site-brand-lockup"', dashboard.data)
         self.assertIn(b'class="brand-wordmark"', dashboard.data)
+        self.assertIn(b"Welcome to", dashboard.data)
         self.assertIn(b'class="letter-f"', dashboard.data)
         self.assertIn(b'class="letter-u-last"', dashboard.data)
         self.assertIn(b'href="/contacts"', dashboard.data)

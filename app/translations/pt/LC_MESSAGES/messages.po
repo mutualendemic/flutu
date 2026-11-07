@@ -120,8 +120,8 @@ msgstr "Sessão ativa"
 msgid "Checking location sharing…"
 msgstr "A verificar a partilha da localização…"
 
-msgid "Welcome to Flutu.eu"
-msgstr "Bem-vindo à flutu.eu"
+msgid "Welcome to"
+msgstr "Bem-vindo à"
 
 msgid "Signed in as:"
 msgstr "Sessão iniciada como:"
