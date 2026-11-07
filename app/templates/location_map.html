@@ -218,7 +218,7 @@
       });
     }
 
-    function makeItem(name, detail, buttons = [], contact = {}) {
+    function makeItem(name, detail, buttons = [], contact = {}, includeMessageAction = false) {
       const li = document.createElement('li');
       li.className = 'item';
       const copy = document.createElement('div');
@@ -229,9 +229,18 @@
       span.textContent = detail;
       copy.append(span);
       li.append(copy);
-      if (buttons.length) {
+      if (buttons.length || includeMessageAction) {
         const actions = document.createElement('div');
         actions.className = 'item-actions';
+        if (includeMessageAction && contact && (contact.id || contact.user_id || contact.email)) {
+          const message = window.FlutuContactList.createMessageAction({
+            id: contact.id || contact.user_id,
+            name,
+            email: contact.email,
+            registered: contact.registered !== false,
+          }, { label: t('Send message') });
+          actions.append(message);
+        }
         buttons.forEach(({ label, action, danger = false }) => {
           const button = document.createElement('button');
           button.type = 'button';
@@ -395,7 +404,8 @@
         item.requester_name,
         `${item.requester_email} · ${formatDistance(item)}`,
         [{ label: t('Stop sharing'), action: () => revoke(item.id, item.requester_name), danger: true }],
-        {email: item.requester_email, picture: item.requester_picture, registered: true}
+        {id: item.requester_id, email: item.requester_email, picture: item.requester_picture, registered: true},
+        true
       ));
     }
 
@@ -626,13 +636,15 @@
             { label: t('Accept'), action: () => respond(item.id, 'accept') },
             { label: t('Decline'), action: () => respond(item.id, 'decline'), danger: true }
           ],
-          {email: item.requester_email, picture: item.requester_picture, registered: true}
+          {id: item.requester_id, email: item.requester_email, picture: item.requester_picture, registered: true},
+          true
         ));
         renderList(outgoingList, data.outgoing_pending, t('No outgoing requests.'), item => makeItem(
           item.recipient_name, t('Waiting for {email} to respond.').replace('{email}', item.recipient_email), [
             { label: t('Cancel'), action: () => respond(item.id, 'cancel'), danger: true }
           ],
-          {email: item.recipient_email, picture: item.recipient_picture, registered: true}
+          {id: item.recipient_id, email: item.recipient_email, picture: item.recipient_picture, registered: true},
+          true
         ));
         sharingContacts = data.sharing_with;
         renderSharingPeople();
