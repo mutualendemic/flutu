@@ -1206,6 +1206,9 @@ msgstr "A opção selecionada tem de estar empatada na liderança."
 msgid "quantum_path_locked"
 msgstr "Não é possível alterar o caminho escolhido pelo seletor quântico."
 
+msgid "max_depth"
+msgstr "Esta ramificação atingiu o limite de 10 níveis de continuação."
+
 msgid "root_question_exists"
 msgstr "A pergunta inicial já existe."
 

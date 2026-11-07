@@ -547,7 +547,7 @@
   document.getElementById('add-option').addEventListener('click', () => {
     if (optionsEditor.children.length >= 10) return;
     const labels = [...optionsEditor.querySelectorAll('input')].map(input => input.value).concat('');
-    createOptionEditors(labels, Boolean(editingQuestionId));
+    createOptionEditors(labels, true);
   });
   document.getElementById('send-question').addEventListener('click', event => {
     const optionInputs = [...optionsEditor.querySelectorAll('input')];

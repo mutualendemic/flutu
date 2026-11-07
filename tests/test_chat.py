@@ -122,6 +122,36 @@ class ChatTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "quantum_path_locked"):
                 create_question(str(conversation_id), "participant", "Wrong branch", parent_option_id=str(other_option_id))
 
+    def test_follow_up_depth_allows_ten_levels_and_rejects_the_next(self):
+        conversation_id = ObjectId("65b0e7a3a6c6f166f1c3a071")
+        parent_question_id = ObjectId("65b0e7a3a6c6f166f1c3a072")
+        selected_option_id = ObjectId("65b0e7a3a6c6f166f1c3a073")
+        parent_question = {"_id": parent_question_id, "conversation_id": conversation_id}
+        parent_option = {"_id": selected_option_id, "question_id": parent_question_id}
+        conversation = {"_id": conversation_id, "created_by_user_id": "owner", "archived_at": None, "deleted_at": None}
+        conversations = Mock()
+        conversations.find_one.return_value = conversation
+        questions = Mock()
+        questions.find_one.return_value = parent_question
+        questions.insert_one.return_value.inserted_id = ObjectId("65b0e7a3a6c6f166f1c3a074")
+        options = Mock()
+        options.find_one.return_value = parent_option
+        collections = (conversations, Mock(), questions, options, Mock())
+
+        with patch("app.services.chat._collections", return_value=collections), patch(
+            "app.services.chat._depth", return_value=9
+        ), patch("app.services.chat._quantum_path_for_question", return_value=parent_option):
+            self.assertEqual(
+                create_question(str(conversation_id), "participant", "Tenth follow-up", parent_option_id=str(selected_option_id)),
+                "65b0e7a3a6c6f166f1c3a074",
+            )
+
+        with patch("app.services.chat._collections", return_value=collections), patch(
+            "app.services.chat._depth", return_value=10
+        ):
+            with self.assertRaisesRegex(ValueError, "max_depth"):
+                create_question(str(conversation_id), "participant", "Eleventh follow-up", parent_option_id=str(selected_option_id))
+
     def test_private_chat_pages_and_apis_require_session(self):
         for path in ("/chat/", "/chat/example"):
             with self.subTest(path=path):

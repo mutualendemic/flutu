@@ -10,6 +10,7 @@ from app.services.quantum_random import choose_direction
 
 
 DEFAULT_OPTIONS = ["Yes", "No"]
+MAX_FOLLOW_UP_DEPTH = 10
 MEMBER_COLORS = [
     "#7F77DD", "#E07A5F", "#3D8B7D", "#D4A72C", "#3973AC", "#B65C9A",
     "#668C3A", "#C75D5D", "#4E9AA8", "#8B6FB1", "#D27B31", "#567D9A",
@@ -297,7 +298,7 @@ def create_question(conversation_id, author_id, text, labels=None, parent_option
         if not parent:
             raise ValueError("invalid_parent_option")
         parent_question = questions.find_one({"_id": parent["question_id"], "conversation_id": cid})
-        if not parent_question or _depth(parent_question, options, {}) >= 3:
+        if not parent_question or _depth(parent_question, options, {}) >= MAX_FOLLOW_UP_DEPTH:
             raise ValueError("max_depth")
         selected = _quantum_path_for_question(parent["question_id"])
         if not selected or selected["_id"] != parent["_id"]:

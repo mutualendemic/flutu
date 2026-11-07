@@ -125,6 +125,7 @@ JS_MESSAGE_IDS = (
     "vote_change_disabled",
     "winner_must_be_tied",
     "quantum_path_locked",
+    "max_depth",
     "root_question_exists",
     "chat_unavailable",
     "realtime_not_configured",
