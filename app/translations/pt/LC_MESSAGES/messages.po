@@ -888,6 +888,12 @@ msgstr "O acesso foi atualizado, mas não foi possível entregar a notificação
 msgid "Push notification could not be delivered."
 msgstr "Não foi possível entregar a notificação Push."
 
+msgid "Push notifications only work when the recipient has notifications enabled."
+msgstr "As notificações Push só funcionam quando o destinatário tem as notificações ativas."
+
+msgid "Email delivery failed. Push notifications only work when the recipient has notifications enabled."
+msgstr "O envio de email falhou. As notificações Push só funcionam quando o destinatário tem as notificações ativas."
+
 msgid "Could not load invitation contexts."
 msgstr "Não foi possível carregar eventos e conversas disponíveis."
 
@@ -1121,6 +1127,132 @@ msgstr "Uma ou mais opções não são válidas."
 
 msgid "The conversation title is invalid."
 msgstr "O título da conversa não é válido."
+
+msgid "Privacy policy"
+msgstr "Política de privacidade"
+
+msgid "Read our"
+msgstr "Leia a nossa"
+
+msgid "Legal information"
+msgstr "Informação legal"
+
+msgid "Last updated: 7 November 2026"
+msgstr "Última atualização: 7 de novembro de 2026"
+
+msgid "Publication notice: this draft is not complete until the controller’s postal address is added and provider regions and transfer safeguards are verified. Do not treat it as a statement of full GDPR compliance before these details and the actual provider settings are verified."
+msgstr "Aviso de publicação: esta política não está completa até ser acrescentado o endereço postal do responsável pelo tratamento e verificadas as regiões dos fornecedores e as garantias para transferências. Não a considere uma declaração de conformidade integral com o RGPD antes de confirmar estes dados e as definições reais dos fornecedores."
+
+msgid "Who is responsible for your data?"
+msgstr "Quem é responsável pelos seus dados?"
+
+msgid "The data controller is Flutu, the operator of Flutu.eu. The operator’s postal address has not yet been provided. For privacy requests, contact:"
+msgstr "O responsável pelo tratamento dos dados é a Flutu, operadora da Flutu.eu. O endereço postal da operadora ainda não foi fornecido. Para pedidos relacionados com a privacidade, contacte:"
+
+msgid "The postal address must be published before production use."
+msgstr "O endereço postal tem de ser publicado antes da utilização em produção."
+
+msgid "What data do we process?"
+msgstr "Que dados tratamos?"
+
+msgid "When you sign in, Google provides your account identifier, email address, name, and, when available, profile photo. We use these details to create your session and account profile."
+msgstr "Quando inicia sessão, o Google fornece o identificador da sua conta, o endereço de email, o nome e, quando disponível, a fotografia de perfil. Utilizamos estes dados para criar a sua sessão e o perfil da conta."
+
+msgid "Depending on the features you use, we process contact names, phone numbers and email addresses; event titles, descriptions, dates, guests and map points; chat titles, questions, options, answers and membership; location-sharing requests and your live location; and browser push-notification subscriptions and settings."
+msgstr "Consoante as funcionalidades utilizadas, tratamos nomes, números de telefone e endereços de email dos contactos; títulos, descrições, datas, convidados e pontos no mapa dos eventos; títulos das conversas, perguntas, opções, respostas e participantes; pedidos de partilha da localização e a sua localização em tempo real; e subscrições e definições de notificações push do navegador."
+
+msgid "Live location is collected only when you enable sharing and grant browser permission. On the map page, your device location may also be used locally in the page without being sent to our server when sharing is off. Location records are removed after sharing is stopped or revoked; inactive records expire automatically."
+msgstr "A localização em tempo real só é recolhida quando ativa a partilha e concede autorização no navegador. Na página do mapa, a localização do dispositivo também pode ser utilizada localmente na página, sem ser enviada para o nosso servidor, quando a partilha está desativada. Os registos de localização são removidos quando a partilha é interrompida ou revogada; os registos inativos expiram automaticamente."
+
+msgid "We also process the session cookie and technical data needed to deliver and secure the service, such as network and browser information handled by our hosting and infrastructure providers."
+msgstr "Também tratamos o cookie de sessão e os dados técnicos necessários para disponibilizar e proteger o serviço, como informações de rede e do navegador processadas pelos nossos fornecedores de alojamento e infraestrutura."
+
+msgid "Why do we use your data?"
+msgstr "Para que utilizamos os seus dados?"
+
+msgid "We use account and feature data to authenticate you, operate the features you request, save your contacts and plans, show authorized shared information, and deliver invitations or notifications you choose to send or receive."
+msgstr "Utilizamos os dados da conta e das funcionalidades para o autenticar, operar as funcionalidades que solicita, guardar os seus contactos e planos, apresentar informações partilhadas com autorização e entregar convites ou notificações que escolha enviar ou receber."
+
+msgid "The intended legal bases are performance of the service you request, your consent for optional location sharing and browser notifications, and legitimate interests in protecting and maintaining the service. The controller must verify and document the appropriate legal basis for each processing activity before publication."
+msgstr "As bases jurídicas previstas são a execução do serviço que solicita, o seu consentimento para a partilha opcional da localização e as notificações do navegador, e os interesses legítimos de proteção e manutenção do serviço. Antes da publicação, o responsável pelo tratamento tem de verificar e documentar a base jurídica adequada para cada atividade de tratamento."
+
+msgid "We do not sell personal data or use it for advertising. The quantum selector requests a random result; it is not used to make decisions about you with legal or similarly significant effects."
+msgstr "Não vendemos dados pessoais nem os utilizamos para publicidade. O seletor quântico solicita um resultado aleatório; não é utilizado para tomar decisões sobre si com efeitos jurídicos ou efeitos igualmente significativos."
+
+msgid "Who receives data?"
+msgstr "Quem recebe os dados?"
+
+msgid "We use service providers to operate Flutu.eu. Depending on the feature, they may process data on our behalf or receive limited data to provide their own service:"
+msgstr "Utilizamos fornecedores de serviços para operar a Flutu.eu. Consoante a funcionalidade, estes podem tratar dados em nosso nome ou receber dados limitados para prestar os seus próprios serviços:"
+
+msgid "Vercel hosts the application and may store private event images in Vercel Blob."
+msgstr "A Vercel aloja a aplicação e pode armazenar imagens privadas de eventos no Vercel Blob."
+
+msgid "MongoDB Atlas stores account profiles, contacts, sharing records, locations, events, chat data, and notification subscriptions."
+msgstr "O MongoDB Atlas armazena perfis de conta, contactos, registos de partilha, localizações, eventos, dados de conversas e subscrições de notificações."
+
+msgid "Supabase Realtime may receive short-lived authorization tokens and private channel identifiers to deliver chat refresh signals. Chat message and question content is fetched from Flutu.eu and is not included in these signals."
+msgstr "O Supabase Realtime pode receber tokens de autorização de curta duração e identificadores de canais privados para enviar sinais de atualização das conversas. O conteúdo das mensagens e perguntas é obtido a partir da Flutu.eu e não é incluído nesses sinais."
+
+msgid "Resend delivers emails when configured, including recipient email addresses and the invitation or event information needed for delivery."
+msgstr "Quando configurado, o Resend envia emails, incluindo os endereços dos destinatários e as informações do convite ou evento necessárias para o envio."
+
+msgid "Google provides sign-in and returns the profile details described above."
+msgstr "O Google disponibiliza o início de sessão e fornece os dados de perfil descritos acima."
+
+msgid "IBM Quantum receives quantum circuit jobs for random-number features; the application does not send account profile or chat content with those jobs."
+msgstr "O IBM Quantum recebe tarefas de circuitos quânticos para as funcionalidades de números aleatórios; a aplicação não envia dados de perfil da conta nem conteúdo das conversas nessas tarefas."
+
+msgid "OpenStreetMap tile services and the unpkg content-delivery network provide map tiles and browser libraries. Your browser connects to them and may disclose technical data such as its IP address."
+msgstr "Os serviços de mosaicos do OpenStreetMap e a rede de distribuição de conteúdos unpkg fornecem mosaicos de mapas e bibliotecas para o navegador. O seu navegador liga-se a esses serviços e pode divulgar dados técnicos, como o endereço IP."
+
+msgid "Browser push services deliver notifications to subscribed devices. A notification may include text written by the person who sent it, which can appear on your device’s lock screen."
+msgstr "Os serviços push do navegador entregam notificações aos dispositivos subscritos. Uma notificação pode incluir texto escrito pela pessoa que a enviou, que poderá aparecer no ecrã bloqueado do dispositivo."
+
+msgid "People you connect with may also receive information you choose to share, such as a contact invitation, event details, chat content, or your location when you authorize sharing."
+msgstr "As pessoas com quem se liga também podem receber informações que escolha partilhar, como um convite para um contacto, detalhes de eventos, conteúdo de conversas ou a sua localização, quando autoriza a partilha."
+
+msgid "Where is data processed?"
+msgstr "Onde são tratados os dados?"
+
+msgid "The operator has indicated that providers are configured in Europe, but the exact country or region for each provider, whether it is within the European Economic Area, and applicable transfer safeguards have not been verified. Europe is broader than the EEA, so Flutu.eu does not promise that all data stays in the EEA. Before publication, the controller must verify provider locations, data-processing agreements, and any safeguards required for international transfers."
+msgstr "A operadora indicou que os fornecedores estão configurados na Europa, mas não foram verificados o país ou a região exatos de cada fornecedor, se ficam no Espaço Económico Europeu, nem as garantias aplicáveis às transferências. A Europa é mais abrangente do que o EEE, pelo que a Flutu.eu não garante que todos os dados permaneçam no EEE. Antes da publicação, o responsável pelo tratamento tem de verificar a localização dos fornecedores, os acordos de tratamento de dados e as garantias necessárias para transferências internacionais."
+
+msgid "How long do we keep data?"
+msgstr "Durante quanto tempo conservamos os dados?"
+
+msgid "We keep account and feature records while needed to provide the service and handle related security or legal requirements. Contacts can be removed in the application. Events and conversations remain until they are deleted using the available controls. The application currently has no self-service account deletion; account deletion requests need to be handled by the controller."
+msgstr "Conservamos os registos da conta e das funcionalidades enquanto forem necessários para prestar o serviço e cumprir requisitos de segurança ou legais relacionados. Os contactos podem ser removidos na aplicação. Os eventos e as conversas permanecem até serem eliminados através dos controlos disponíveis. Atualmente, a aplicação não permite eliminar a conta automaticamente; os pedidos de eliminação da conta têm de ser tratados pelo responsável pelo tratamento."
+
+msgid "Live location is not a location history: stale points are excluded from sharing and automatically deleted shortly afterwards. Push subscriptions remain stored until removed from the device settings, replaced, or invalidated. Hosting and provider logs follow the providers’ retention settings and policies."
+msgstr "A localização em tempo real não constitui um histórico: os pontos desatualizados deixam de ser partilhados e são eliminados automaticamente pouco depois. As subscrições push permanecem armazenadas até serem removidas nas definições do dispositivo, substituídas ou invalidadas. Os registos de alojamento e dos fornecedores seguem as respetivas definições de conservação e políticas."
+
+msgid "Your rights and choices"
+msgstr "Os seus direitos e opções"
+
+msgid "Depending on your circumstances and applicable law, you may have the right to access, correct, erase, restrict, or object to processing of your personal data, and to receive portable data. Where processing is based on consent, you can withdraw it at any time; this does not affect processing that took place before withdrawal."
+msgstr "Consoante as suas circunstâncias e a legislação aplicável, poderá ter o direito de aceder, retificar, apagar ou limitar o tratamento dos seus dados pessoais, de se opor ao tratamento e de receber os dados num formato portável. Quando o tratamento se baseia no consentimento, pode retirá-lo a qualquer momento; tal não afeta o tratamento realizado antes da retirada."
+
+msgid "You can control location sharing and browser notifications in the application or your device settings. To exercise other rights, request account deletion, or ask a question, contact the controller using the privacy contact details that must be added above. You may also lodge a complaint with the data-protection authority in your country of residence, workplace, or the place of the alleged infringement."
+msgstr "Pode controlar a partilha da localização e as notificações do navegador na aplicação ou nas definições do dispositivo. Para exercer outros direitos, solicitar a eliminação da conta ou colocar uma questão, contacte o responsável pelo tratamento através dos dados de contacto de privacidade que têm de ser acrescentados acima. Também pode apresentar uma reclamação à autoridade de proteção de dados do país onde reside, trabalha ou onde ocorreu a alegada infração."
+
+msgid "Cookies and security"
+msgstr "Cookies e segurança"
+
+msgid "Flutu.eu uses a strictly necessary signed session cookie to keep you signed in and remember settings such as your selected language. The application does not currently use advertising cookies or analytics cookies."
+msgstr "A Flutu.eu utiliza um cookie de sessão assinado, estritamente necessário para manter a sessão iniciada e guardar definições como o idioma selecionado. Atualmente, a aplicação não utiliza cookies publicitários nem cookies de análise."
+
+msgid "We use access controls and reasonable technical and organizational measures to protect data. No internet transmission or storage system can be guaranteed completely secure."
+msgstr "Utilizamos controlos de acesso e medidas técnicas e organizativas razoáveis para proteger os dados. Não é possível garantir a segurança absoluta de qualquer transmissão pela Internet ou sistema de armazenamento."
+
+msgid "Changes to this policy"
+msgstr "Alterações a esta política"
+
+msgid "We may update this policy when the service or its data processing changes. The date at the top indicates the latest revision. Material changes will be presented through the service where appropriate."
+msgstr "Podemos atualizar esta política quando o serviço ou o tratamento de dados forem alterados. A data no início indica a revisão mais recente. Quando adequado, as alterações significativas serão comunicadas através do serviço."
+
+msgid "Back to home"
+msgstr "Voltar à página inicial"
 
 msgid "One or more selected members are invalid."
 msgstr "Um ou mais membros selecionados não são válidos."
@@ -1376,6 +1508,9 @@ msgstr "O evento ou a conversa selecionados já não estão disponíveis."
 
 msgid "push_requires_account"
 msgstr "As notificações Push só podem ser enviadas a contactos com conta Flutu."
+
+msgid "push_requires_active_notifications"
+msgstr "As notificações Push só funcionam quando o destinatário tem as notificações ativas."
 
 msgid "email_not_configured"
 msgstr "O envio de email não está configurado."

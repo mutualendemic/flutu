@@ -26,6 +26,7 @@
       <p>{{ _('Flutu.eu is an alpha project and may be shut down at any time.') }}</p>
       <p>{{ _('We are not responsible for decisions made by following the quantum selector’s instructions.') }}</p>
       <p>{{ _('The site is not responsible for any damages the user may incur from using it.') }}</p>
+      <p>{{ _('Read our') }} <a href="{{ url_for('main.privacy_policy') }}">{{ _('Privacy policy') }}</a>.</p>
     </section>
     {% if google_configured %}
       <form data-conditions-form method="post" action="{{ url_for('auth.accept_conditions') }}">

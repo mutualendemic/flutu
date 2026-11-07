@@ -12,6 +12,7 @@ This directory records decisions implemented in the current code. It is not a pr
 | Page | Route | Specification |
 | --- | --- | --- |
 | Sign-in and authentication | `/`, `/auth/*` | [login.md](pages/login.md) |
+| Privacy policy | `/privacy` | [privacy-policy.md](pages/privacy-policy.md) |
 | Dashboard | `/dashboard` | [dashboard.md](pages/dashboard.md) |
 | Contacts | `/contacts` | [contacts.md](pages/contacts.md) |
 | Map and sharing | `/map` | [location-map.md](pages/location-map.md) |

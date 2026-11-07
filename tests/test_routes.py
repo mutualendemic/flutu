@@ -85,11 +85,30 @@ class RouteTests(unittest.TestCase):
         self.assertIn(b"landing-effect.js", response.data)
         self.assertIn(b"conditions-acceptance.js", response.data)
         self.assertIn(b'data-conditions-form', response.data)
+        self.assertIn(b'href="/privacy"', response.data)
+        self.assertIn(b"Privacy policy", response.data)
         self.assertIn(b'type="submit" disabled', response.data)
         self.assertIn(b"I have read and accept these conditions", response.data)
         self.assertNotIn(b"<iframe", response.data)
         self.assertIn(b"flutu.eu", response.data)
         self.assertIn(b'lang="en-GB"', response.data)
+
+    def test_privacy_policy_is_public_and_localized(self):
+        response = self.client.get("/privacy")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"MongoDB Atlas", response.data)
+        self.assertIn(b"Vercel", response.data)
+        self.assertIn(b"Supabase Realtime", response.data)
+        self.assertIn(b"Resend", response.data)
+        self.assertIn(b"Google", response.data)
+        self.assertIn(b"not complete", response.data)
+
+        self.client.post("/language/pt_PT", data={"next": "/privacy"})
+        translated = self.client.get("/privacy")
+        self.assertEqual(translated.status_code, 200)
+        self.assertIn("Política de privacidade".encode(), translated.data)
+        self.assertIn("MongoDB Atlas".encode(), translated.data)
+        self.assertIn("não está completa".encode(), translated.data)
 
     def test_vercel_export_module_exposes_app(self):
         from api.index import app
@@ -146,6 +165,7 @@ class RouteTests(unittest.TestCase):
         self.assertIn(b'class="brand-lockup login-brand-lockup"', response.data)
         self.assertIn(b'class="brand-wordmark"', response.data)
         self.assertIn(b"Google sign-in is not configured", response.data)
+        self.assertIn(b'href="/privacy"', response.data)
         self.assertIn(b"alpha project", response.data)
         self.assertIn(b"quantum selector", response.data)
         self.assertIn(b"damages the user may incur", response.data)

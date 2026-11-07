@@ -2,6 +2,8 @@
 
 Flutu.eu is a small Flask application with Google-only OAuth sign-in, a protected dashboard, a personal contacts list, an event calendar, private OpenStreetMap-based location sharing, and a quantum-random direction demo. The existing logo is retained; Flutu remains the internal repository and configuration name.
 
+The public `/privacy` page is linked beside the sign-in conditions and describes current data processing and service providers. The controller is Flutu and the privacy contact is `xntp006@gmail.com`; the policy is not final until its postal address, exact provider regions, and international-transfer safeguards are verified and published.
+
 The interface automatically follows the device's light or dark appearance preference, including system browser controls and the map's interface elements. Authenticated users can also create live branching conversations with contacts who have Flutu accounts and opt in to Web Push notifications for friend requests and collaborative chat activity.
 
 ## Links

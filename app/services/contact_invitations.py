@@ -145,6 +145,13 @@ def send_contact_invitation(
     registered = account is not None
     if delivery == "push" and not registered:
         raise ValueError("push_requires_account")
+    if delivery == "push" and registered:
+        try:
+            subscription_exists = get_collection("push_subscriptions").count_documents({"owner_id": str(account["_id"])}) > 0
+        except RuntimeError:
+            subscription_exists = True
+        if not subscription_exists:
+            raise ValueError("push_requires_active_notifications")
     if delivery == "email" and not app.config.get("RESEND_API_KEY"):
         raise RuntimeError("email_not_configured")
     context = _get_context(owner_id, context_type, context_id)

@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Privacy policy') }} | Flutu.eu{% endblock %}
+{% block styles %}
+  .privacy-page { width:min(100%,900px); margin:4vh auto 0; }
+  .privacy-page h2 { margin:28px 0 8px; font-size:1.2rem; }
+  .privacy-page h2:first-of-type { margin-top:24px; }
+  .privacy-page p { margin:8px 0; }
+  .privacy-page .policy-warning { padding:14px 16px; border-left:4px solid #b54708; background:#fff7ed; color:#7c2d12; }
+  @media (prefers-color-scheme:dark) { .privacy-page .policy-warning { border-color:#f79009; background:#3b2b1d; color:#fed7aa; } }
+{% endblock %}
+{% block content %}
+<main class="card privacy-page">
+  <p class="eyebrow">{{ _('Legal information') }}</p>
+  <h1>{{ _('Privacy policy') }}</h1>
+  <p>{{ _('Last updated: 7 November 2026') }}</p>
+  <p class="policy-warning">{{ _('Publication notice: this draft is not complete until the controller’s postal address is added and provider regions and transfer safeguards are verified. Do not treat it as a statement of full GDPR compliance before these details and the actual provider settings are verified.') }}</p>
+
+  <h2>{{ _('Who is responsible for your data?') }}</h2>
+  <p>{{ _('The data controller is Flutu, the operator of Flutu.eu. The operator’s postal address has not yet been provided. For privacy requests, contact:') }} <a href="mailto:xntp006@gmail.com">xntp006@gmail.com</a>. {{ _('The postal address must be published before production use.') }}</p>
+
+  <h2>{{ _('What data do we process?') }}</h2>
+  <p>{{ _('When you sign in, Google provides your account identifier, email address, name, and, when available, profile photo. We use these details to create your session and account profile.') }}</p>
+  <p>{{ _('Depending on the features you use, we process contact names, phone numbers and email addresses; event titles, descriptions, dates, guests and map points; chat titles, questions, options, answers and membership; location-sharing requests and your live location; and browser push-notification subscriptions and settings.') }}</p>
+  <p>{{ _('Live location is collected only when you enable sharing and grant browser permission. On the map page, your device location may also be used locally in the page without being sent to our server when sharing is off. Location records are removed after sharing is stopped or revoked; inactive records expire automatically.') }}</p>
+  <p>{{ _('We also process the session cookie and technical data needed to deliver and secure the service, such as network and browser information handled by our hosting and infrastructure providers.') }}</p>
+
+  <h2>{{ _('Why do we use your data?') }}</h2>
+  <p>{{ _('We use account and feature data to authenticate you, operate the features you request, save your contacts and plans, show authorized shared information, and deliver invitations or notifications you choose to send or receive.') }}</p>
+  <p>{{ _('The intended legal bases are performance of the service you request, your consent for optional location sharing and browser notifications, and legitimate interests in protecting and maintaining the service. The controller must verify and document the appropriate legal basis for each processing activity before publication.') }}</p>
+  <p>{{ _('We do not sell personal data or use it for advertising. The quantum selector requests a random result; it is not used to make decisions about you with legal or similarly significant effects.') }}</p>
+
+  <h2>{{ _('Who receives data?') }}</h2>
+  <p>{{ _('We use service providers to operate Flutu.eu. Depending on the feature, they may process data on our behalf or receive limited data to provide their own service:') }}</p>
+  <ul>
+    <li>{{ _('Vercel hosts the application and may store private event images in Vercel Blob.') }}</li>
+    <li>{{ _('MongoDB Atlas stores account profiles, contacts, sharing records, locations, events, chat data, and notification subscriptions.') }}</li>
+    <li>{{ _('Supabase Realtime may receive short-lived authorization tokens and private channel identifiers to deliver chat refresh signals. Chat message and question content is fetched from Flutu.eu and is not included in these signals.') }}</li>
+    <li>{{ _('Resend delivers emails when configured, including recipient email addresses and the invitation or event information needed for delivery.') }}</li>
+    <li>{{ _('Google provides sign-in and returns the profile details described above.') }}</li>
+    <li>{{ _('IBM Quantum receives quantum circuit jobs for random-number features; the application does not send account profile or chat content with those jobs.') }}</li>
+    <li>{{ _('OpenStreetMap tile services and the unpkg content-delivery network provide map tiles and browser libraries. Your browser connects to them and may disclose technical data such as its IP address.') }}</li>
+    <li>{{ _('Browser push services deliver notifications to subscribed devices. A notification may include text written by the person who sent it, which can appear on your device’s lock screen.') }}</li>
+  </ul>
+  <p>{{ _('People you connect with may also receive information you choose to share, such as a contact invitation, event details, chat content, or your location when you authorize sharing.') }}</p>
+
+  <h2>{{ _('Where is data processed?') }}</h2>
+  <p>{{ _('The operator has indicated that providers are configured in Europe, but the exact country or region for each provider, whether it is within the European Economic Area, and applicable transfer safeguards have not been verified. Europe is broader than the EEA, so Flutu.eu does not promise that all data stays in the EEA. Before publication, the controller must verify provider locations, data-processing agreements, and any safeguards required for international transfers.') }}</p>
+
+  <h2>{{ _('How long do we keep data?') }}</h2>
+  <p>{{ _('We keep account and feature records while needed to provide the service and handle related security or legal requirements. Contacts can be removed in the application. Events and conversations remain until they are deleted using the available controls. The application currently has no self-service account deletion; account deletion requests need to be handled by the controller.') }}</p>
+  <p>{{ _('Live location is not a location history: stale points are excluded from sharing and automatically deleted shortly afterwards. Push subscriptions remain stored until removed from the device settings, replaced, or invalidated. Hosting and provider logs follow the providers’ retention settings and policies.') }}</p>
+
+  <h2>{{ _('Your rights and choices') }}</h2>
+  <p>{{ _('Depending on your circumstances and applicable law, you may have the right to access, correct, erase, restrict, or object to processing of your personal data, and to receive portable data. Where processing is based on consent, you can withdraw it at any time; this does not affect processing that took place before withdrawal.') }}</p>
+  <p>{{ _('You can control location sharing and browser notifications in the application or your device settings. To exercise other rights, request account deletion, or ask a question, contact the controller using the privacy contact details that must be added above. You may also lodge a complaint with the data-protection authority in your country of residence, workplace, or the place of the alleged infringement.') }}</p>
+
+  <h2>{{ _('Cookies and security') }}</h2>
+  <p>{{ _('Flutu.eu uses a strictly necessary signed session cookie to keep you signed in and remember settings such as your selected language. The application does not currently use advertising cookies or analytics cookies.') }}</p>
+  <p>{{ _('We use access controls and reasonable technical and organizational measures to protect data. No internet transmission or storage system can be guaranteed completely secure.') }}</p>
+
+  <h2>{{ _('Changes to this policy') }}</h2>
+  <p>{{ _('We may update this policy when the service or its data processing changes. The date at the top indicates the latest revision. Material changes will be presented through the service where appropriate.') }}</p>
+  <p><a href="{{ url_for('index') }}">{{ _('Back to home') }}</a></p>
+</main>
+{% endblock %}

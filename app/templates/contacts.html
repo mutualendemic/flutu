@@ -481,7 +481,15 @@
               }),
             });
             const result = await response.json();
-            if (!response.ok) throw new Error(t(result.error || "Could not send this message."));
+            if (!response.ok) {
+              const errorCode = result.error || "Could not send this message.";
+              const friendlyMessage = errorCode === "email_delivery_failed"
+                ? t("Email delivery failed. Push notifications only work when the recipient has notifications enabled.")
+                : errorCode === "push_requires_active_notifications"
+                  ? t("Push notifications only work when the recipient has notifications enabled.")
+                  : t(errorCode || "Could not send this message.");
+              throw new Error(friendlyMessage);
+            }
             status.textContent = result.delivered
               ? t("Message sent.")
               : result.context_added

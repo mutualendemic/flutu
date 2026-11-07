@@ -49,6 +49,11 @@ def dashboard():
     return render_template("dashboard.html", user=session["user"], push_csrf_token=token)
 
 
+@main_bp.get("/privacy")
+def privacy_policy():
+    return render_template("privacy_policy.html")
+
+
 def _valid_push_csrf():
     expected = session.get("_push_csrf_token", "")
     supplied = request.headers.get("X-CSRF-Token", "")
