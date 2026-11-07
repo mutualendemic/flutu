@@ -327,12 +327,18 @@ class ChatTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'data-realtime-mode="polling"', response.data)
 
-    def test_conversation_members_control_is_an_accessible_toggle(self):
+    def test_conversation_members_are_visible_and_addition_requires_confirmation(self):
         self.sign_in()
+        with self.http.session_transaction() as browser_session:
+            browser_session["locale"] = "pt_PT"
         with patch("app.chat.routes.service.is_active_member", return_value=True):
             response = self.http.get("/chat/conversation-id")
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b'role="switch" aria-checked="false" aria-expanded="false" aria-controls="members-panel"', response.data)
+        self.assertIn(b'id="members-panel" class="members-panel"', response.data)
+        self.assertNotIn(b'id="members-panel" class="members-panel" hidden', response.data)
+        self.assertNotIn(b'id="members-toggle"', response.data)
+        self.assertIn(b'id="add-selected-members"', response.data)
+        self.assertIn("Adicionar membros selecionados".encode(), response.data)
         self.assertIn(b'id="question-text"', response.data)
         self.assertIn(b'id="option-editors"', response.data)
         self.assertIn(b'id="send-question"', response.data)
@@ -343,6 +349,8 @@ class ChatTests(unittest.TestCase):
         self.assertIn(b'id="conversation-events-panel"', response.data)
         self.assertIn(b'src="/static/logo.svg"', response.data)
         script = self.http.get("/static/chat-conversation.js")
+        self.assertIn(b'body: JSON.stringify({user_ids: userIds})', script.data)
+        self.assertNotIn(b'members-toggle', script.data)
         self.assertIn(b'node[type="option"][?quantum_selected]', script.data)
         self.assertIn(b'edge[kind="branch"][?quantum_selected]', script.data)
         self.assertIn(b"input.value = useValues ? value : ''", script.data)

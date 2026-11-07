@@ -951,6 +951,9 @@ msgstr "Não foi possível atualizar o título da conversa."
 msgid "Add people from Contacts"
 msgstr "Adicionar pessoas dos contactos"
 
+msgid "Add selected members"
+msgstr "Adicionar membros selecionados"
+
 msgid "Back to dashboard"
 msgstr "Voltar ao painel"
 

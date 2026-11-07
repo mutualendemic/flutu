@@ -16,7 +16,11 @@
   const titleInput = document.getElementById('edit-title-input');
   const titleError = document.getElementById('edit-title-error');
   const optionsEditor = document.getElementById('option-editors');
-  const membersPanel = document.getElementById('members-panel');
+  const memberManagement = document.getElementById('member-management');
+  const memberPicker = document.getElementById('member-picker');
+  const memberSearch = document.getElementById('member-search');
+  const addSelectedMembersButton = document.getElementById('add-selected-members');
+  const memberError = document.getElementById('member-error');
   const nodes = new Map();
   const edges = new Map();
   let graph;
@@ -29,6 +33,10 @@
   let canCreateRoot = false;
   let editingQuestionId;
   let initialGraphFitDone = false;
+  let memberPickerLoaded = false;
+  let memberPickerLoading = false;
+  let memberPickerContacts = [];
+  const selectedMemberIds = new Set();
 
   function el(tag, text, className) {
     const element = document.createElement(tag);
@@ -160,9 +168,8 @@
     optionsEditor.hidden = Boolean(followUpOption);
     document.getElementById('cancel-question').hidden = !followUpOption;
     const canManageMembers = data.can_manage_members === true;
-    document.querySelector('label[for="member-search"]').hidden = !canManageMembers;
-    document.getElementById('member-search').hidden = !canManageMembers;
-    document.getElementById('member-picker').hidden = !canManageMembers;
+    memberManagement.hidden = !canManageMembers;
+    if (canManageMembers) loadMemberPicker().catch(() => { memberError.textContent = t('Could not load Contacts.'); });
     renderAssociatedEvents(data.associated_events || []);
     renderMembers(data.members || []);
   }
@@ -374,7 +381,7 @@
         {tagName: 'li', className: 'member-chip', subtitle: member.active ? '' : t('former member')}
       );
       if (member.active && member.role !== 'owner') {
-        const remove = el('button', t('Remove')); remove.type = 'button';
+        const remove = el('button', t('Remove'), 'button button-secondary small-button member-remove'); remove.type = 'button';
         remove.addEventListener('click', () => changeMemberWithLoading(remove, member.user_id, 'DELETE'));
         item.append(remove);
       }
@@ -388,34 +395,62 @@
     const body = response.status === 204 ? {} : await response.json();
     if (!response.ok) { setError(t(body.error || 'Could not update members.')); return; }
     await resync();
+    if (method === 'DELETE' && snapshot?.can_manage_members) {
+      memberPickerLoaded = false;
+      await loadMemberPicker();
+    }
   }
 
   async function changeMemberWithLoading(button, userId, method) {
     await window.FlutuAction.run(button, async () => changeMember(userId, method));
   }
 
-  async function loadMemberPicker() {
-    const host = document.getElementById('member-picker');
-    const search = document.getElementById('member-search');
-    const response = await fetch(`${api}/contacts/addable?conversation_id=${encodeURIComponent(conversationId)}`);
-    if (!response.ok) return;
-    const contacts = (await response.json()).contacts;
-    const draw = () => {
-      host.replaceChildren();
-      const query = search.value.trim().toLowerCase();
-      window.FlutuContactList.sortByName(
-        contacts.filter(contact => `${contact.name} ${contact.email}`.toLowerCase().includes(query))
-      ).forEach(contact => {
-        const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.value = contact.user_id || ''; checkbox.disabled = !contact.addable;
-        host.append(window.FlutuContactList.createEntry(contact, {
-          tagName: 'label',
-          className: 'picker-contact',
-          control: checkbox,
-        }));
+  function renderMemberPicker() {
+    memberPicker.replaceChildren();
+    const query = memberSearch.value.trim().toLowerCase();
+    const contacts = window.FlutuContactList.sortByName(
+      memberPickerContacts.filter(contact => `${contact.name} ${contact.email}`.toLowerCase().includes(query))
+    );
+    contacts.forEach(contact => {
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.value = contact.user_id || '';
+      checkbox.checked = selectedMemberIds.has(checkbox.value);
+      checkbox.disabled = !contact.addable;
+      checkbox.addEventListener('change', () => {
+        if (checkbox.checked) selectedMemberIds.add(checkbox.value);
+        else selectedMemberIds.delete(checkbox.value);
+        addSelectedMembersButton.disabled = selectedMemberIds.size === 0;
+        memberError.textContent = '';
       });
-    };
-    search.addEventListener('input', draw); draw();
+      memberPicker.append(window.FlutuContactList.createEntry(contact, {
+        tagName: 'label',
+        className: 'picker-contact',
+        control: checkbox,
+      }));
+    });
+    if (!contacts.length) {
+      const empty = el('p', t('No contacts match your search.'));
+      memberPicker.append(empty);
+    }
+    addSelectedMembersButton.disabled = selectedMemberIds.size === 0;
   }
+
+  async function loadMemberPicker() {
+    if (memberPickerLoading || memberPickerLoaded) return;
+    memberPickerLoading = true;
+    try {
+      const response = await fetch(`${api}/contacts/addable?conversation_id=${encodeURIComponent(conversationId)}`);
+      if (!response.ok) throw new Error(t('Could not load Contacts.'));
+      memberPickerContacts = (await response.json()).contacts;
+      memberPickerLoaded = true;
+      renderMemberPicker();
+    } finally {
+      memberPickerLoading = false;
+    }
+  }
+
+  memberSearch.addEventListener('input', renderMemberPicker);
 
   function eventRefresh() { resync().catch(err => setError(err.message)); }
   function startPolling() {
@@ -535,13 +570,6 @@
     document.getElementById('add-option').hidden = false;
     optionsEditor.hidden = false;
   });
-  document.getElementById('members-toggle').addEventListener('click', async event => {
-    const toggle = event.currentTarget;
-    membersPanel.hidden = !membersPanel.hidden;
-    toggle.setAttribute('aria-expanded', String(!membersPanel.hidden));
-    toggle.setAttribute('aria-checked', String(!membersPanel.hidden));
-    if (!membersPanel.hidden && snapshot?.can_manage_members) await loadMemberPicker();
-  });
   document.getElementById('edit-conversation-title').addEventListener('click', () => {
     titleInput.value = snapshot?.title || '';
     titleError.textContent = '';
@@ -573,23 +601,30 @@
       }
     });
   });
-  document.getElementById('member-picker').addEventListener('change', async event => {
-    if (!event.target.matches('input[type=checkbox]:checked')) return;
-    const checkbox = event.target;
-    checkbox.disabled = true;
-    try {
-      const response = await fetch(`${api}/conversations/${encodeURIComponent(conversationId)}/members`, {
-        method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf},
-        body: JSON.stringify({user_ids: [checkbox.value]}),
-      });
-      const body = await response.json();
-      if (!response.ok) setError(t(body.error || 'Could not add member.')); else await resync();
-    } catch (err) {
-      setError(err.message || 'Could not add member.');
-    } finally {
-      checkbox.checked = false;
-      checkbox.disabled = false;
-    }
+  addSelectedMembersButton.addEventListener('click', async event => {
+    const userIds = [...selectedMemberIds];
+    if (!userIds.length) return;
+    memberError.textContent = '';
+    await window.FlutuAction.run(event.currentTarget, async () => {
+      try {
+        const response = await fetch(`${api}/conversations/${encodeURIComponent(conversationId)}/members`, {
+          method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf},
+          body: JSON.stringify({user_ids: userIds}),
+        });
+        const body = await response.json();
+        if (!response.ok) {
+          memberError.textContent = t(body.error || 'Could not add member.');
+          return;
+        }
+        selectedMemberIds.clear();
+        addSelectedMembersButton.disabled = true;
+        memberPickerLoaded = false;
+        await resync();
+        await loadMemberPicker();
+      } catch (err) {
+        memberError.textContent = t(err.message || 'Could not add member.');
+      }
+    });
   });
 
   createOptionEditors(['Yes', 'No']);
