@@ -7,7 +7,6 @@
   .profile-header h2 { margin: 0 0 4px; font-size: 1.1rem; }
   .profile-header p { margin: 0; overflow-wrap: anywhere; }
   .profile-note { margin-top: 24px; padding: 18px; border: 1px solid #e3e9f4; border-radius: 16px; background: #fbfcff; }
-  .back-link { margin-top: 22px; }
   @media (max-width: 520px) { .profile { margin-top: 0; } }
 {% endblock %}
 {% block content %}
@@ -29,7 +28,6 @@
       <h2>{{ _('Your map marker') }}</h2>
       <p>{{ _('The map uses your Google profile photo as your marker. If Google has no profile photo, the map shows your initials instead.') }}</p>
     </section>
-    <a class="back-link" href="{{ url_for('main.dashboard') }}">{{ _('← Back to dashboard') }}</a>
   </main>
 {% endblock %}
 {% block scripts %}

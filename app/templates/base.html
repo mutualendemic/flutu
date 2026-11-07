@@ -1,3 +1,4 @@
+{% from "macros/brand.html" import flutu_brand %}
 <!DOCTYPE html>
 <html lang="{{ get_locale().replace('_', '-') }}">
   <head>
@@ -43,11 +44,40 @@
       .button[aria-busy="true"] { pointer-events: none; }
       .button-secondary { background: var(--surface-solid); border: 1px solid var(--border); color: var(--text); }
       .button-secondary:hover { background: var(--surface-muted); }
-      .back-link { display: inline-block; margin-top: 24px; font-weight: 700; text-decoration: none; }
-      .back-link:hover { text-decoration: underline; }
-      .language-picker { display:flex; justify-content:flex-end; gap:6px; width:min(100%,1100px); margin:0 auto 12px; }
-      .language-picker button { padding:7px 10px; border:1px solid var(--border); border-radius:9px; background:var(--surface); color:var(--text); font:inherit; cursor:pointer; }
+      .site-header { display:flex; width:min(100%,1100px); min-height:48px; align-items:center; gap:12px; margin:0 auto 16px; }
+      .site-header-start, .site-header-actions { display:flex; align-items:center; gap:8px; }
+      .site-header-actions { margin-left:auto; }
+      .site-brand { display:inline-flex; align-items:center; width:auto; height:42px; color:var(--text); text-decoration:none; }
+      .brand-lockup { display:inline-flex; align-items:center; gap:8px; }
+      .brand-lockup img { display:block; width:38px; height:38px; flex:0 0 auto; }
+      .brand-wordmark { display:block; width:82px; height:32px; flex:0 0 auto; overflow:visible; color:var(--link); }
+      .brand-wordmark path { fill:none; stroke:currentColor; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round; animation:brand-wordmark-draw .55s ease-out both; }
+      .brand-wordmark .letter-f { stroke-dasharray:80; stroke-dashoffset:80; animation-delay:.08s; }
+      .brand-wordmark .letter-l { stroke-dasharray:30; stroke-dashoffset:30; animation-delay:.24s; }
+      .brand-wordmark .letter-u-first { stroke-dasharray:56; stroke-dashoffset:56; animation-delay:.4s; }
+      .brand-wordmark .letter-t { stroke-dasharray:54; stroke-dashoffset:54; animation-delay:.56s; }
+      .brand-wordmark .letter-u-last { stroke-dasharray:56; stroke-dashoffset:56; animation-delay:.72s; }
+      @keyframes brand-wordmark-draw { to { stroke-dashoffset:0; } }
+      .landing-brand-lockup img { width:48px; height:48px; }
+      .landing-brand-lockup .brand-wordmark { width:120px; height:42px; }
+      .login-brand-lockup img { width:52px; height:52px; }
+      .login-brand-lockup .brand-wordmark { width:136px; height:48px; }
+      .site-menu { position:relative; }
+      .site-menu summary { display:grid; width:42px; height:42px; place-items:center; border:1px solid var(--border); border-radius:10px; background:var(--surface); cursor:pointer; list-style:none; }
+      .site-menu summary::-webkit-details-marker { display:none; }
+      .site-menu summary:focus-visible, .site-back:focus-visible, .site-brand:focus-visible { outline:3px solid var(--link); outline-offset:2px; }
+      .menu-icon { display:grid; gap:4px; }
+      .menu-icon span { width:19px; height:2px; border-radius:2px; background:var(--text); }
+      .site-menu-panel { position:absolute; z-index:40; top:calc(100% + 8px); left:0; display:grid; min-width:220px; gap:2px; padding:7px; border:1px solid var(--border); border-radius:10px; background:var(--surface); box-shadow:0 12px 30px var(--shadow); }
+      .site-menu-panel a { display:block; padding:9px 10px; border-radius:7px; color:var(--text); text-decoration:none; }
+      .site-menu-panel a:hover, .site-menu-panel a[aria-current="page"] { background:var(--surface-muted); }
+      .site-menu-panel a[aria-current="page"] { font-weight:700; }
+      .site-back { display:grid; width:42px; height:42px; place-items:center; border:1px solid var(--border); border-radius:10px; background:var(--surface); color:var(--text); font-size:1.5rem; line-height:1; text-decoration:none; }
+      .site-back:hover, .site-menu summary:hover { background:var(--surface-muted); }
+      .language-picker { display:flex; justify-content:flex-end; gap:6px; margin:0; }
+      .language-picker button { display:grid; width:42px; height:40px; place-items:center; padding:0; border:1px solid var(--border); border-radius:9px; background:var(--surface); color:var(--text); font:inherit; font-size:1.25rem; line-height:1; cursor:pointer; }
       .language-picker button[aria-current="true"] { border-color:var(--link); font-weight:700; }
+      .language-picker button:focus-visible { outline:3px solid var(--link); outline-offset:2px; }
       .error { margin: 12px 0; color: #b42318; }
       .sharing-status { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 16px; padding: 8px 12px; border: 1px solid #d9dee8; border-radius: 999px; background: #f7f8fa; color: #53627b; font-size: .85rem; font-weight: 700; }
       .sharing-status::before { width: 8px; height: 8px; border-radius: 50%; background: #98a2b3; content: ""; }
@@ -65,6 +95,17 @@
       .site-contact-email, .site-contact-status { overflow-wrap:anywhere; color:var(--muted); font-size:.78rem; font-weight:400; }
       .site-contact-status[data-registered="true"] { color:#067647; }
       .site-contact-status[data-registered="false"] { color:var(--muted); }
+      @media (max-width:520px) {
+        .site-header { gap:8px; }
+        .site-header-actions { width:auto; justify-content:flex-end; }
+        .site-header-start, .site-header-actions { gap:6px; }
+        .site-menu summary, .site-back { width:34px; height:34px; }
+        .site-brand-lockup { gap:4px; }
+        .site-brand-lockup img { width:30px; height:30px; }
+        .site-brand-lockup .brand-wordmark { width:66px; height:28px; }
+        .language-picker button { width:36px; height:36px; font-size:1.1rem; }
+      }
+      @media (prefers-reduced-motion: reduce) { .brand-wordmark path { animation:none; stroke-dashoffset:0 !important; } }
       {% block styles %}{% endblock %}
       @media (prefers-color-scheme: dark) {
         :root {
@@ -119,14 +160,55 @@
     </style>
   </head>
   <body>
-    <nav class="language-picker" aria-label="{{ _('Site language') }}">
-      {% for locale, label in [('en_GB', 'English (UK)'), ('pt_PT', 'Português (Portugal)')] %}
-        <form method="post" action="{{ url_for('main.set_language', locale=locale) }}">
-          <input type="hidden" name="next" value="{{ request.full_path.rstrip('?') }}" />
-          <button type="submit" {% if get_locale() == locale %}aria-current="true"{% endif %}>{{ label }}</button>
-        </form>
-      {% endfor %}
-    </nav>
+    {% set back_url = none %}
+    {% set back_label = none %}
+    {% if session.get('user') %}
+      {% if request.endpoint == 'main.quantum_info' %}
+        {% set back_url = url_for('main.decision') %}
+        {% set back_label = _('← Back to the decision') %}
+      {% elif request.endpoint == 'chat.conversation_page' %}
+        {% set back_url = url_for('chat.conversation_list_page') %}
+        {% set back_label = _('Back to conversations') %}
+      {% elif request.endpoint in ['main.contacts', 'main.location_map', 'main.profile', 'main.decision', 'calendar.page', 'chat.conversation_list_page'] %}
+        {% set back_url = url_for('main.dashboard') %}
+        {% set back_label = _('Back to dashboard') %}
+      {% endif %}
+    {% endif %}
+    <header class="site-header">
+      {% if session.get('user') %}
+      <div class="site-header-start">
+        <details class="site-menu" id="site-menu">
+          <summary aria-label="{{ _('Main menu') }}" title="{{ _('Main menu') }}">
+            <span class="menu-icon" aria-hidden="true"><span></span><span></span><span></span></span>
+          </summary>
+          <nav class="site-menu-panel" aria-label="{{ _('Main navigation') }}">
+            <a href="{{ url_for('main.dashboard') }}" {% if request.endpoint == 'main.dashboard' %}aria-current="page"{% endif %}>{{ _('Dashboard') }}</a>
+            <a href="{{ url_for('main.decision') }}" {% if request.endpoint in ['main.decision', 'main.quantum_info'] %}aria-current="page"{% endif %}>{{ _('Quantum path selector') }}</a>
+            <a href="{{ url_for('main.contacts') }}" {% if request.endpoint == 'main.contacts' %}aria-current="page"{% endif %}>{{ _('My contacts') }}</a>
+            <a href="{{ url_for('calendar.page') }}" {% if request.endpoint == 'calendar.page' %}aria-current="page"{% endif %}>{{ _('Event calendar') }}</a>
+            <a href="{{ url_for('chat.conversation_list_page') }}" {% if request.endpoint in ['chat.conversation_list_page', 'chat.conversation_page'] %}aria-current="page"{% endif %}>{{ _('Branching chat') }}</a>
+            <a href="{{ url_for('main.location_map') }}" {% if request.endpoint == 'main.location_map' %}aria-current="page"{% endif %}>{{ _('Location map') }}</a>
+            <a href="{{ url_for('main.profile') }}" {% if request.endpoint == 'main.profile' %}aria-current="page"{% endif %}>{{ _('My profile') }}</a>
+            <a href="{{ url_for('auth.logout') }}">{{ _('Sign out') }}</a>
+          </nav>
+        </details>
+        {% if back_url %}
+          <a class="site-back" href="{{ back_url }}" aria-label="{{ back_label }}" title="{{ back_label }}"><span aria-hidden="true">←</span></a>
+        {% endif %}
+        <a class="site-brand" href="{{ url_for('main.dashboard') }}">{{ flutu_brand('brand-lockup site-brand-lockup') }}</a>
+      </div>
+      {% endif %}
+      <div class="site-header-actions">
+        <nav class="language-picker" aria-label="{{ _('Site language') }}">
+          {% for locale, label, flag in [('en_GB', 'English (UK)', '🇬🇧'), ('pt_PT', 'Português (Portugal)', '🇵🇹')] %}
+            <form method="post" action="{{ url_for('main.set_language', locale=locale) }}">
+              <input type="hidden" name="next" value="{{ request.full_path.rstrip('?') }}" />
+              <button type="submit" aria-label="{{ label }}" title="{{ label }}" {% if get_locale() == locale %}aria-current="true"{% endif %}><span aria-hidden="true">{{ flag }}</span></button>
+            </form>
+          {% endfor %}
+        </nav>
+      </div>
+    </header>
     {% block content %}{% endblock %}
     <script>window.FlutuI18n = {{ get_ui_messages()|tojson }};</script>
     <script src="{{ url_for('static', filename='contact-list.js') }}"></script>

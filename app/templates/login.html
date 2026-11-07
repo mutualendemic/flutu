@@ -1,9 +1,9 @@
 {% extends "base.html" %}
+{% from "macros/brand.html" import flutu_brand %}
 {% block title %}Flutu.eu | {{ _('Sign in') }}{% endblock %}
 {% block styles %}
   .login-card { width: min(100%, 460px); margin-top: 8vh; padding: 36px 32px; }
-  .brand { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 22px; font-size: 1.9rem; font-weight: 800; letter-spacing: -.06em; }
-  .brand img { width: 52px; height: 52px; }
+  .brand { display: flex; align-items: center; justify-content: center; margin-bottom: 22px; }
   .subtitle { margin: 8px 0 24px; text-align: center; }
   .conditions { margin: 20px 0; padding: 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-muted); }
   .conditions p { margin: 0 0 10px; }
@@ -16,7 +16,7 @@
 {% endblock %}
 {% block content %}
   <main class="card login-card">
-    <div class="brand"><img src="{{ url_for('static', filename='logo.svg') }}" alt="" /> <span>Flutu.eu</span></div>
+    <div class="brand">{{ flutu_brand('brand-lockup login-brand-lockup') }}</div>
     <h1>{{ _('Sign in') }}</h1>
     <p class="subtitle">{{ _('Access your Flutu.eu account') }}</p>
     {% for category, message in get_flashed_messages(with_categories=true) %}

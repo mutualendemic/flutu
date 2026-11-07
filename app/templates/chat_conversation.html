@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "macros/brand.html" import flutu_brand %}
 {% block title %}Flutu.eu | {{ _('Conversation') }}{% endblock %}
 {% block styles %}
   .conversation-page { width:min(100%,1100px); margin:0 auto; }
@@ -16,6 +17,7 @@
   .graph-stage { position:relative; margin:18px 0; }
   .graph-empty-state { position:absolute; inset:1px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; border-radius:15px; background:var(--surface-muted); color:var(--muted); text-align:center; pointer-events:none; transition:opacity .25s ease; }
   .graph-empty-state img { width:min(34vw,150px); height:auto; filter:drop-shadow(0 10px 24px rgba(16,24,40,.14)); }
+  .graph-empty-state .brand-wordmark { width:min(30vw,120px); height:auto; }
   .graph-empty-state p { margin:0; max-width:32ch; font-size:.95rem; }
   .graph-stage.has-questions .graph-empty-state { opacity:0; visibility:hidden; }
   .graph-controls { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:14px 0 -8px; }
@@ -71,7 +73,7 @@
   <div class="graph-stage" id="graph-stage">
     <div id="graph" role="img" aria-label="{{ _('Live branching flow: each question is followed by its options and the selected path leads to participant follow-ups') }}"></div>
     <div id="graph-empty-state" class="graph-empty-state" role="status" aria-live="polite">
-      <img src="{{ url_for('static', filename='logo.svg') }}" alt="Flutu.eu">
+      {{ flutu_brand('brand-lockup graph-empty-brand-lockup') }}
       <p>{{ _('Conversation ready. The first question and its options will appear here.') }}</p>
     </div>
   </div>
@@ -94,7 +96,6 @@
     <p id="chat-error" class="error" role="alert"></p>
   </section>
   <section id="members-panel" class="members-panel"><h2>{{ _('Members') }}</h2><ul id="member-list" class="member-list"></ul><div id="member-management" class="member-management" hidden><label for="member-search">{{ _('Add people from Contacts') }}</label><input id="member-search" type="search" placeholder="{{ _('Search contacts') }}"><div id="member-picker" class="picker"></div><button id="add-selected-members" class="button button-secondary" type="button" disabled>{{ _('Add selected members') }}</button><p id="member-error" class="error" role="alert"></p></div></section>
-  <a class="back-link" href="{{ url_for('chat.conversation_list_page') }}">{{ _('Back to conversations') }}</a>
 </main>
 <dialog id="edit-title-dialog" class="title-dialog">
   <form id="edit-title-form">

@@ -96,6 +96,21 @@ msgstr "Versão:"
 msgid "Dashboard"
 msgstr "Painel"
 
+msgid "Main menu"
+msgstr "Menu principal"
+
+msgid "Main navigation"
+msgstr "Navegação principal"
+
+msgid "Flutu.eu"
+msgstr "Flutu.eu"
+
+msgid "flutu"
+msgstr "flutu"
+
+msgid "Flutu"
+msgstr "Flutu"
+
 msgid "Sign out"
 msgstr "Terminar sessão"
 

@@ -41,7 +41,6 @@
   .notice.error { color: #b42318; }
   .notice.success { color: #067647; }
   .empty { margin: 0; color: #667085; font-size: .9rem; }
-  .back-link { margin-top: 20px; }
   @media (max-width: 800px) { .columns { grid-template-columns: 1fr; } #map { height: 48vh; min-height: 300px; } }
 {% endblock %}
 {% block content %}
@@ -97,7 +96,6 @@
         </section>
       </div>
     </div>
-    <a class="back-link" href="{{ url_for('main.dashboard') }}">{{ _('← Back to dashboard') }}</a>
   </main>
 {% endblock %}
 {% block scripts %}

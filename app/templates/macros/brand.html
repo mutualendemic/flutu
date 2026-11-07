@@ -1,0 +1,12 @@
+{% macro flutu_brand(class_name='brand-lockup') -%}
+<span class="{{ class_name }}">
+  <img src="{{ url_for('static', filename='logo.svg') }}" alt="" />
+  <svg class="brand-wordmark" viewBox="0 0 114 40" role="img" aria-label="{{ _('Flutu') }}" focusable="false">
+    <path class="letter-f" d="M6 32V8H26M6 19H22" />
+    <path class="letter-l" d="M34 8V32" />
+    <path class="letter-u-first" d="M43 16V25C43 34 61 34 61 25V16" />
+    <path class="letter-t" d="M73 8V27C73 33 77 33 82 31M67 16H83" />
+    <path class="letter-u-last" d="M90 16V25C90 34 108 34 108 25V16" />
+  </svg>
+</span>
+{%- endmacro %}

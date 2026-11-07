@@ -1,9 +1,9 @@
 {% extends "base.html" %}
+{% from "macros/brand.html" import flutu_brand %}
 {% block title %}Flutu.eu | {{ _('A private space for making plans') }}{% endblock %}
 {% block styles %}
   .landing { width:min(100%,900px); margin:4vh auto 0; }
-  .landing-brand { display:flex; align-items:center; gap:12px; margin-bottom:30px; font-size:1.55rem; font-weight:800; }
-  .landing-brand img { width:48px; height:48px; }
+  .landing-brand { display:flex; align-items:center; margin-bottom:30px; }
   .landing-effect { position:relative; width:100%; height:clamp(280px, 48vw, 520px); margin:0 0 30px; overflow:hidden; border:1px solid var(--border); border-radius:18px; background:radial-gradient(ellipse at 50% 100%, #172b50 0%, #0b1220 68%); }
   .landing-effect canvas { display:block; width:100%; height:100%; }
   .landing h1 { max-width:18ch; font-size:clamp(2rem,6vw,3.4rem); }
@@ -23,7 +23,7 @@
 {% endblock %}
 {% block content %}
 <main class="card landing">
-  <div class="landing-brand"><img src="{{ url_for('static', filename='logo.svg') }}" alt="" /><span>Flutu.eu</span></div>
+  <div class="landing-brand">{{ flutu_brand('brand-lockup landing-brand-lockup') }}</div>
   <div class="landing-effect">
     <canvas id="landing-particles" role="img" aria-label="{{ _('Floating particle animation') }}"></canvas>
   </div>

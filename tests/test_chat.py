@@ -377,6 +377,8 @@ class ChatTests(unittest.TestCase):
         self.assertIn(b'id="graph-empty-state"', response.data)
         self.assertIn(b'id="graph-empty-state"', response.data)
         self.assertIn(b'id="conversation-events-panel"', response.data)
+        self.assertIn(b'class="brand-lockup graph-empty-brand-lockup"', response.data)
+        self.assertIn(b'class="brand-wordmark"', response.data)
         self.assertIn(b'src="/static/logo.svg"', response.data)
         script = self.http.get("/static/chat-conversation.js")
         self.assertIn(b'body: JSON.stringify({user_ids: userIds})', script.data)

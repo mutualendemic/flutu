@@ -2,10 +2,6 @@
 {% block title %}Flutu.eu | {{ _('Dashboard') }}{% endblock %}
 {% block styles %}
   .dashboard { margin-top: 8vh; }
-  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 26px; }
-  .brand { display: flex; align-items: center; gap: 10px; font-size: 1.6rem; font-weight: 800; }
-  .brand img { width: 42px; height: 42px; }
-  .logout { padding: 10px 15px; border-radius: 10px; background: #dfe8ff; font-weight: 700; text-decoration: none; }
   .badge { display: inline-block; padding: 8px 12px; border-radius: 999px; background: #e8f8f1; color: #0f7c5d; font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
   .actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-top: 24px; }
   .actions .button { margin-top: 0; }
@@ -13,14 +9,10 @@
   .push-settings h2 { margin:0 0 6px; font-size:1.05rem; }
   .push-settings p { margin:6px 0 12px; }
   .push-settings .button { width:auto; margin:0; }
-  @media (max-width: 520px) { .dashboard { margin-top: 0; } .topbar { align-items: flex-start; } }
+  @media (max-width: 520px) { .dashboard { margin-top: 0; } }
 {% endblock %}
 {% block content %}
   <main class="card dashboard">
-    <header class="topbar">
-      <div class="brand"><img src="{{ url_for('static', filename='logo.svg') }}" alt="" /> <span>Flutu.eu</span></div>
-      <a class="logout" href="{{ url_for('auth.logout') }}">{{ _('Sign out') }}</a>
-    </header>
     <span class="badge">{{ _('Active session') }}</span>
     <p id="location-sharing-indicator" class="sharing-status" role="status" aria-live="polite" hidden>{{ _('Checking location sharing…') }}</p>
     <h1>{{ _('Welcome to Flutu.eu') }}</h1>
