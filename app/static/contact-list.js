@@ -24,10 +24,7 @@
     button.className = 'site-contact-message';
     button.title = label;
     button.setAttribute('aria-label', label);
-    const icon = actionIcon('M22 2 11 13 M22 2 15 22 11 13 2 9Z');
-    const text = document.createElement('span');
-    text.textContent = label;
-    button.append(icon, text);
+    button.append(actionIcon('M22 2 11 13 M22 2 15 22 11 13 2 9Z'));
     button.addEventListener('click', () => window.FlutuContactList.openMessageDialog(contact, {contextType, contextId, delivery}));
     return button;
   }
@@ -77,8 +74,9 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 7px;
-        padding: 8px 10px;
+        width: 40px;
+        height: 40px;
+        padding: 0;
         border: 1px solid #d5deef;
         border-radius: 9px;
         background: white;
@@ -100,26 +98,6 @@
         stroke-linecap: round;
         stroke-linejoin: round;
         stroke-width: 1.8;
-      }
-      @media (max-width: 520px) {
-        .site-contact-entry > .site-contact-message,
-        .site-contact-entry > .site-contact-remove {
-          width: 40px;
-          height: 40px;
-          padding: 0;
-        }
-        .site-contact-entry > .site-contact-message span,
-        .site-contact-entry > .site-contact-remove span {
-          position: absolute;
-          width: 1px;
-          height: 1px;
-          padding: 0;
-          margin: -1px;
-          overflow: hidden;
-          clip: rect(0, 0, 0, 0);
-          white-space: nowrap;
-          border: 0;
-        }
       }
       .flutu-global-message-form { display: grid; gap: 12px; }
       .flutu-global-message-form label { display: grid; gap: 6px; font-weight: 700; }
