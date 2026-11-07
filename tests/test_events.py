@@ -128,6 +128,7 @@ class CalendarTests(unittest.TestCase):
         messages = json.loads(catalogue)
         self.assertEqual(messages["Monday"], "segunda-feira")
         self.assertEqual(messages["Sunday"], "domingo")
+        self.assertEqual(messages["New event"], "Novo evento")
         self.assertEqual(messages["Event members"], "Membros do evento")
         self.assertEqual(messages["Invitation pending"], "Convite pendente")
         self.assertIn(".weekday-picker[hidden] { display:none; }", page)

@@ -12,6 +12,7 @@ JS_MESSAGE_IDS = (
     "Members",
     "Associated events",
     "Event",
+    "New event",
     "No date",
     "Graph view controls",
     "Fit all",
