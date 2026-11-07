@@ -107,7 +107,14 @@
     return t(value === 'closed' ? 'Closed' : 'Open');
   }
 
-  const eventPaletteOffsets = [0, -15, 15, -30, 30, -45, 45, -60];
+  const eventColorVariants = [
+    { open: [0.66, 0.42], closed: [0.24, 0.54] },
+    { open: [0.74, 0.38], closed: [0.30, 0.56] },
+    { open: [0.58, 0.46], closed: [0.20, 0.58] },
+    { open: [0.70, 0.36], closed: [0.28, 0.50] }
+  ];
+  let eventColorsById = new Map();
+  let usedEventColors = new Set();
 
   function eventBaseHue() {
     const baseColor = getComputedStyle(document.documentElement).getPropertyValue('--link').trim();
@@ -138,15 +145,52 @@
     return `#${channels.map(channel => Math.round((channel + offset) * 255).toString(16).padStart(2, '0')).join('')}`;
   }
 
-  function eventColor(eventId, status) {
+  function eventIdSeed(eventId) {
     let colorSeed = 0;
     for (const character of String(eventId)) {
       colorSeed = (colorSeed * 31 + character.charCodeAt(0)) >>> 0;
     }
-    const hue = eventBaseHue() + eventPaletteOffsets[colorSeed % eventPaletteOffsets.length];
-    return status === 'closed'
-      ? eventPaletteColor(hue, 0.24, 0.54)
-      : eventPaletteColor(hue, 0.66, 0.42);
+    return colorSeed;
+  }
+
+  function uniqueEventColors(eventId, assignedColors, baseHue) {
+    const seed = eventIdSeed(eventId);
+    for (let attempt = 0; ; attempt += 1) {
+      const variant = eventColorVariants[Math.floor(attempt / 360) % eventColorVariants.length];
+      const hue = baseHue + ((seed % 360 + (attempt % 360) * 137.508) % 360);
+      const open = eventPaletteColor(hue, ...variant.open);
+      const closed = eventPaletteColor(hue, ...variant.closed);
+      if (open !== closed && !assignedColors.has(open) && !assignedColors.has(closed)) {
+        assignedColors.add(open);
+        assignedColors.add(closed);
+        return { open, closed };
+      }
+    }
+  }
+
+  function assignEventColors(eventItems) {
+    const assignedColors = new Set();
+    const colorAssignments = new Map();
+    const orderedIds = [...new Set(eventItems.map(item => String(item.id)))]
+      .map(id => ({ id, seed: eventIdSeed(id) }))
+      .sort((first, second) => first.seed - second.seed || first.id.localeCompare(second.id));
+    const baseHue = eventBaseHue();
+
+    for (const { id, seed } of orderedIds) {
+      colorAssignments.set(id, uniqueEventColors(id, assignedColors, baseHue));
+    }
+    eventColorsById = colorAssignments;
+    usedEventColors = assignedColors;
+  }
+
+  function eventColor(eventId, status) {
+    const id = String(eventId);
+    let colors = eventColorsById.get(id);
+    if (!colors) {
+      colors = uniqueEventColors(id, usedEventColors, eventBaseHue());
+      eventColorsById.set(id, colors);
+    }
+    return status === 'closed' ? colors.closed : colors.open;
   }
 
   function eventColorText(backgroundColor) {
@@ -616,6 +660,7 @@
         callApi(api.events), callApi(api.contacts), callApi(api.conversations), callApi(api.eventMembers)
       ]);
       events = eventData.events;
+      assignEventColors(events);
       contacts = contactData.contacts;
       conversations = conversationData.conversations;
       eventMemberCandidates = memberData.members;

@@ -84,6 +84,7 @@ class CalendarTests(unittest.TestCase):
         self.assertNotIn(b'event-detail-cover-placeholder', response.data)
         calendar_script = self.client.get("/static/calendar.js")
         self.assertIn(b"getPropertyValue('--link')", calendar_script.data)
+        self.assertIn(b'!assignedColors.has(open) && !assignedColors.has(closed)', calendar_script.data)
         calendar_script.close()
 
     def test_event_member_picker_returns_linked_account_email(self):
