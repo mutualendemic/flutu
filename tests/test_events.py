@@ -79,6 +79,12 @@ class CalendarTests(unittest.TestCase):
         self.assertIn(b'id="event-invitations"', response.data)
         self.assertIn(b'id="event-member-picker"', response.data)
         self.assertIn(b'.check-grid { grid-template-columns:minmax(0,1fr); }', response.data)
+        self.assertIn(b'.event-detail-header { display:grid; grid-template-columns:minmax(0, 1fr) auto;', response.data)
+        self.assertIn(b'.event-detail-header.has-cover { grid-template-columns:76px minmax(0, 1fr) auto; }', response.data)
+        self.assertNotIn(b'event-detail-cover-placeholder', response.data)
+        calendar_script = self.client.get("/static/calendar.js")
+        self.assertIn(b"getPropertyValue('--link')", calendar_script.data)
+        calendar_script.close()
 
     def test_event_member_picker_returns_linked_account_email(self):
         self.sign_in()

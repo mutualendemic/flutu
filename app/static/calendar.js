@@ -107,24 +107,46 @@
     return t(value === 'closed' ? 'Closed' : 'Open');
   }
 
-  const eventPalettes = [
-    { open: '#2948b8', closed: '#7180b2' },
-    { open: '#3655d4', closed: '#7d89bc' },
-    { open: '#4263dc', closed: '#6978aa' },
-    { open: '#2342a8', closed: '#7885b0' },
-    { open: '#4a67d9', closed: '#838dbb' },
-    { open: '#304fbf', closed: '#64749f' },
-    { open: '#3d59c6', closed: '#727fa9' },
-    { open: '#1f3e9b', closed: '#66759f' }
-  ];
+  const eventPaletteOffsets = [0, -15, 15, -30, 30, -45, 45, -60];
+
+  function eventBaseHue() {
+    const baseColor = getComputedStyle(document.documentElement).getPropertyValue('--link').trim();
+    const match = /^#([\da-f]{3}|[\da-f]{6})$/i.exec(baseColor);
+    if (!match) return 227;
+    const hex = match[1].length === 3 ? [...match[1]].map(character => character.repeat(2)).join('') : match[1];
+    const [red, green, blue] = [0, 2, 4].map(index => parseInt(hex.slice(index, index + 2), 16) / 255);
+    const maximum = Math.max(red, green, blue);
+    const minimum = Math.min(red, green, blue);
+    const delta = maximum - minimum;
+    if (!delta) return 0;
+    if (maximum === red) return 60 * (((green - blue) / delta) % 6);
+    if (maximum === green) return 60 * ((blue - red) / delta + 2);
+    return 60 * ((red - green) / delta + 4);
+  }
+
+  function eventPaletteColor(hue, saturation, lightness) {
+    const chroma = (1 - Math.abs(2 * lightness - 1)) * saturation;
+    const section = ((hue % 360) + 360) % 360 / 60;
+    const intermediate = chroma * (1 - Math.abs(section % 2 - 1));
+    const channels = section < 1 ? [chroma, intermediate, 0]
+      : section < 2 ? [intermediate, chroma, 0]
+        : section < 3 ? [0, chroma, intermediate]
+          : section < 4 ? [0, intermediate, chroma]
+            : section < 5 ? [intermediate, 0, chroma]
+              : [chroma, 0, intermediate];
+    const offset = lightness - chroma / 2;
+    return `#${channels.map(channel => Math.round((channel + offset) * 255).toString(16).padStart(2, '0')).join('')}`;
+  }
 
   function eventColor(eventId, status) {
     let colorSeed = 0;
     for (const character of String(eventId)) {
       colorSeed = (colorSeed * 31 + character.charCodeAt(0)) >>> 0;
     }
-    const palette = eventPalettes[colorSeed % eventPalettes.length];
-    return status === 'closed' ? palette.closed : palette.open;
+    const hue = eventBaseHue() + eventPaletteOffsets[colorSeed % eventPaletteOffsets.length];
+    return status === 'closed'
+      ? eventPaletteColor(hue, 0.24, 0.54)
+      : eventPaletteColor(hue, 0.66, 0.42);
   }
 
   function eventColorText(backgroundColor) {
@@ -366,17 +388,13 @@
 
     const header = document.createElement('header');
     header.className = 'event-detail-header';
-    let cover;
     if (event.cover_image_url) {
-      cover = document.createElement('img');
+      header.classList.add('has-cover');
+      const cover = document.createElement('img');
       cover.className = 'event-detail-cover';
       cover.src = event.cover_image_url;
       cover.alt = event.title;
-    } else {
-      cover = document.createElement('div');
-      cover.className = 'event-detail-cover-placeholder';
-      cover.style.backgroundColor = color;
-      cover.setAttribute('aria-hidden', 'true');
+      header.append(cover);
     }
     const heading = document.createElement('h3');
     heading.textContent = event.title;
@@ -388,7 +406,7 @@
     badge.textContent = statusText(event.status);
     badge.style.backgroundColor = color;
     badge.style.color = eventColorText(color);
-    header.append(cover, heading, badge);
+    header.append(heading, badge);
     eventDetail.append(header);
 
     if (event.description) {
