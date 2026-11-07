@@ -3,6 +3,139 @@
     return (name || '?').trim().split(/\s+/).map(part => part[0] || '').slice(0, 2).join('').toUpperCase();
   }
 
+  function safeText(value) {
+    return typeof value === 'string' ? value.trim() : '';
+  }
+
+  function createMessageAction(contact, {label = window.FlutuI18n?.['Send message'] || 'Send message', contextType = '', contextId = '', delivery = 'push'} = {}) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'site-contact-message';
+    button.title = label;
+    button.setAttribute('aria-label', label);
+    const text = document.createElement('span');
+    text.textContent = label;
+    button.append(text);
+    button.addEventListener('click', () => window.FlutuContactList.openMessageDialog(contact, {contextType, contextId, delivery}));
+    return button;
+  }
+
+  function ensureMessageDialog() {
+    let dialog = document.getElementById('flutu-global-message-dialog');
+    if (dialog) return dialog;
+    dialog = document.createElement('dialog');
+    dialog.id = 'flutu-global-message-dialog';
+    dialog.className = 'flutu-global-message-dialog';
+    const sendTitle = window.FlutuI18n?.['Send message'] || 'Send message';
+    const deliveryTitle = window.FlutuI18n?.['Delivery method'] || 'Delivery method';
+    const messageLabel = window.FlutuI18n?.['Message'] || 'Message';
+    const emailLabel = window.FlutuI18n?.['Email'] || 'Email';
+    const pushLabel = window.FlutuI18n?.['Push notification'] || 'Push notification';
+    const cancelLabel = window.FlutuI18n?.['Cancel'] || 'Cancel';
+    dialog.innerHTML = `
+      <form method="dialog" class="flutu-global-message-form">
+        <h3>${sendTitle}</h3>
+        <p class="flutu-global-message-recipient"></p>
+        <label>
+          <span>${deliveryTitle}</span>
+          <select class="flutu-global-message-delivery">
+            <option value="email">${emailLabel}</option>
+            <option value="push">${pushLabel}</option>
+          </select>
+        </label>
+        <label>
+          <span>${messageLabel}</span>
+          <textarea class="flutu-global-message-input" rows="5" required maxlength="1000"></textarea>
+        </label>
+        <p class="flutu-global-message-error" role="alert"></p>
+        <div class="flutu-global-message-actions">
+          <button type="submit" class="button">${sendTitle}</button>
+          <button type="button" class="button button-secondary flutu-global-message-cancel">${cancelLabel}</button>
+        </div>
+      </form>
+    `;
+    const style = document.createElement('style');
+    style.textContent = `
+      .flutu-global-message-dialog { width: min(100% - 24px, 480px); border: 1px solid var(--border, #dfe8ff); border-radius: 16px; background: var(--surface, #fff); color: var(--text, #14213d); padding: 20px; }
+      .flutu-global-message-dialog::backdrop { background: rgba(16, 24, 40, .5); }
+      .flutu-global-message-form { display: grid; gap: 12px; }
+      .flutu-global-message-form label { display: grid; gap: 6px; font-weight: 700; }
+      .flutu-global-message-form select, .flutu-global-message-form textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--input-border, #cfd7e6); border-radius: 10px; background: var(--input-bg, #fff); color: var(--text, #14213d); font: inherit; }
+      .flutu-global-message-form textarea { min-height: 120px; resize: vertical; }
+      .flutu-global-message-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+      .flutu-global-message-actions .button { width: auto; margin: 0; }
+      .flutu-global-message-error { min-height: 20px; margin: 0; color: #b42318; font-size: .9rem; }
+      @media (max-width: 520px) { .flutu-global-message-actions { flex-direction: column-reverse; } }
+    `;
+    document.head.append(style);
+    const form = dialog.querySelector('.flutu-global-message-form');
+    const delivery = dialog.querySelector('.flutu-global-message-delivery');
+    const input = dialog.querySelector('.flutu-global-message-input');
+    const recipient = dialog.querySelector('.flutu-global-message-recipient');
+    const error = dialog.querySelector('.flutu-global-message-error');
+    const cancel = dialog.querySelector('.flutu-global-message-cancel');
+
+    cancel.addEventListener('click', () => dialog.close());
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      const contact = dialog.dataset.contactId ? { id: dialog.dataset.contactId, name: dialog.dataset.contactName, email: dialog.dataset.contactEmail, registered: dialog.dataset.contactRegistered === 'true' } : null;
+      if (!contact) return;
+      const message = safeText(input.value);
+      if (!message) {
+        error.textContent = window.FlutuI18n?.['Write your message'] || 'Write a message before sending it.';
+        return;
+      }
+      error.textContent = '';
+      try {
+        const response = await fetch('/api/contact-invitations', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json', 'X-CSRF-Token': dialog.dataset.csrf || ''},
+          body: JSON.stringify({
+            contact_id: contact.id,
+            delivery: delivery.value,
+            message,
+            context_type: dialog.dataset.contextType || null,
+            context_id: dialog.dataset.contextId || null,
+          }),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || (window.FlutuI18n?.['Could not send this message.'] || 'Could not send this message.'));
+        dialog.close();
+        if (window.FlutuI18n && result.delivered) {
+          window.dispatchEvent(new CustomEvent('flutu-message-sent', {detail: {name: contact.name}}));
+        }
+      } catch (err) {
+        error.textContent = err.message || (window.FlutuI18n?.['Could not send this message.'] || 'Could not send this message.');
+      }
+    });
+    document.body.append(dialog);
+    return dialog;
+  }
+
+  function openMessageDialog(contact, {contextType = '', contextId = '', delivery = 'push'} = {}) {
+    const dialog = ensureMessageDialog();
+    const deliverySelect = dialog.querySelector('.flutu-global-message-delivery');
+    const input = dialog.querySelector('.flutu-global-message-input');
+    const recipient = dialog.querySelector('.flutu-global-message-recipient');
+    const error = dialog.querySelector('.flutu-global-message-error');
+    const csrf = document.querySelector('[data-invitation-csrf]')?.dataset.invitationCsrf || document.body.dataset.csrf || '';
+    dialog.dataset.contactId = contact?.id || '';
+    dialog.dataset.contactName = contact?.name || '';
+    dialog.dataset.contactEmail = contact?.email || '';
+    dialog.dataset.contactRegistered = contact?.registered ? 'true' : 'false';
+    dialog.dataset.contextType = contextType || '';
+    dialog.dataset.contextId = contextId || '';
+    dialog.dataset.csrf = csrf;
+    const label = window.FlutuI18n?.['Send a message to {name}'] || 'Send a message to {name}';
+    recipient.textContent = label.replace('{name}', contact?.name || 'this contact');
+    deliverySelect.value = contact?.registered ? delivery : 'email';
+    deliverySelect.disabled = !contact?.registered;
+    input.value = '';
+    error.textContent = '';
+    dialog.showModal();
+    input.focus();
+  }
+
   function createIdentity(contact, {showStatus = true, showEmail = true, subtitle = ''} = {}) {
     const identity = document.createElement('span');
     identity.className = 'site-contact-identity';
@@ -66,12 +199,18 @@
     return identity;
   }
 
-  function createEntry(contact, {tagName = 'div', className = '', control = null, actions = null, subtitle = '', showStatus = true} = {}) {
+  function createEntry(contact, {tagName = 'div', className = '', control = null, actions = null, subtitle = '', showStatus = true, includeMessageAction = !actions} = {}) {
     const entry = document.createElement(tagName);
     entry.className = `site-contact-entry${className ? ` ${className}` : ''}`;
     if (control) entry.append(control);
     entry.append(createIdentity(contact, {showStatus, subtitle}));
-    if (actions) entry.append(actions);
+    if (actions) {
+      entry.append(actions);
+    }
+    if (includeMessageAction && contact && (contact.user_id || contact.email || contact.registered !== undefined || contact.id)) {
+      const messageAction = createMessageAction(contact, {label: 'Send message'});
+      entry.append(messageAction);
+    }
     return entry;
   }
 
@@ -84,5 +223,5 @@
     });
   }
 
-  window.FlutuContactList = {createEntry, createIdentity, sortByName};
+  window.FlutuContactList = {createEntry, createIdentity, sortByName, createMessageAction, openMessageDialog};
 })();

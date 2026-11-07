@@ -54,10 +54,15 @@ class ContactInvitationTests(unittest.TestCase):
         self.assertTrue(result["delivered"])
         self.assertIsNone(result["context_type"])
         self.assertFalse(result["context_added"])
-        notify.assert_called_once_with(
-            app, ["member-user"], title="Message from Owner", body="A quick update",
-            url="/contacts", exclude_ids={"owner"},
-        )
+        notify.assert_called_once()
+        self.assertEqual(notify.call_args.args[0], app)
+        self.assertEqual(notify.call_args.args[1], ["member-user"])
+        self.assertEqual(notify.call_args.kwargs["title"], "Message from Owner")
+        self.assertEqual(notify.call_args.kwargs["body"], "A quick update")
+        self.assertTrue(notify.call_args.kwargs["url"].startswith("/contacts?"))
+        self.assertIn("notice=A+quick+update", notify.call_args.kwargs["url"])
+        self.assertIn("from=Owner", notify.call_args.kwargs["url"])
+        self.assertEqual(notify.call_args.kwargs["exclude_ids"], {"owner"})
         invite_event.assert_not_called()
         add_member.assert_not_called()
 
@@ -100,10 +105,15 @@ class ContactInvitationTests(unittest.TestCase):
         add_member.assert_called_once_with("chat-id", "owner", ["member-user"])
         self.assertTrue(result["context_added"])
         self.assertEqual(result["new_chat_member"], member)
-        notify.assert_called_once_with(
-            app, ["member-user"], title="Message from Owner", body="Let's decide together",
-            url="/chat/chat-id", exclude_ids={"owner"},
-        )
+        notify.assert_called_once()
+        self.assertEqual(notify.call_args.args[0], app)
+        self.assertEqual(notify.call_args.args[1], ["member-user"])
+        self.assertEqual(notify.call_args.kwargs["title"], "Message from Owner")
+        self.assertEqual(notify.call_args.kwargs["body"], "Let's decide together")
+        self.assertTrue(notify.call_args.kwargs["url"].startswith("/chat/chat-id?"))
+        self.assertIn("notice=Let%27s+decide+together", notify.call_args.kwargs["url"])
+        self.assertIn("from=Owner", notify.call_args.kwargs["url"])
+        self.assertEqual(notify.call_args.kwargs["exclude_ids"], {"owner"})
 
     def test_external_contact_can_receive_custom_email_with_event_context(self):
         app = SimpleNamespace(config={"RESEND_API_KEY": "fake-resend-key"})

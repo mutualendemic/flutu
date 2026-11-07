@@ -1,6 +1,6 @@
 import html
 import json
-from urllib import request as urllib_request
+from urllib import parse, request as urllib_request
 
 from bson import ObjectId
 from flask_babel import gettext
@@ -187,6 +187,10 @@ def send_contact_invitation(
     else:
         title = gettext("Message from {name}").format(name=sender_name or gettext("a Flutu friend"))
         destination = event_path if context_type == "event" else chat_path if context_type == "chat" else "/contacts"
+        params = {"notice": message}
+        if sender_name:
+            params["from"] = sender_name
+        destination = f"{destination}?{parse.urlencode(params)}" if "?" not in destination else f"{destination}&{parse.urlencode(params)}"
         counts = notify_users(
             app,
             [str(account["_id"])],
