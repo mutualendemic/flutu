@@ -7,15 +7,27 @@
     return typeof value === 'string' ? value.trim() : '';
   }
 
+  function actionIcon(pathData) {
+    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    icon.classList.add('contact-action-icon');
+    icon.setAttribute('viewBox', '0 0 24 24');
+    icon.setAttribute('aria-hidden', 'true');
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', pathData);
+    icon.append(path);
+    return icon;
+  }
+
   function createMessageAction(contact, {label = window.FlutuI18n?.['Send message'] || 'Send message', contextType = '', contextId = '', delivery = 'push'} = {}) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'site-contact-message';
     button.title = label;
     button.setAttribute('aria-label', label);
+    const icon = actionIcon('M22 2 11 13 M22 2 15 22 11 13 2 9Z');
     const text = document.createElement('span');
     text.textContent = label;
-    button.append(text);
+    button.append(icon, text);
     button.addEventListener('click', () => window.FlutuContactList.openMessageDialog(contact, {contextType, contextId, delivery}));
     return button;
   }
@@ -58,6 +70,33 @@
     style.textContent = `
       .flutu-global-message-dialog { width: min(100% - 24px, 480px); border: 1px solid var(--border, #dfe8ff); border-radius: 16px; background: var(--surface, #fff); color: var(--text, #14213d); padding: 20px; }
       .flutu-global-message-dialog::backdrop { background: rgba(16, 24, 40, .5); }
+      .site-contact-entry { justify-content: space-between; }
+      .site-contact-entry > .site-contact-message {
+        margin-left: auto;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 8px 10px;
+        border: 1px solid #d5deef;
+        border-radius: 9px;
+        background: white;
+        color: #3655d4;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .site-contact-entry > .site-contact-message .contact-action-icon {
+        width: 18px;
+        height: 18px;
+        flex: 0 0 auto;
+        fill: none;
+        stroke: currentColor;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 1.8;
+      }
+      .site-contact-entry > .site-contact-message:hover { background: #f0f4ff; }
       .flutu-global-message-form { display: grid; gap: 12px; }
       .flutu-global-message-form label { display: grid; gap: 6px; font-weight: 700; }
       .flutu-global-message-form select, .flutu-global-message-form textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--input-border, #cfd7e6); border-radius: 10px; background: var(--input-bg, #fff); color: var(--text, #14213d); font: inherit; }
