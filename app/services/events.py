@@ -6,6 +6,7 @@ import math
 import re
 import uuid
 from datetime import datetime, timedelta, timezone
+from urllib import error as urllib_error
 from urllib import request as urllib_request
 
 from bson import ObjectId
@@ -25,6 +26,32 @@ EVENT_MEMBER_STATUSES = {"pending", "accepted", "declined"}
 IMAGE_DATA_URL = re.compile(r"^data:image/(png|jpeg|webp);base64,([A-Za-z0-9+/]+={0,2})$")
 MAX_IMAGE_BYTES = 24 * 1024
 MAX_COVER_IMAGE_BYTES = 64 * 1024
+
+
+def _extract_resend_error_details(error):
+    payload = None
+    if isinstance(error, urllib_error.HTTPError):
+        try:
+            payload = error.read().decode("utf-8", "replace")
+        except Exception:
+            payload = ""
+    if not payload and getattr(error, "reason", None):
+        payload = str(error.reason)
+    if not payload:
+        payload = str(error)
+    try:
+        data = json.loads(payload)
+    except (TypeError, ValueError):
+        return payload.strip() or "unknown resend response"
+    if isinstance(data, dict):
+        for key in ("message", "error", "details"):
+            value = data.get(key)
+            if value:
+                return str(value)
+        return json.dumps(data, ensure_ascii=False)
+    if isinstance(data, list):
+        return json.dumps(data, ensure_ascii=False)
+    return str(data)
 
 
 def _collection():
@@ -596,14 +623,15 @@ def _send_event_email(app, event, recipient_email, recipient_name="", invitation
         headers={
             "Authorization": f"Bearer {app.config['RESEND_API_KEY']}",
             "Content-Type": "application/json",
+            "User-Agent": "Flutu/1.0",
         },
         method="POST",
     )
     try:
         with urllib_request.urlopen(request, timeout=5):
             pass
-    except Exception:
-        app.logger.warning("Calendar event email delivery failed")
+    except Exception as error:
+        app.logger.warning("Calendar event email delivery failed: %s", _extract_resend_error_details(error))
 
 
 def _event_guest_contacts(event):

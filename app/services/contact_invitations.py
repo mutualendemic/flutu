@@ -1,5 +1,6 @@
 import html
 import json
+from urllib import error as urllib_error
 from urllib import parse, request as urllib_request
 
 from bson import ObjectId
@@ -14,6 +15,32 @@ from app.services.push_notifications import notify_users
 
 MAX_EMAIL_MESSAGE_LENGTH = 1000
 MAX_PUSH_MESSAGE_LENGTH = 180
+
+
+def _extract_resend_error_details(error):
+    payload = None
+    if isinstance(error, urllib_error.HTTPError):
+        try:
+            payload = error.read().decode("utf-8", "replace")
+        except Exception:
+            payload = ""
+    if not payload and getattr(error, "reason", None):
+        payload = str(error.reason)
+    if not payload:
+        payload = str(error)
+    try:
+        data = json.loads(payload)
+    except (TypeError, ValueError):
+        return payload.strip() or "unknown resend response"
+    if isinstance(data, dict):
+        for key in ("message", "error", "details"):
+            value = data.get(key)
+            if value:
+                return str(value)
+        return json.dumps(data, ensure_ascii=False)
+    if isinstance(data, list):
+        return json.dumps(data, ensure_ascii=False)
+    return str(data)
 
 
 def list_invitation_contexts(owner_id):
@@ -108,14 +135,15 @@ def _send_email(app, recipient_email, recipient_name, sender_name, registered, c
         headers={
             "Authorization": f"Bearer {app.config['RESEND_API_KEY']}",
             "Content-Type": "application/json",
+            "User-Agent": "Flutu/1.0",
         },
         method="POST",
     )
     try:
         with urllib_request.urlopen(email_request, timeout=5):
             return True
-    except Exception:
-        app.logger.warning("Contact invitation email delivery failed")
+    except Exception as error:
+        app.logger.warning("Contact invitation email delivery failed: %s", _extract_resend_error_details(error))
         raise RuntimeError("email_delivery_failed") from None
 
 

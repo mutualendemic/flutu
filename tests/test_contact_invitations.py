@@ -1,5 +1,9 @@
+import io
+import json
+import logging
 import unittest
 from types import SimpleNamespace
+from urllib import error as urllib_error
 from unittest.mock import patch
 
 from app.services.contact_invitations import _get_context, list_invitation_contexts, send_contact_invitation
@@ -173,6 +177,43 @@ class ContactInvitationTests(unittest.TestCase):
                     login_url="https://example.test/auth/login",
                 )
         notify.assert_not_called()
+
+    def test_resend_http_errors_include_reason_in_logs(self):
+        logger = logging.getLogger("flutu.test.contact_invitation")
+        logger.handlers.clear()
+        app = SimpleNamespace(
+            config={"RESEND_API_KEY": "fake-resend-key", "EMAIL_FROM": "Flutu <noreply@example.com>"},
+            logger=logger,
+        )
+        with patch("app.services.contact_invitations.urllib_request.urlopen") as urlopen, self.assertLogs(
+            "flutu.test.contact_invitation", level="WARNING"
+        ) as captured:
+            urlopen.side_effect = urllib_error.HTTPError(
+                "https://api.resend.com/emails",
+                422,
+                "Unprocessable Entity",
+                hdrs={},
+                fp=io.BytesIO(json.dumps({"message": "The from email address is not verified"}).encode("utf-8")),
+            )
+
+            with self.assertRaisesRegex(RuntimeError, "email_delivery_failed"):
+                from app.services.contact_invitations import _send_email
+
+                _send_email(
+                    app,
+                    "member@example.com",
+                    "Member",
+                    "Owner",
+                    False,
+                    None,
+                    "Planning",
+                    "Hello there",
+                    "https://example.test/login",
+                )
+
+            request = urlopen.call_args.args[0]
+            self.assertEqual(request.get_header("User-agent"), "Flutu/1.0")
+        self.assertIn("not verified", "\n".join(captured.output).lower())
 
     def test_non_scalar_delivery_and_context_values_are_rejected(self):
         app = SimpleNamespace(config={})
