@@ -51,7 +51,7 @@
       meta.textContent = `${activeCount} ${t(activeCount === 1 ? 'member' : 'members')} · ${questionCount} ${t(questionCount === 1 ? 'question' : 'questions')}`;
       const identities = document.createElement('div');
       identities.className = 'member-identities';
-      conversation.members.forEach(member => identities.append(
+      window.FlutuContactList.sortByName(conversation.members).forEach(member => identities.append(
         window.FlutuContactList.createEntry(member, {
           tagName: 'div',
           className: 'chat-member-identity',
@@ -132,7 +132,9 @@
   function renderContacts() {
     const query = search.value.trim().toLowerCase();
     picker.replaceChildren();
-    for (const contact of contacts.filter(item => `${item.name} ${item.email}`.toLowerCase().includes(query))) {
+    for (const contact of window.FlutuContactList.sortByName(
+      contacts.filter(item => `${item.name} ${item.email}`.toLowerCase().includes(query))
+    )) {
       const checkbox = document.createElement('input');
       checkbox.type = 'checkbox';
       checkbox.value = contact.user_id || '';

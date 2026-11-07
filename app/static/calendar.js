@@ -455,7 +455,7 @@
       const section = createDetailSection(t('Guests'));
       const guestList = document.createElement('ul');
       guestList.className = 'detail-value-list';
-      guests.forEach(guest => {
+      window.FlutuContactList.sortByName(guests).forEach(guest => {
         const item = document.createElement('li');
         item.append(window.FlutuContactList.createIdentity(guest));
         guestList.append(item);
@@ -469,7 +469,7 @@
       const section = createDetailSection(t('Event members'));
       const memberList = document.createElement('ul');
       memberList.className = 'detail-value-list';
-      eventMembers.forEach(member => {
+      window.FlutuContactList.sortByName(eventMembers).forEach(member => {
         const item = document.createElement('li');
         const role = t(member.role === 'editor' || member.role === 'admin' ? 'Editor' : 'Viewer');
         const invitationStatus = t(member.status === 'accepted' ? 'Accepted' : 'Invitation pending');
@@ -727,7 +727,7 @@
       eventMemberPicker.append(empty);
       return;
     }
-    for (const member of candidates.values()) {
+    for (const member of window.FlutuContactList.sortByName([...candidates.values()])) {
       const current = existingMembers.find(item => item.user_id === member.user_id && item.status !== 'declined');
       const checkbox = document.createElement('input');
       checkbox.type = 'checkbox';
@@ -974,7 +974,7 @@
     coverImageInput.value = '';
     updateCoverPreview(event?.cover_image_url || '');
     dateList.replaceChildren(...(event?.dates || [{}]).map(createDateRow));
-    renderPicker(guestPicker, contacts.filter(contact => !contact.registered), event?.guest_contact_ids || [], 'guest', 'No contacts saved yet.');
+    renderPicker(guestPicker, window.FlutuContactList.sortByName(contacts.filter(contact => !contact.registered)), event?.guest_contact_ids || [], 'guest', 'No contacts saved yet.');
     renderEventMemberPicker(event?.members || []);
     renderPicker(conversationPicker, conversations, event?.conversation_ids || [], 'conversation', 'No conversations yet.');
     mapPoints = structuredClone(event?.map_points || []);

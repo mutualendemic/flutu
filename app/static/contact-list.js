@@ -75,5 +75,14 @@
     return entry;
   }
 
-  window.FlutuContactList = {createEntry, createIdentity};
+  function sortByName(contacts) {
+    const locale = document.documentElement.lang || undefined;
+    return [...contacts].sort((first, second) => {
+      const firstName = first.name || first.requester_name || first.recipient_name || '';
+      const secondName = second.name || second.requester_name || second.recipient_name || '';
+      return String(firstName).localeCompare(String(secondName), locale, {sensitivity: 'base'});
+    });
+  }
+
+  window.FlutuContactList = {createEntry, createIdentity, sortByName};
 })();

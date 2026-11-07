@@ -368,7 +368,7 @@
   function renderMembers(members) {
     const list = document.getElementById('member-list');
     list.replaceChildren();
-    for (const member of members) {
+    for (const member of window.FlutuContactList.sortByName(members)) {
       const item = window.FlutuContactList.createEntry(
         {...member, registered: true},
         {tagName: 'li', className: 'member-chip', subtitle: member.active ? '' : t('former member')}
@@ -403,7 +403,9 @@
     const draw = () => {
       host.replaceChildren();
       const query = search.value.trim().toLowerCase();
-      contacts.filter(contact => `${contact.name} ${contact.email}`.toLowerCase().includes(query)).forEach(contact => {
+      window.FlutuContactList.sortByName(
+        contacts.filter(contact => `${contact.name} ${contact.email}`.toLowerCase().includes(query))
+      ).forEach(contact => {
         const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.value = contact.user_id || ''; checkbox.disabled = !contact.addable;
         host.append(window.FlutuContactList.createEntry(contact, {
           tagName: 'label',

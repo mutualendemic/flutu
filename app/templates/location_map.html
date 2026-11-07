@@ -31,8 +31,7 @@
   .items { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
   .item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px; border: 1px solid #e7ebf2; border-radius: 12px; }
   .item-copy { min-width: 0; }
-  .item-copy strong, .item-copy span { display: block; overflow-wrap: anywhere; }
-  .item-copy span { margin-top: 3px; color: #667085; font-size: .83rem; }
+  .item-detail { display: block; margin-top: 3px; color: #667085; font-size: .83rem; overflow-wrap: anywhere; }
   .item-actions { display: flex; flex-wrap: wrap; gap: 6px; }
   .item-actions button { padding: 8px 10px; border: 1px solid #d7deeb; border-radius: 9px; background: white; color: #344054; font: inherit; font-size: .8rem; font-weight: 700; cursor: pointer; }
   .item-actions button:hover { background: #f2f5fa; }
@@ -148,6 +147,10 @@
     let ownCoordinatesUpdatedAt = 0;
     let sharingContacts = [];
     let sharedLocationsByUser = new Map();
+    let savedContacts = [];
+    let pendingRecipientIds = new Set();
+    let contactsLoaded = false;
+    let overviewLoaded = false;
 
     function fitMapToMarkers() {
       const visibleMarkers = [...markers.values(), ...eventMarkers.values()];
@@ -224,6 +227,7 @@
       copy.className = 'item-copy';
       copy.append(window.FlutuContactList.createIdentity({name, registered: true, ...contact}));
       const span = document.createElement('span');
+      span.className = 'item-detail';
       span.textContent = detail;
       copy.append(span);
       li.append(copy);
@@ -252,7 +256,49 @@
         list.append(empty);
         return;
       }
-      records.forEach(record => list.append(render(record)));
+      window.FlutuContactList.sortByName(records).forEach(record => list.append(render(record)));
+    }
+
+    function renderContactChoices() {
+      const list = document.getElementById('contact-select');
+      const requestButton = document.getElementById('request-location-button');
+      list.replaceChildren();
+      if (!contactsLoaded || !overviewLoaded) {
+        const loading = document.createElement('p');
+        loading.className = 'empty';
+        loading.textContent = t('Loading contacts…');
+        list.append(loading);
+        requestButton.disabled = true;
+        return;
+      }
+
+      const contacts = window.FlutuContactList.sortByName(savedContacts.filter(contact => contact.email));
+      if (!contacts.length) {
+        const empty = document.createElement('p');
+        empty.className = 'empty';
+        empty.textContent = t('No contacts with email addresses');
+        list.append(empty);
+      }
+      let requiredAssigned = false;
+      let hasSelectableContact = false;
+      contacts.forEach(contact => {
+        const alreadyPending = contact.user_id && pendingRecipientIds.has(contact.user_id);
+        const radio = document.createElement('input');
+        radio.type = 'radio';
+        radio.name = 'contact_id';
+        radio.value = contact.id;
+        radio.disabled = !contact.registered || Boolean(alreadyPending);
+        radio.required = Boolean(contact.registered && !alreadyPending && !requiredAssigned);
+        requiredAssigned ||= radio.required;
+        hasSelectableContact ||= !radio.disabled;
+        list.append(window.FlutuContactList.createEntry(contact, {
+          tagName: 'label',
+          className: 'contact-choice',
+          control: radio,
+          subtitle: alreadyPending ? t('A request is already pending.') : '',
+        }));
+      });
+      requestButton.disabled = !hasSelectableContact;
     }
 
     async function respond(id, action) {
@@ -571,6 +617,9 @@
     async function loadOverview() {
       try {
         const data = await callApi(api.overview);
+        pendingRecipientIds = new Set(data.outgoing_pending.map(item => item.recipient_id));
+        overviewLoaded = true;
+        renderContactChoices();
         renderLocations(data.locations);
         await loadEventMapPoints();
         renderList(incomingList, data.incoming_requests, t('No pending requests.'), item => makeItem(
@@ -669,35 +718,16 @@
     }, {disabledAfter: () => sharingCount === 0}));
 
     async function loadContacts() {
-      const list = document.getElementById('contact-select');
-      const requestButton = document.getElementById('request-location-button');
       try {
         const data = await callApi(api.contacts);
-        const contacts = data.contacts.filter(contact => contact.email);
-        list.replaceChildren();
-        if (!contacts.length) {
-          const empty = document.createElement('p');
-          empty.className = 'empty';
-          empty.textContent = t('No contacts with email addresses');
-          list.append(empty);
-        }
-        let requiredAssigned = false;
-        contacts.forEach(contact => {
-          const radio = document.createElement('input');
-          radio.type = 'radio';
-          radio.name = 'contact_id';
-          radio.value = contact.id;
-          radio.disabled = !contact.registered;
-          radio.required = Boolean(contact.registered && !requiredAssigned);
-          requiredAssigned ||= contact.registered === true;
-          list.append(window.FlutuContactList.createEntry(contact, {
-            tagName: 'label',
-            className: 'contact-choice',
-            control: radio,
-          }));
-        });
-        requestButton.disabled = !contacts.some(contact => contact.registered);
+        savedContacts = data.contacts;
+        contactsLoaded = true;
+        renderContactChoices();
       } catch (error) {
+        contactsLoaded = true;
+        overviewLoaded = true;
+        const list = document.getElementById('contact-select');
+        const requestButton = document.getElementById('request-location-button');
         list.replaceChildren();
         const empty = document.createElement('p');
         empty.className = 'empty';

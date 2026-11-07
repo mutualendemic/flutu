@@ -200,7 +200,7 @@
           [contact.name, contact.tel, contact.email].some((value) => (value || "").toLowerCase().includes(query))
         );
         list.replaceChildren();
-        visible.forEach((contact) => {
+        window.FlutuContactList.sortByName(visible).forEach((contact) => {
           const item = document.createElement("li");
           item.className = "contact-card";
           const actions = document.createElement("div");
