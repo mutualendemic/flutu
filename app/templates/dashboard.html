@@ -3,6 +3,8 @@
 {% block title %}Flutu.eu | {{ _('Dashboard') }}{% endblock %}
 {% block styles %}
   .dashboard { margin-top: 8vh; }
+  .session-status { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:16px; }
+  .session-status .sharing-status { margin:0; }
   .dashboard-welcome { display:flex; flex-wrap:wrap; align-items:center; gap:0 10px; }
   .dashboard-brand-lockup img { width:38px; height:38px; }
   .dashboard-brand-lockup .brand-wordmark { width:82px; height:34px; }
@@ -17,8 +19,10 @@
 {% endblock %}
 {% block content %}
   <main class="card dashboard">
-    <span class="badge">{{ _('Active session') }}</span>
-    <p id="location-sharing-indicator" class="sharing-status" role="status" aria-live="polite" hidden>{{ _('Checking location sharing…') }}</p>
+    <div class="session-status">
+      <span class="badge">{{ _('Active session') }}</span>
+      <p id="location-sharing-indicator" class="sharing-status" role="status" aria-live="polite" hidden>{{ _('Checking location sharing…') }}</p>
+    </div>
     <h1 class="dashboard-welcome">{{ _('Welcome to') }} {{ flutu_brand('brand-lockup dashboard-brand-lockup') }}</h1>
     <p>{{ _('Signed in as:') }} <strong>{{ user.name }}</strong> ({{ user.email }})</p>
     <nav class="actions" aria-label="{{ _('Dashboard pages') }}">
