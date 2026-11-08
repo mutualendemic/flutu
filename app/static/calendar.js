@@ -17,6 +17,14 @@
   const monthGrid = document.getElementById('month-grid');
   const agendaTitle = document.getElementById('agenda-title');
   const agendaGrid = document.getElementById('agenda-grid');
+  const colorSchemePreference = window.matchMedia('(prefers-color-scheme: dark)');
+  const syncCalendarColorScheme = () => {
+    [monthGrid, agendaGrid].forEach(grid => {
+      if (grid) grid.dataset.colorScheme = colorSchemePreference.matches ? 'dark' : 'light';
+    });
+  };
+  syncCalendarColorScheme();
+  colorSchemePreference.addEventListener('change', syncCalendarColorScheme);
   const eventDetail = document.getElementById('event-detail');
   const statusMessage = document.getElementById('calendar-status');
   const dialog = document.getElementById('event-dialog');
@@ -216,13 +224,15 @@
   }
 
   function fullCalendarEvent(entry) {
+    const color = eventColor(entry.event_id, entry.status);
     return {
       id: `${entry.event_id}:${entry.start_at}`,
       title: entry.title,
       start: entry.start_at,
       end: entry.end_at || null,
       allDay: false,
-      color: eventColor(entry.event_id, entry.status),
+      color,
+      contrastColor: eventColorText(color),
       extendedProps: { eventId: entry.event_id, status: entry.status }
     };
   }
@@ -256,6 +266,7 @@
   function initializeAgendaCalendar() {
     if (!window.FullCalendar || !agendaGrid || agendaCalendar) return agendaCalendar;
     agendaCalendar = new window.FullCalendar.Calendar(agendaGrid, {
+      themeSystem: 'monarch',
       initialView: 'timeGridDay',
       initialDate: selectedDate,
       locale: fullCalendarLocaleName(),
@@ -282,18 +293,18 @@
   function initializeFullCalendar() {
     if (!window.FullCalendar || !monthGrid || fullCalendar) return fullCalendar;
     fullCalendar = new window.FullCalendar.Calendar(monthGrid, {
+      themeSystem: 'monarch',
       initialView: 'dayGridMonth',
       initialDate: visibleMonth,
       locale: fullCalendarLocaleName(),
       firstDay: 1,
-      headerToolbar: { left: 'prev,next calendarToday', center: 'title', right: '' },
-      customButtons: {
-        calendarToday: {
+      headerToolbar: { left: 'prev,next today', center: 'title', right: '' },
+      buttons: {
+        today: {
           text: t('Today'),
-          click: () => {
-            selectedDate = new Date();
-            selectedOccurrence = null;
-            renderAgenda();
+          click: event => {
+            event.preventDefault();
+            selectCalendarDate(localDateKey(new Date()));
             fullCalendar.today();
           }
         }
